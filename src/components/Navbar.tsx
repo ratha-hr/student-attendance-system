@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { Menu, School, User, Calendar, PlusCircle, Share2, Check } from 'lucide-react';
+import { Menu, School, User, Calendar, Share2, Check, Plus, Settings } from 'lucide-react';
 import type { ClassRoom, TeacherSettings } from '../types';
 import { formatKhmerDate, getTodayDateString } from '../utils/dateUtils';
-import type { NavTab } from './Sidebar';
 
 interface NavbarProps {
   onToggleSidebar: () => void;
@@ -10,7 +9,8 @@ interface NavbarProps {
   selectedClassId: string;
   onSelectClass: (classId: string) => void;
   settings: TeacherSettings | null;
-  onNavigate: (tab: NavTab) => void;
+  onOpenSettings: () => void;
+  onOpenManageClasses?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -19,7 +19,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   selectedClassId,
   onSelectClass,
   settings,
-  onNavigate,
+  onOpenSettings,
+  onOpenManageClasses,
 }) => {
   const todayKhmer = formatKhmerDate(getTodayDateString(), true);
   const [copiedLink, setCopiedLink] = useState(false);
@@ -64,24 +65,34 @@ export const Navbar: React.FC<NavbarProps> = ({
           <label htmlFor="class-select" className="hidden md:inline-block text-xs font-semibold text-slate-500 whitespace-nowrap">
             ជ្រើសរើសថ្នាក់៖
           </label>
-          <div className="relative">
+          <div className="relative flex items-center space-x-1.5">
             <select
               id="class-select"
               value={selectedClassId}
               onChange={(e) => onSelectClass(e.target.value)}
               className="bg-slate-50 border border-slate-300 hover:border-blue-500 text-slate-800 text-xs sm:text-sm font-semibold rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block px-3 py-1.5 sm:py-2 transition-all cursor-pointer shadow-xs"
             >
-              <option value="ALL">🌟 ថ្នាក់ទាំងអស់ (All Classes)</option>
+              <option value="ALL">🌟 ថ្នាក់ទាំងអស់ ({classes.length})</option>
               {classes.map((c) => (
                 <option key={c.id} value={c.id}>
                   📚 {c.name} {c.room ? `(${c.room})` : ''}
                 </option>
               ))}
             </select>
+            {onOpenManageClasses && (
+              <button
+                type="button"
+                onClick={onOpenManageClasses}
+                className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl transition-colors cursor-pointer"
+                title="បន្ថែមថ្នាក់ថ្មី (+ថ្នាក់)"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Right side: Share Link, Attendance button & Teacher Badge */}
+        {/* Right side: Share Link & Settings Profile */}
         <div className="flex items-center space-x-2 sm:space-x-3">
           {/* Today Date Pill */}
           <div className="hidden xl:flex items-center space-x-1.5 px-3 py-1.5 bg-slate-100 rounded-xl text-xs text-slate-600 font-medium">
@@ -99,20 +110,11 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span className="hidden xs:inline">{copiedLink ? 'បានចម្លង Link!' : 'Link ផ្ញើឱ្យសិស្ស'}</span>
           </button>
 
-          {/* Quick Action: Take Attendance */}
+          {/* Settings button & Teacher Profile */}
           <button
-            onClick={() => onNavigate('attendance')}
-            className="hidden md:inline-flex items-center space-x-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-medium shadow-xs shadow-blue-500/30 transition-all cursor-pointer"
-          >
-            <PlusCircle className="w-3.5 h-3.5" />
-            <span>កត់វត្តមាន</span>
-          </button>
-
-          {/* Teacher Profile Avatar */}
-          <div
-            onClick={() => onNavigate('settings')}
+            onClick={onOpenSettings}
             className="flex items-center space-x-2 pl-2 border-l border-slate-200 cursor-pointer hover:opacity-80 transition-opacity"
-            title="ការកំណត់គ្រូបង្រៀន"
+            title="ការកំណត់ & បម្រុងទុកទិន្នន័យ"
           >
             <div className="w-8 h-8 rounded-full bg-linear-to-tr from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
               {settings?.teacherName ? settings.teacherName.charAt(0) : <User className="w-4 h-4" />}
@@ -121,9 +123,12 @@ export const Navbar: React.FC<NavbarProps> = ({
               <p className="text-xs font-bold text-slate-800 leading-tight">
                 {settings?.teacherName || 'លោកគ្រូ'}
               </p>
-              <p className="text-[10px] text-slate-400">គ្រូបង្រៀន</p>
+              <div className="flex items-center text-[10px] text-slate-400 space-x-1">
+                <span>គ្រូបង្រៀន</span>
+                <Settings className="w-2.5 h-2.5 text-slate-400" />
+              </div>
             </div>
-          </div>
+          </button>
         </div>
       </div>
     </header>
