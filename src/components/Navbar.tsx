@@ -1,5 +1,5 @@
-import React from 'react';
-import { Menu, School, User, Calendar, PlusCircle, Printer } from 'lucide-react';
+import React, { useState } from 'react';
+import { Menu, School, User, Calendar, PlusCircle, Share2, Check } from 'lucide-react';
 import type { ClassRoom, TeacherSettings } from '../types';
 import { formatKhmerDate, getTodayDateString } from '../utils/dateUtils';
 import type { NavTab } from './Sidebar';
@@ -22,6 +22,14 @@ export const Navbar: React.FC<NavbarProps> = ({
   onNavigate,
 }) => {
   const todayKhmer = formatKhmerDate(getTodayDateString(), true);
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  const handleCopyShareLink = () => {
+    const shareUrl = 'https://ratha-hr.github.io/student-attendance-system/';
+    navigator.clipboard.writeText(shareUrl);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2500);
+  };
 
   return (
     <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-6 py-3 no-print">
@@ -73,18 +81,28 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
 
-        {/* Right side: Today Date & Teacher Badge */}
-        <div className="flex items-center space-x-3">
+        {/* Right side: Share Link, Attendance button & Teacher Badge */}
+        <div className="flex items-center space-x-2 sm:space-x-3">
           {/* Today Date Pill */}
           <div className="hidden xl:flex items-center space-x-1.5 px-3 py-1.5 bg-slate-100 rounded-xl text-xs text-slate-600 font-medium">
             <Calendar className="w-3.5 h-3.5 text-blue-600" />
             <span>{todayKhmer}</span>
           </div>
 
+          {/* Quick Action: Share Link to Students / Class Monitor */}
+          <button
+            onClick={handleCopyShareLink}
+            className="inline-flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs"
+            title="ចុចដើម្បីចម្លង Link ផ្ញើឱ្យប្រធានថ្នាក់ ឬសិស្ស"
+          >
+            {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Share2 className="w-3.5 h-3.5 text-emerald-600" />}
+            <span className="hidden xs:inline">{copiedLink ? 'បានចម្លង Link!' : 'Link ផ្ញើឱ្យសិស្ស'}</span>
+          </button>
+
           {/* Quick Action: Take Attendance */}
           <button
             onClick={() => onNavigate('attendance')}
-            className="hidden sm:inline-flex items-center space-x-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-medium shadow-xs shadow-blue-500/30 transition-all cursor-pointer"
+            className="hidden md:inline-flex items-center space-x-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-medium shadow-xs shadow-blue-500/30 transition-all cursor-pointer"
           >
             <PlusCircle className="w-3.5 h-3.5" />
             <span>កត់វត្តមាន</span>
