@@ -10,8 +10,10 @@ import {
   Award,
   Clock,
   Settings,
-  ChevronRight,
   BookOpenCheck,
+  Smartphone,
+  Sparkles,
+  BarChart3,
 } from 'lucide-react';
 import type { ClassRoom } from '../types';
 
@@ -20,10 +22,13 @@ export type NavTab =
   | 'classes'
   | 'students'
   | 'attendance'
+  | 'monitor'
   | 'extracts'
   | 'letters'
   | 'annual-plan'
   | 'grades'
+  | 'certificates'
+  | 'analytics'
   | 'timetable'
   | 'settings';
 
@@ -67,15 +72,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: 'attendance' as NavTab,
-      label: 'វត្តមានសិស្ស',
+      label: 'វត្តមានសិស្ស (ប្រចាំថ្ងៃ/ខែ)',
       icon: CalendarCheck2,
-      badge: 'ប្រចាំថ្ងៃ/ខែ',
+      badge: null,
     },
     {
-      id: 'extracts' as NavTab,
-      label: 'សម្រង់អត្ថបទ & មេរៀន',
-      icon: FileText,
-      badge: null,
+      id: 'monitor' as NavTab,
+      label: 'ផ្ទាំងប្រធានថ្នាក់ (Mobile)',
+      icon: Smartphone,
+      badge: 'ងាយស្រួល',
+      highlight: true,
     },
     {
       id: 'letters' as NavTab,
@@ -85,16 +91,34 @@ export const Sidebar: React.FC<SidebarProps> = ({
       highlight: true,
     },
     {
+      id: 'grades' as NavTab,
+      label: 'ស្រង់ពិន្ទុ & ចំណាត់ថ្នាក់',
+      icon: Award,
+      badge: null,
+    },
+    {
+      id: 'certificates' as NavTab,
+      label: 'ប័ណ្ណសរសើរ & កាតសិស្ស',
+      icon: Sparkles,
+      badge: 'ថ្មី',
+    },
+    {
+      id: 'analytics' as NavTab,
+      label: 'ស្ថិតិ & ក្រាហ្វិកវិភាគ',
+      icon: BarChart3,
+      badge: null,
+    },
+    {
       id: 'annual-plan' as NavTab,
       label: 'ផែនការគ្រូ ១ ឆ្នាំ',
       icon: CalendarDays,
       badge: 'ឆមាស ១-២',
     },
     {
-      id: 'grades' as NavTab,
-      label: 'ស្រង់ពិន្ទុ & ចំណាត់ថ្នាក់',
-      icon: Award,
-      badge: 'បន្ថែម',
+      id: 'extracts' as NavTab,
+      label: 'សម្រង់អត្ថបទ & មេរៀន',
+      icon: FileText,
+      badge: null,
     },
     {
       id: 'timetable' as NavTab,
@@ -159,7 +183,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Navigation List */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+        <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-1">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentTab === item.id;
@@ -170,15 +194,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onSelectTab(item.id);
                   onClose();
                 }}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all group cursor-pointer ${
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all group cursor-pointer ${
                   isActive
                     ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
                     : 'text-slate-300 hover:bg-slate-800/70 hover:text-white'
                 }`}
               >
-                <div className="flex items-center space-x-3 space-x-reverse min-w-0">
+                <div className="flex items-center space-x-2.5 min-w-0">
                   <Icon
-                    className={`w-5 h-5 shrink-0 transition-colors ${
+                    className={`w-4 h-4 shrink-0 transition-colors ${
                       isActive ? 'text-white' : item.highlight ? 'text-amber-400' : 'text-slate-400 group-hover:text-blue-400'
                     }`}
                   />
@@ -186,7 +210,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </div>
                 {item.badge && (
                   <span
-                    className={`text-[10px] px-2 py-0.5 rounded-full font-semibold shrink-0 ml-1.5 ${
+                    className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold shrink-0 ml-1.5 ${
                       isActive
                         ? 'bg-blue-700 text-blue-100'
                         : item.highlight
@@ -203,14 +227,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </nav>
 
         {/* Footer Info */}
-        <div className="p-4 border-t border-slate-800 bg-slate-950/40 text-xs text-slate-400">
-          <div className="flex items-center justify-between">
-            <span className="text-slate-400">កំណែប្រែ v2.0 (Offline)</span>
-            <span className="flex items-center text-emerald-400">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 mr-1.5 animate-pulse"></span>
-              ទិន្នន័យសុវត្ថិភាព
-            </span>
-          </div>
+        <div className="p-3 border-t border-slate-800 bg-slate-950/40 text-[11px] text-slate-400 flex items-center justify-between">
+          <span>កំណែប្រែ v2.2 Pro</span>
+          <span className="flex items-center text-emerald-400 font-semibold">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 mr-1 animate-pulse" />
+            Offline + Telegram
+          </span>
         </div>
       </aside>
     </>

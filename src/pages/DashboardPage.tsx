@@ -2,21 +2,22 @@ import React from 'react';
 import {
   Users,
   UserCheck,
-  UserX,
   AlertTriangle,
   GraduationCap,
   Calendar,
   FileText,
   MailWarning,
-  PlusCircle,
   ArrowRight,
   Clock,
-  Printer,
   ChevronRight,
   ShieldAlert,
+  Smartphone,
+  Sparkles,
+  BarChart3,
+  Award,
 } from 'lucide-react';
 import type { ClassRoom, Student, AttendanceRecord, TeacherSettings } from '../types';
-import { toKhmerNum, formatKhmerDate, getTodayDateString } from '../utils/dateUtils';
+import { toKhmerNum } from '../utils/dateUtils';
 import type { NavTab } from '../components/Sidebar';
 
 interface DashboardProps {
@@ -38,7 +39,6 @@ export const DashboardPage: React.FC<DashboardProps> = ({
   onNavigate,
   onSelectStudentForLetter,
 }) => {
-  const today = getTodayDateString();
   const warningThreshold = settings?.absenceWarningThreshold || 3;
 
   // Filter students based on selected class
@@ -49,6 +49,7 @@ export const DashboardPage: React.FC<DashboardProps> = ({
   const studentIds = new Set(filteredStudents.map((s) => s.id));
 
   // Today's attendance
+  const today = new Date().toISOString().slice(0, 10);
   const todayRecords = attendanceRecords.filter(
     (a) => a.date === today && studentIds.has(a.studentId)
   );
@@ -56,13 +57,12 @@ export const DashboardPage: React.FC<DashboardProps> = ({
   const presentToday = todayRecords.filter((r) => r.status === 'present').length;
   const permissionToday = todayRecords.filter((r) => r.status === 'permission').length;
   const absentToday = todayRecords.filter((r) => r.status === 'absent').length;
-  const lateToday = todayRecords.filter((r) => r.status === 'late').length;
 
   const totalStudents = filteredStudents.length;
   const femaleStudents = filteredStudents.filter((s) => s.gender === 'ស្រី').length;
   const maleStudents = filteredStudents.filter((s) => s.gender === 'ប្រុស').length;
 
-  // Calculate total absences per student (both permission & absent)
+  // Calculate total absences per student
   const studentAbsenceMap = new Map<string, { unexcused: number; excused: number; total: number; dates: string[] }>();
   
   attendanceRecords.forEach((rec) => {
@@ -115,27 +115,34 @@ export const DashboardPage: React.FC<DashboardProps> = ({
             <span className="font-bold text-amber-300">{toKhmerNum(students.length)} នាក់</span>។
           </p>
 
-          <div className="mt-6 flex flex-wrap gap-3">
+          <div className="mt-6 flex flex-wrap gap-2.5">
             <button
               onClick={() => onNavigate('attendance')}
               className="inline-flex items-center px-4 py-2 rounded-xl bg-white text-blue-700 text-xs sm:text-sm font-bold shadow-md hover:bg-blue-50 transition-all cursor-pointer"
             >
               <Calendar className="w-4 h-4 mr-2" />
-              កត់ត្រាវត្តមានថ្ងៃនេះ
+              កត់ត្រាវត្តមាន
+            </button>
+            <button
+              onClick={() => onNavigate('monitor')}
+              className="inline-flex items-center px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs sm:text-sm font-bold shadow-md transition-all cursor-pointer"
+            >
+              <Smartphone className="w-4 h-4 mr-2" />
+              ផ្ទាំងប្រធានថ្នាក់ (Mobile)
             </button>
             <button
               onClick={() => onNavigate('letters')}
               className="inline-flex items-center px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs sm:text-sm font-bold shadow-md transition-all cursor-pointer"
             >
               <MailWarning className="w-4 h-4 mr-2" />
-              ចេញលិខិតព្រមានអាណាព្យាបាល
+              លិខិតព្រមាន
             </button>
             <button
-              onClick={() => onNavigate('annual-plan')}
-              className="inline-flex items-center px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs sm:text-sm font-semibold backdrop-blur-xs transition-all cursor-pointer"
+              onClick={() => onNavigate('certificates')}
+              className="inline-flex items-center px-4 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs sm:text-sm font-semibold backdrop-blur-xs transition-all cursor-pointer"
             >
-              <ArrowRight className="w-4 h-4 mr-2" />
-              មើលផែនការ ១ ឆ្នាំ
+              <Sparkles className="w-4 h-4 mr-2 text-amber-300" />
+              ប័ណ្ណសរសើរ
             </button>
           </div>
         </div>
@@ -237,7 +244,7 @@ export const DashboardPage: React.FC<DashboardProps> = ({
                   ⚠️ ការដាស់តឿន៖ សិស្សអវត្តមានឥតច្បាប់ចាប់ពី {toKhmerNum(warningThreshold)} ដងឡើងទៅ!
                 </h3>
                 <p className="text-xs text-rose-700 mt-1">
-                  មានសិស្សចំនួន <span className="font-bold underline">{toKhmerNum(atRiskStudents.length)} នាក់</span> បានអវត្តមានឥតច្បាប់ច្រើនដង។ សូមចេញលិខិតផ្លូវការផ្ញើជូនអាណាព្យាបាលជាបន្ទាន់ ដើម្បីសហការដោះស្រាយ។
+                  មានសិស្សចំនួន <span className="font-bold underline">{toKhmerNum(atRiskStudents.length)} នាក់</span> បានអវត្តមានឥតច្បាប់ច្រើនដង។ សូមចេញលិខិតផ្លូវការផ្ញើជូនអាណាព្យាបាលជាបន្ទាន់។
                 </p>
               </div>
             </div>
@@ -272,7 +279,7 @@ export const DashboardPage: React.FC<DashboardProps> = ({
 
                 <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between">
                   <span className="text-[10px] text-slate-400">
-                    សរុប {toKhmerNum(stu.totalAbsences)} ដង (មានច្បាប់ {toKhmerNum(stu.excusedCount)})
+                    សរុប {toKhmerNum(stu.totalAbsences)} ដង
                   </span>
                   <button
                     onClick={() => {
@@ -303,56 +310,82 @@ export const DashboardPage: React.FC<DashboardProps> = ({
             <span className="text-xs text-slate-400">ជ្រើសរើសដើម្បីចាប់ផ្តើម</span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div
               onClick={() => onNavigate('attendance')}
-              className="p-4 rounded-xl border border-slate-200/90 hover:border-blue-400 hover:bg-blue-50/40 transition-all cursor-pointer group flex items-start space-x-3"
+              className="p-3.5 rounded-xl border border-slate-200 hover:border-blue-400 hover:bg-blue-50/40 transition-all cursor-pointer group flex flex-col justify-between"
             >
-              <div className="p-2.5 bg-blue-100 text-blue-700 rounded-xl group-hover:scale-105 transition-transform">
-                <Calendar className="w-5 h-5" />
+              <div className="p-2 bg-blue-100 text-blue-700 rounded-lg w-fit group-hover:scale-105 transition-transform mb-2">
+                <Calendar className="w-4 h-4" />
               </div>
               <div>
-                <h4 className="font-bold text-sm text-slate-800 group-hover:text-blue-700">ស្រង់វត្តមានប្រចាំថ្ងៃ</h4>
-                <p className="text-xs text-slate-500 mt-0.5">កត់ត្រា មក, ច្បាប់, ឥតច្បាប់, យឺត ដោយចុចតែម្តង</p>
+                <h4 className="font-bold text-xs sm:text-sm text-slate-800 group-hover:text-blue-700">ស្រង់វត្តមានប្រចាំថ្ងៃ</h4>
+                <p className="text-[11px] text-slate-500 mt-0.5">កត់ត្រា មក, ច្បាប់, ឥតច្បាប់</p>
+              </div>
+            </div>
+
+            <div
+              onClick={() => onNavigate('monitor')}
+              className="p-3.5 rounded-xl border border-slate-200 hover:border-emerald-400 hover:bg-emerald-50/40 transition-all cursor-pointer group flex flex-col justify-between"
+            >
+              <div className="p-2 bg-emerald-100 text-emerald-700 rounded-lg w-fit group-hover:scale-105 transition-transform mb-2">
+                <Smartphone className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="font-bold text-xs sm:text-sm text-slate-800 group-hover:text-emerald-700">ផ្ទាំងប្រធានថ្នាក់</h4>
+                <p className="text-[11px] text-slate-500 mt-0.5">កត់វត្តមានលើទូរស័ព្ទ + Telegram</p>
+              </div>
+            </div>
+
+            <div
+              onClick={() => onNavigate('certificates')}
+              className="p-3.5 rounded-xl border border-slate-200 hover:border-amber-400 hover:bg-amber-50/40 transition-all cursor-pointer group flex flex-col justify-between"
+            >
+              <div className="p-2 bg-amber-100 text-amber-700 rounded-lg w-fit group-hover:scale-105 transition-transform mb-2">
+                <Sparkles className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="font-bold text-xs sm:text-sm text-slate-800 group-hover:text-amber-700">ប័ណ្ណសរសើរ & កាត</h4>
+                <p className="text-[11px] text-slate-500 mt-0.5">បោះពុម្ពប័ណ្ណលេខ១, ២, ៣</p>
+              </div>
+            </div>
+
+            <div
+              onClick={() => onNavigate('analytics')}
+              className="p-3.5 rounded-xl border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/40 transition-all cursor-pointer group flex flex-col justify-between"
+            >
+              <div className="p-2 bg-indigo-100 text-indigo-700 rounded-lg w-fit group-hover:scale-105 transition-transform mb-2">
+                <BarChart3 className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="font-bold text-xs sm:text-sm text-slate-800 group-hover:text-indigo-700">ស្ថិតិ & ក្រាហ្វិក</h4>
+                <p className="text-[11px] text-slate-500 mt-0.5">វិភាគអត្រាវត្តមានតាមថ្ងៃ</p>
+              </div>
+            </div>
+
+            <div
+              onClick={() => onNavigate('grades')}
+              className="p-3.5 rounded-xl border border-slate-200 hover:border-purple-400 hover:bg-purple-50/40 transition-all cursor-pointer group flex flex-col justify-between"
+            >
+              <div className="p-2 bg-purple-100 text-purple-700 rounded-lg w-fit group-hover:scale-105 transition-transform mb-2">
+                <Award className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="font-bold text-xs sm:text-sm text-slate-800 group-hover:text-purple-700">ស្រង់ពិន្ទុ & ចំណាត់ថ្នាក់</h4>
+                <p className="text-[11px] text-slate-500 mt-0.5">គណនាមធ្យមភាគស្វ័យប្រវត្តិ</p>
               </div>
             </div>
 
             <div
               onClick={() => onNavigate('letters')}
-              className="p-4 rounded-xl border border-slate-200/90 hover:border-amber-400 hover:bg-amber-50/40 transition-all cursor-pointer group flex items-start space-x-3"
+              className="p-3.5 rounded-xl border border-slate-200 hover:border-rose-400 hover:bg-rose-50/40 transition-all cursor-pointer group flex flex-col justify-between"
             >
-              <div className="p-2.5 bg-amber-100 text-amber-700 rounded-xl group-hover:scale-105 transition-transform">
-                <MailWarning className="w-5 h-5" />
+              <div className="p-2 bg-rose-100 text-rose-700 rounded-lg w-fit group-hover:scale-105 transition-transform mb-2">
+                <MailWarning className="w-4 h-4" />
               </div>
               <div>
-                <h4 className="font-bold text-sm text-slate-800 group-hover:text-amber-700">លិខិតជូនដំណឹងអវត្តមាន</h4>
-                <p className="text-xs text-slate-500 mt-0.5">បោះពុម្ពលិខិតផ្លូវការផ្ញើទៅអាណាព្យាបាលតាមទម្រង់ក្រសួង</p>
-              </div>
-            </div>
-
-            <div
-              onClick={() => onNavigate('extracts')}
-              className="p-4 rounded-xl border border-slate-200/90 hover:border-indigo-400 hover:bg-indigo-50/40 transition-all cursor-pointer group flex items-start space-x-3"
-            >
-              <div className="p-2.5 bg-indigo-100 text-indigo-700 rounded-xl group-hover:scale-105 transition-transform">
-                <FileText className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="font-bold text-sm text-slate-800 group-hover:text-indigo-700">សម្រង់អត្ថបទ & មេរៀន</h4>
-                <p className="text-xs text-slate-500 mt-0.5">កម្រងអត្ថបទអាន គតិបណ្ឌិត វិធាន និងកិច្ចតែងការសង្ខេប</p>
-              </div>
-            </div>
-
-            <div
-              onClick={() => onNavigate('annual-plan')}
-              className="p-4 rounded-xl border border-slate-200/90 hover:border-emerald-400 hover:bg-emerald-50/40 transition-all cursor-pointer group flex items-start space-x-3"
-            >
-              <div className="p-2.5 bg-emerald-100 text-emerald-700 rounded-xl group-hover:scale-105 transition-transform">
-                <Clock className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="font-bold text-sm text-slate-800 group-hover:text-emerald-700">ផែនការគ្រូ ១ ឆ្នាំ</h4>
-                <p className="text-xs text-slate-500 mt-0.5">តាមដានកម្មវិធីបង្រៀនប្រចាំខែ និងសប្តាហ៍ ឆមាសទី១-២</p>
+                <h4 className="font-bold text-xs sm:text-sm text-slate-800 group-hover:text-rose-700">លិខិតជូនដំណឹង</h4>
+                <p className="text-[11px] text-slate-500 mt-0.5">បោះពុម្ពលិខិតផ្លូវការ A4</p>
               </div>
             </div>
           </div>

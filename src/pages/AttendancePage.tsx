@@ -14,10 +14,12 @@ import {
   Users,
   Search,
   Filter,
+  Send,
 } from 'lucide-react';
 import type { Student, ClassRoom, AttendanceRecord, AttendanceStatus, TeacherSettings } from '../types';
 import { db } from '../db/db';
 import { toKhmerNum, formatKhmerDate, getTodayDateString, KHMER_MONTHS } from '../utils/dateUtils';
+import { TelegramShareModal } from '../components/TelegramShareModal';
 
 interface AttendancePageProps {
   students: Student[];
@@ -43,6 +45,7 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
   const [viewMode, setViewMode] = useState<'daily' | 'monthly'>('daily');
   const [selectedDate, setSelectedDate] = useState(getTodayDateString());
   const [selectedSession, setSelectedSession] = useState<'morning' | 'afternoon'>('morning');
+  const [isTelegramOpen, setIsTelegramOpen] = useState(false);
   const [isSavedFeedback, setIsSavedFeedback] = useState(false);
 
   // For monthly view
@@ -224,6 +227,15 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
               តារាងប្រចាំខែ
             </button>
           </div>
+
+          {/* Telegram Share Button */}
+          <button
+            onClick={() => setIsTelegramOpen(true)}
+            className="inline-flex items-center px-3 py-2 bg-sky-500 hover:bg-sky-600 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
+          >
+            <Send className="w-3.5 h-3.5 mr-1" />
+            ផ្ញើ Telegram
+          </button>
 
           {/* Print Button */}
           <button
@@ -613,6 +625,16 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
           </div>
         </div>
       )}
+
+      {/* Telegram Share Modal */}
+      <TelegramShareModal
+        isOpen={isTelegramOpen}
+        onClose={() => setIsTelegramOpen(false)}
+        currentClass={currentClass || null}
+        students={students}
+        attendanceRecords={attendanceRecords}
+        settings={settings}
+      />
     </div>
   );
 };

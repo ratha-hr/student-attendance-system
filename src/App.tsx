@@ -4,16 +4,20 @@ import { db } from './db/db';
 import type { NavTab } from './components/Sidebar';
 import { Sidebar } from './components/Sidebar';
 import { Navbar } from './components/Navbar';
+import { TelegramShareModal } from './components/TelegramShareModal';
 
 // Pages
 import { DashboardPage } from './pages/DashboardPage';
 import { ClassesPage } from './pages/ClassesPage';
 import { StudentsPage } from './pages/StudentsPage';
 import { AttendancePage } from './pages/AttendancePage';
+import { ClassMonitorModePage } from './pages/ClassMonitorModePage';
 import { LessonExtractsPage } from './pages/LessonExtractsPage';
 import { OfficialLettersPage } from './pages/OfficialLettersPage';
 import { AnnualPlanPage } from './pages/AnnualPlanPage';
 import { GradesPage } from './pages/GradesPage';
+import { CertificatesPage } from './pages/CertificatesPage';
+import { AnalyticsPage } from './pages/AnalyticsPage';
 import { TimetablePage } from './pages/TimetablePage';
 import { SettingsPage } from './pages/SettingsPage';
 import type { TeacherSettings } from './types';
@@ -23,6 +27,7 @@ export function App() {
   const [selectedClassId, setSelectedClassId] = useState<string>('ALL');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedStudentForLetter, setSelectedStudentForLetter] = useState<string>('');
+  const [isTelegramModalOpen, setIsTelegramModalOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Live data from IndexedDB
@@ -126,10 +131,33 @@ export function App() {
             />
           )}
 
-          {currentTab === 'extracts' && (
-            <LessonExtractsPage
-              extracts={extracts}
+          {currentTab === 'monitor' && (
+            <ClassMonitorModePage
+              students={students}
+              classes={classes}
+              attendanceRecords={attendanceRecords}
+              settings={settings}
+              selectedClassId={selectedClassId}
               onRefresh={handleRefresh}
+            />
+          )}
+
+          {currentTab === 'certificates' && (
+            <CertificatesPage
+              students={students}
+              classes={classes}
+              settings={settings}
+              selectedClassId={selectedClassId}
+            />
+          )}
+
+          {currentTab === 'analytics' && (
+            <AnalyticsPage
+              students={students}
+              classes={classes}
+              attendanceRecords={attendanceRecords}
+              settings={settings}
+              selectedClassId={selectedClassId}
             />
           )}
 
@@ -143,6 +171,16 @@ export function App() {
             />
           )}
 
+          {currentTab === 'grades' && (
+            <GradesPage
+              students={students}
+              classes={classes}
+              settings={settings}
+              selectedClassId={selectedClassId}
+              onRefresh={handleRefresh}
+            />
+          )}
+
           {currentTab === 'annual-plan' && (
             <AnnualPlanPage
               yearlyPlans={yearlyPlans}
@@ -151,12 +189,9 @@ export function App() {
             />
           )}
 
-          {currentTab === 'grades' && (
-            <GradesPage
-              students={students}
-              classes={classes}
-              settings={settings}
-              selectedClassId={selectedClassId}
+          {currentTab === 'extracts' && (
+            <LessonExtractsPage
+              extracts={extracts}
               onRefresh={handleRefresh}
             />
           )}
@@ -176,6 +211,16 @@ export function App() {
           )}
         </main>
       </div>
+
+      {/* Telegram Share Modal */}
+      <TelegramShareModal
+        isOpen={isTelegramModalOpen}
+        onClose={() => setIsTelegramModalOpen(false)}
+        currentClass={activeClass}
+        students={students}
+        attendanceRecords={attendanceRecords}
+        settings={settings}
+      />
     </div>
   );
 }
