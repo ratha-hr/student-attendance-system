@@ -92,6 +92,14 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ settings, onRefresh 
     }
   };
 
+  const handleLoad200Students = async () => {
+    if (window.confirm('តើអ្នកចង់ផ្ទុកទិន្នន័យសិស្សគំរូចំនួន ២០០ នាក់ (ថ្នាក់ទី ៧ ដល់ ទី ១២) មែនទេ?')) {
+      await db.loadSample200Students();
+      alert('បានផ្ទុកទិន្នន័យសិស្ស ២០០ នាក់ (ថ្នាក់ទី ៧ ដល់ ទី ១២) ដោយជោគជ័យ!');
+      onRefresh();
+    }
+  };
+
   const handleResetSampleData = async () => {
     if (window.confirm('តើអ្នកពិតជាចង់កំណត់ទិន្នន័យឡើងវិញទៅកាន់ទិន្នន័យគំរូដើមមែនទេ? ទិន្នន័យថ្មីដែលបានបញ្ចូលនឹងត្រូវបានលុប។')) {
       await db.resetToSeedData();
@@ -320,7 +328,17 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ settings, onRefresh 
             className="flex items-center justify-center p-4 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
           >
             <RefreshCw className="w-4 h-4 mr-2 text-slate-500" />
-            ផ្ទុកទិន្នន័យគំរូឡើងវិញ
+            កំណត់ទិន្នន័យឡើងវិញ
+          </button>
+
+          {/* Load 200 Students Button */}
+          <button
+            type="button"
+            onClick={handleLoad200Students}
+            className="col-span-1 sm:col-span-3 flex items-center justify-center p-3.5 rounded-xl border border-blue-500 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm transition-colors cursor-pointer shadow-md shadow-blue-500/20"
+          >
+            <RefreshCw className="w-4 h-4 mr-2 animate-spin-slow" />
+            🚀 ផ្ទុកទិន្នន័យសិស្សគំរូ ២០០ នាក់ (ថ្នាក់ទី ៧ ដល់ ទី ១២)
           </button>
         </div>
       </div>

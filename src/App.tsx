@@ -39,6 +39,15 @@ export function App() {
   const [settings, setSettings] = useState<TeacherSettings | null>(null);
 
   useEffect(() => {
+    db.initializeSeedData()
+      .then(() => {
+        handleRefresh();
+      })
+      .catch(console.error);
+    db.getSettings().then(setSettings).catch(console.error);
+  }, []);
+
+  useEffect(() => {
     db.getSettings().then(setSettings).catch(console.error);
   }, [refreshKey]);
 
@@ -119,6 +128,32 @@ export function App() {
 
         {/* Content Body - Clean & Direct */}
         <main className="flex-1 p-3 sm:p-5 lg:p-6 max-w-6xl w-full mx-auto">
+          {/* Quick Load 200 Students Banner if database has fewer than 50 students */}
+          {students.length < 50 && (
+            <div className="mb-4 bg-linear-to-r from-blue-600 to-indigo-600 text-white p-3.5 rounded-2xl shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in no-print">
+              <div className="flex items-center space-x-2.5">
+                <span className="text-xl">🚀</span>
+                <div>
+                  <p className="font-bold text-xs sm:text-sm">
+                    ទិន្នន័យសាកល្បងសិស្ស ២០០ នាក់ (ថ្នាក់ទី ៧ ដល់ ទី ១២) បានត្រៀមរួចជាស្រេច!
+                  </p>
+                  <p className="text-[11px] text-blue-100">
+                    ចុចប៊ូតុងនេះដើម្បីផ្ទុកទិន្នន័យសាកល្បង ២០០នាក់ និង ៦ថ្នាក់ភ្លាមៗ
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={async () => {
+                  await db.loadSample200Students();
+                  handleRefresh();
+                }}
+                className="px-4 py-2 bg-white text-blue-700 hover:bg-blue-50 font-bold text-xs rounded-xl shadow-xs transition-colors whitespace-nowrap cursor-pointer self-end sm:self-auto"
+              >
+                ផ្ទុក ២០០ នាក់ភ្លាម
+              </button>
+            </div>
+          )}
+
           {currentTab === 'attendance' && (
             <AttendancePage
               students={students}

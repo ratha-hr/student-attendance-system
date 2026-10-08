@@ -47,14 +47,40 @@ export class TeacherDatabase extends Dexie {
 
   async initializeSeedData() {
     const classCount = await this.classes.count();
-    if (classCount === 0) {
-      console.log('Seeding initial data...');
+    const studentCount = await this.students.count();
+    if (classCount === 0 || studentCount < 50) {
+      console.log('Seeding initial data with 200 students across Grade 7 to 12...');
+      await this.classes.clear();
+      await this.students.clear();
+      await this.attendance.clear();
       await this.classes.bulkAdd(initialClasses);
       await this.students.bulkAdd(initialStudents);
       await this.attendance.bulkAdd(initialAttendance);
+      if ((await this.extracts.count()) === 0) {
+        await this.extracts.bulkAdd(initialExtracts);
+      }
+      if ((await this.yearlyPlans.count()) === 0) {
+        await this.yearlyPlans.bulkAdd(initialYearlyPlan);
+      }
+      const s = await this.settings.get('current_settings');
+      if (!s) {
+        await this.settings.put({ ...initialSettings, id: 'current_settings' });
+      }
+    }
+  }
+
+  async loadSample200Students() {
+    await this.classes.clear();
+    await this.students.clear();
+    await this.attendance.clear();
+    await this.classes.bulkAdd(initialClasses);
+    await this.students.bulkAdd(initialStudents);
+    await this.attendance.bulkAdd(initialAttendance);
+    if ((await this.extracts.count()) === 0) {
       await this.extracts.bulkAdd(initialExtracts);
+    }
+    if ((await this.yearlyPlans.count()) === 0) {
       await this.yearlyPlans.bulkAdd(initialYearlyPlan);
-      await this.settings.put({ ...initialSettings, id: 'current_settings' });
     }
   }
 
