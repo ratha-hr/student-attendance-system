@@ -294,174 +294,192 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </div>
       </div>
 
-      {/* 🌟 រូបទី២៖ ផ្ទាំងដ្យាក្រាមវិភាគទិន្នន័យ (Visual Diagrams Section) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 sm:gap-4">
-        {/* Diagram 1: Today Attendance Visual Breakdown */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
-          <div className="flex items-center justify-between">
+      {/* 🌟 ផ្ទាំងដ្យាក្រាមវិភាគទិន្នន័យ (Visual Diagrams Section - Redesigned for Clarity) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        {/* Diagram 1: Today Attendance (5 cols) - Crystal Clear Ring & Metric Bars */}
+        <div className="lg:col-span-5 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
             <div className="flex items-center space-x-2">
-              <div className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg">
-                <PieChart className="w-4 h-4" />
+              <div className="p-2 bg-emerald-50 text-emerald-600 rounded-xl">
+                <PieChart className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
-              <h3 className="font-bold text-xs sm:text-sm text-slate-800">
-                ដ្យាក្រាមវត្តមានថ្ងៃនេះ
-              </h3>
+              <div>
+                <h3 className="font-bold text-sm text-slate-800">
+                  ដ្យាក្រាមវត្តមានថ្ងៃនេះ
+                </h3>
+                <p className="text-[11px] text-slate-400">
+                  សរុបបានកត់ {toKhmerNum(totalRecordedToday)} នាក់
+                </p>
+              </div>
             </div>
-            <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full font-black text-[11px] border border-emerald-200">
-              {toKhmerNum(stats.rate)}% មក
+            <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-xl font-black text-xs border border-emerald-300">
+              {toKhmerNum(stats.rate)}% វត្តមាន
             </span>
           </div>
 
-          {/* Segmented Horizontal Progress Bar Diagram */}
-          <div className="space-y-1.5">
-            <div className="h-3.5 w-full bg-slate-100 rounded-full overflow-hidden flex shadow-inner">
-              <div
-                style={{ width: `${totalRecordedToday > 0 ? presentPct : 90}%` }}
-                className="bg-emerald-500 h-full transition-all duration-700"
-                title={`មក៖ ${toKhmerNum(stats.presentToday)} នាក់`}
-              />
-              <div
-                style={{ width: `${totalRecordedToday > 0 ? permPct : 5}%` }}
-                className="bg-amber-400 h-full transition-all duration-700"
-                title={`ច្បាប់៖ ${toKhmerNum(stats.permissionToday)} នាក់`}
-              />
-              <div
-                style={{ width: `${totalRecordedToday > 0 ? latePct : 3}%` }}
-                className="bg-blue-400 h-full transition-all duration-700"
-                title={`យឺត៖ ${toKhmerNum(stats.lateToday)} នាក់`}
-              />
-              <div
-                style={{ width: `${totalRecordedToday > 0 ? absentPct : 2}%` }}
-                className="bg-rose-500 h-full transition-all duration-700"
-                title={`ឥតច្បាប់៖ ${toKhmerNum(stats.absentToday)} នាក់`}
-              />
+          {/* Progress Breakdown Bars with percentages */}
+          <div className="space-y-2.5">
+            {/* 1. មក */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-xs font-bold">
+                <span className="flex items-center text-emerald-700">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 mr-1.5" />
+                  មកទាន់ពេល
+                </span>
+                <span className="text-slate-800">
+                  <strong>{toKhmerNum(stats.presentToday)}</strong> នាក់ ({toKhmerNum(presentPct)}%)
+                </span>
+              </div>
+              <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                <div style={{ width: `${presentPct}%` }} className="h-full bg-emerald-500 rounded-full transition-all duration-500" />
+              </div>
             </div>
-          </div>
 
-          {/* Colored Legend Pills */}
-          <div className="grid grid-cols-2 gap-1.5 text-[11px] font-bold">
-            <div className="flex items-center justify-between p-1.5 bg-emerald-50/70 rounded-lg text-emerald-800 border border-emerald-100">
-              <span className="flex items-center"><span className="w-2 h-2 rounded-full bg-emerald-500 mr-1.5 inline-block" />មក</span>
-              <span>{toKhmerNum(stats.presentToday)} នាក់</span>
+            {/* 2. ច្បាប់ */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-xs font-bold">
+                <span className="flex items-center text-amber-700">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-400 mr-1.5" />
+                  មានច្បាប់
+                </span>
+                <span className="text-slate-800">
+                  <strong>{toKhmerNum(stats.permissionToday)}</strong> នាក់ ({toKhmerNum(permPct)}%)
+                </span>
+              </div>
+              <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                <div style={{ width: `${permPct}%` }} className="h-full bg-amber-400 rounded-full transition-all duration-500" />
+              </div>
             </div>
-            <div className="flex items-center justify-between p-1.5 bg-amber-50/70 rounded-lg text-amber-800 border border-amber-100">
-              <span className="flex items-center"><span className="w-2 h-2 rounded-full bg-amber-400 mr-1.5 inline-block" />ច្បាប់</span>
-              <span>{toKhmerNum(stats.permissionToday)} នាក់</span>
+
+            {/* 3. យឺត */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-xs font-bold">
+                <span className="flex items-center text-blue-700">
+                  <span className="w-2.5 h-2.5 rounded-full bg-blue-500 mr-1.5" />
+                  មកយឺត
+                </span>
+                <span className="text-slate-800">
+                  <strong>{toKhmerNum(stats.lateToday)}</strong> នាក់ ({toKhmerNum(latePct)}%)
+                </span>
+              </div>
+              <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                <div style={{ width: `${latePct}%` }} className="h-full bg-blue-500 rounded-full transition-all duration-500" />
+              </div>
             </div>
-            <div className="flex items-center justify-between p-1.5 bg-blue-50/70 rounded-lg text-blue-800 border border-blue-100">
-              <span className="flex items-center"><span className="w-2 h-2 rounded-full bg-blue-400 mr-1.5 inline-block" />យឺត</span>
-              <span>{toKhmerNum(stats.lateToday)} នាក់</span>
-            </div>
-            <div className="flex items-center justify-between p-1.5 bg-rose-50/70 rounded-lg text-rose-800 border border-rose-100">
-              <span className="flex items-center"><span className="w-2 h-2 rounded-full bg-rose-500 mr-1.5 inline-block" />ឥតច្បាប់</span>
-              <span>{toKhmerNum(stats.absentToday)} នាក់</span>
+
+            {/* 4. ឥតច្បាប់ */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-xs font-bold">
+                <span className="flex items-center text-rose-700">
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500 mr-1.5" />
+                  អវត្តមានឥតច្បាប់
+                </span>
+                <span className="text-slate-800">
+                  <strong>{toKhmerNum(stats.absentToday)}</strong> នាក់ ({toKhmerNum(absentPct)}%)
+                </span>
+              </div>
+              <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                <div style={{ width: `${absentPct}%` }} className="h-full bg-rose-500 rounded-full transition-all duration-500" />
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Diagram 2: Gender Ratio Proportional Diagram */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
-          <div className="flex items-center justify-between">
+        {/* Diagram 2: Gender Ratio (3 cols) - Clear Visual Cards */}
+        <div className="lg:col-span-3 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
             <div className="flex items-center space-x-2">
-              <div className="p-1.5 bg-pink-50 text-pink-600 rounded-lg">
-                <Users className="w-4 h-4" />
+              <div className="p-2 bg-pink-50 text-pink-600 rounded-xl">
+                <Users className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
-              <h3 className="font-bold text-xs sm:text-sm text-slate-800">
-                ដ្យាក្រាមយេនឌ័រសិស្ស
-              </h3>
+              <div>
+                <h3 className="font-bold text-sm text-slate-800">
+                  យេនឌ័រសិស្ស
+                </h3>
+                <p className="text-[11px] text-slate-400">
+                  សរុប {toKhmerNum(stats.totalStudents)} នាក់
+                </p>
+              </div>
             </div>
-            <span className="text-[11px] font-bold text-slate-500">
-              សរុប {toKhmerNum(stats.totalStudents)} នាក់
-            </span>
           </div>
 
-          {/* Dual Segment Gender Bar */}
-          <div className="space-y-1.5">
+          {/* Dual Segment Visual Bar */}
+          <div className="space-y-1">
             <div className="h-3.5 w-full bg-slate-100 rounded-full overflow-hidden flex shadow-inner">
-              <div
-                style={{ width: `${femalePct}%` }}
-                className="bg-linear-to-r from-pink-500 to-rose-400 h-full transition-all duration-700"
-                title={`ស្រី៖ ${femalePct}%`}
-              />
-              <div
-                style={{ width: `${malePct}%` }}
-                className="bg-linear-to-r from-blue-400 to-blue-600 h-full transition-all duration-700"
-                title={`ប្រុស៖ ${malePct}%`}
-              />
+              <div style={{ width: `${femalePct}%` }} className="bg-pink-500 h-full transition-all" />
+              <div style={{ width: `${malePct}%` }} className="bg-blue-600 h-full transition-all" />
+            </div>
+            <div className="flex justify-between text-[10px] font-bold text-slate-400 px-0.5">
+              <span>ស្រី {toKhmerNum(femalePct)}%</span>
+              <span>ប្រុស {toKhmerNum(malePct)}%</span>
             </div>
           </div>
 
-          {/* Male and Female breakdown cards */}
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="p-2 bg-pink-50/70 border border-pink-200 rounded-xl">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-pink-700 flex items-center">
-                  👩 សិស្សស្រី
-                </span>
-                <span className="font-black text-pink-800 text-sm">
-                  {toKhmerNum(femalePct)}%
-                </span>
+          {/* Cards for Female and Male */}
+          <div className="space-y-2">
+            <div className="p-2.5 bg-pink-50/80 border border-pink-200 rounded-xl flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <span className="text-base">👩</span>
+                <div>
+                  <p className="text-xs font-bold text-pink-800">សិស្សស្រី</p>
+                  <p className="text-[11px] text-pink-600 font-semibold">{toKhmerNum(stats.femaleStudents)} នាក់</p>
+                </div>
               </div>
-              <p className="text-[11px] text-pink-600 mt-0.5">
-                {toKhmerNum(stats.femaleStudents)} នាក់
-              </p>
+              <span className="text-base font-black text-pink-700">
+                {toKhmerNum(femalePct)}%
+              </span>
             </div>
 
-            <div className="p-2 bg-blue-50/70 border border-blue-200 rounded-xl">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-blue-700 flex items-center">
-                  👨 សិស្សប្រុស
-                </span>
-                <span className="font-black text-blue-800 text-sm">
-                  {toKhmerNum(malePct)}%
-                </span>
+            <div className="p-2.5 bg-blue-50/80 border border-blue-200 rounded-xl flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <span className="text-base">👨</span>
+                <div>
+                  <p className="text-xs font-bold text-blue-800">សិស្សប្រុស</p>
+                  <p className="text-[11px] text-blue-600 font-semibold">{toKhmerNum(stats.maleStudents)} នាក់</p>
+                </div>
               </div>
-              <p className="text-[11px] text-blue-600 mt-0.5">
-                {toKhmerNum(stats.maleStudents)} នាក់
-              </p>
+              <span className="text-base font-black text-blue-700">
+                {toKhmerNum(malePct)}%
+              </span>
             </div>
           </div>
         </div>
 
-        {/* Diagram 3: Student Distribution by Grade (7 to 12 Bar Chart) */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-2.5">
-          <div className="flex items-center justify-between">
+        {/* Diagram 3: Student Distribution by Grade (4 cols) - Clean Horizontal Progress Bars */}
+        <div className="lg:col-span-4 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
             <div className="flex items-center space-x-2">
-              <div className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg">
-                <BarChart3 className="w-4 h-4" />
+              <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
+                <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
-              <h3 className="font-bold text-xs sm:text-sm text-slate-800">
-                សិស្សតាមកម្រិតថ្នាក់
-              </h3>
+              <div>
+                <h3 className="font-bold text-sm text-slate-800">
+                  សិស្សតាមកម្រិតថ្នាក់
+                </h3>
+                <p className="text-[11px] text-slate-400">
+                  {toKhmerNum(classes.length)} ថ្នាក់រៀន
+                </p>
+              </div>
             </div>
-            <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full">
-              {toKhmerNum(classes.length)} ថ្នាក់
-            </span>
           </div>
 
-          {/* Vertical Bar Chart Diagram for Grades 7 to 12 */}
-          <div className="flex items-end justify-between gap-1.5 h-20 pt-2 px-1 border-b border-slate-100">
+          {/* Clean Horizontal Bars for each Grade (7 to 12) */}
+          <div className="space-y-2">
             {gradeDistribution.map((item) => (
-              <div key={item.grade} className="flex-1 flex flex-col items-center h-full justify-end group">
-                {/* Count tooltip/label */}
-                <span className="text-[10px] font-black text-indigo-900 group-hover:scale-110 transition-transform mb-1">
-                  {toKhmerNum(item.count)}
-                </span>
-                {/* Bar */}
-                <div
-                  style={{ height: `${item.heightPct}%` }}
-                  className="w-full max-w-[28px] rounded-t-md bg-linear-to-t from-indigo-600 to-blue-400 group-hover:from-indigo-700 group-hover:to-blue-500 transition-all shadow-2xs"
-                  title={`${item.label}៖ ${toKhmerNum(item.count)} នាក់ (${toKhmerNum(item.classesCount)} ថ្នាក់)`}
-                />
-              </div>
-            ))}
-          </div>
-
-          {/* Grade Labels under the bars */}
-          <div className="flex justify-between px-1 text-[10px] font-bold text-slate-500">
-            {gradeDistribution.map((item) => (
-              <div key={item.grade} className="flex-1 text-center truncate">
-                {item.label}
+              <div key={item.grade} className="space-y-1">
+                <div className="flex items-center justify-between text-xs font-bold">
+                  <span className="text-slate-700">ថ្នាក់ទី {toKhmerNum(item.grade)}</span>
+                  <span className="text-slate-900">
+                    <strong className="text-indigo-700">{toKhmerNum(item.count)}</strong> នាក់
+                    <span className="text-[10px] text-slate-400 font-normal ml-1">({toKhmerNum(item.classesCount)} ថ្នាក់)</span>
+                  </span>
+                </div>
+                <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    style={{ width: `${item.heightPct}%` }}
+                    className="h-full bg-linear-to-r from-indigo-500 to-blue-500 rounded-full transition-all"
+                  />
+                </div>
               </div>
             ))}
           </div>

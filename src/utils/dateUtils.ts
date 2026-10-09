@@ -249,4 +249,51 @@ export function formatUniversalTime(date: Date = new Date()): {
   return { time24, time12, period, khmerPeriod };
 }
 
+/**
+ * បម្លែងកាលបរិច្ឆេទទៅជាទម្រង់ dd/mm/yyyy
+ * ឧទាហរណ៍៖ 2011-01-09 -> 09/01/2011
+ */
+export function formatToDMY(dateStr: string | undefined | null): string {
+  if (!dateStr) return '';
+  const clean = dateStr.trim();
+  // If already in DD/MM/YYYY
+  if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(clean)) {
+    return clean;
+  }
+  // If YYYY-MM-DD
+  const parts = clean.split('-');
+  if (parts.length === 3 && parts[0].length === 4) {
+    const [year, month, day] = parts;
+    return `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`;
+  }
+  const d = new Date(clean);
+  if (isNaN(d.getTime())) return clean;
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
+/**
+ * បម្លែងពី dd/mm/yyyy មកជា yyyy-mm-dd
+ */
+export function parseDMYToISO(dmyStr: string | undefined | null): string {
+  if (!dmyStr) return '';
+  const clean = dmyStr.trim();
+  // If already in YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) {
+    return clean;
+  }
+  const parts = clean.split(/[\/\-\.]/);
+  if (parts.length === 3) {
+    let [d, m, y] = parts;
+    if (d.length === 4 && y.length <= 2) {
+      return `${d}-${m.padStart(2, '0')}-${y.padStart(2, '0')}`;
+    }
+    return `${y.padStart(4, '20')}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+  }
+  return clean;
+}
+
+
 

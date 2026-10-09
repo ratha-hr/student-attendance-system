@@ -163,19 +163,10 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
     showFeedback('success', `បានកែប្រែឈ្មោះថ្នាក់ទៅជា "${newName}" រួចរាល់!`);
   };
 
-  // Handle delete class (Allows deleting ANY class with explicit confirmation)
+  // Handle delete class directly WITHOUT confirmation
   const handleDeleteClass = async (c: ClassRoom) => {
     const enrolledStudents = students.filter((s) => s.classId === c.id);
     const count = enrolledStudents.length;
-
-    let confirmMsg = `តើលោកគ្រូ-អ្នកគ្រូពិតជាចង់លុបថ្នាក់ "${c.name}" មែនទេ?`;
-    if (count > 0) {
-      confirmMsg = `⚠️ ថ្នាក់ "${c.name}" មានសិស្សចំនួន ${toKhmerNum(count)} នាក់!\n\nតើអ្នកពិតជាចង់លុបថ្នាក់នេះមែនទេ? ប្រសិនបើលុប សិស្សទាំង ${toKhmerNum(count)} នាក់នឹងត្រូវដកចេញពីថ្នាក់នេះ។`;
-    }
-
-    if (!window.confirm(confirmMsg)) {
-      return;
-    }
 
     // Delete class from DB
     await db.classes.delete(c.id);
@@ -193,16 +184,58 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
     }
 
     onRefresh();
-    showFeedback('success', `បានលុបថ្នាក់ "${c.name}" ដោយជោគជ័យ!`);
+    showFeedback('success', `បានលុប "${c.name}" រួចរាល់!`);
+  };
+
+  // Handle delete ALL classes
+  const handleDeleteAllClasses = async () => {
+    if (classes.length === 0) return;
+    await db.classes.clear();
+    for (const stu of students) {
+      if (stu.classId) {
+        await db.students.update(stu.id, { classId: '' });
+      }
+    }
+    onSelectClass('ALL');
+    onRefresh();
+    showFeedback('success', 'បានលុបថ្នាក់ទាំងអស់រួចរាល់!');
+  };
+
+  // Quick add standard classes for a specific grade (ថ្នាក់ទី ៧, ថ្នាក់ទី ៨, ថ្នាក់ទី ៩...)
+  const handleAddGradeClasses = async (grade: string) => {
+    const cfg = STANDARD_CLASS_CONFIGS.find((c) => c.grade === grade);
+    if (!cfg) return;
+
+    const existingNames = new Set(classes.map((c) => c.name.toLowerCase()));
+    const toAdd: ClassRoom[] = [];
+
+    cfg.letters.forEach((letter, idx) => {
+      const fullName = `ថ្នាក់ទី ${cfg.grade}${letter}`;
+      if (!existingNames.has(fullName.toLowerCase())) {
+        const id = idx === 0 ? cfg.mainId : `class-${cfg.grade}-${letter.toLowerCase()}-${Date.now()}`;
+        toAdd.push({
+          id,
+          name: fullName,
+          grade: cfg.grade,
+          academicYear,
+          description: `ថ្នាក់ ${cfg.grade}${letter} (${cfg.levelLabel})`,
+          createdAt: new Date().toISOString(),
+        });
+      }
+    });
+
+    if (toAdd.length === 0) {
+      showFeedback('error', `ថ្នាក់ទី ${toKhmerNum(grade)} មានរួចរាល់ទាំងអស់ហើយ!`);
+      return;
+    }
+
+    await db.classes.bulkAdd(toAdd);
+    onRefresh();
+    showFeedback('success', `បានបន្ថែមថ្នាក់ទី ${toKhmerNum(grade)} (${toKhmerNum(toAdd.length)} ថ្នាក់) ដោយជោគជ័យ!`);
   };
 
   // Reset or regenerate all 49 standard classes
   const handleRestoreStandardClasses = async () => {
-    const confirm = window.confirm(
-      'តើលោកគ្រូ-អ្នកគ្រូចង់បង្កើតថ្នាក់ស្តង់ដារទាំង ៤៩ (7A-E, 8A-E, 9A-D, 10A-L, 11A-J, 12A-M) ឡើងវិញមែនទេ?\n\n(ទិន្នន័យសិស្សដែលមានស្រាប់នឹងមិនបាត់បង់ឡើយ)'
-    );
-    if (!confirm) return;
-
     await db.ensureStandardClasses();
     onRefresh();
     showFeedback('success', 'បានបង្កើតថ្នាក់ស្តង់ដារទាំង ៤៩ ថ្នាក់រួចរាល់!');
@@ -304,17 +337,53 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
               <Sparkles className="w-3.5 h-3.5 mr-1" />
               + បង្កើត (ថ្នាក់ទី {quickGrade}{quickLetter})
             </button>
+          </div>
 
-            {/* Quick helper to re-generate 49 standard classes */}
-            <button
-              type="button"
-              onClick={handleRestoreStandardClasses}
-              className="ml-auto inline-flex items-center px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-bold transition-colors cursor-pointer shadow-2xs"
-              title="បង្កើតថ្នាក់ស្តង់ដារទាំង ៤៩ ថ្នាក់ឡើងវិញ"
-            >
-              <RotateCcw className="w-3 h-3 mr-1" />
-              បង្កើតថ្នាក់ស្តង់ដារ (7A-12M)
-            </button>
+          {/* Form 3: Quick Grade Batch Generators (ថ្នាក់ទី ៧, ៨, ៩, ១០, ១១, ១២) & Action Buttons */}
+          <div className="pt-2 border-t border-slate-200/80 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[11px] font-bold text-slate-500 mr-1">បន្ថែមតាមកម្រិត៖</span>
+              {[
+                { grade: '7', label: 'ថ្នាក់ទី ៧ (7A-7E)' },
+                { grade: '8', label: 'ថ្នាក់ទី ៨ (8A-8E)' },
+                { grade: '9', label: 'ថ្នាក់ទី ៩ (9A-9D)' },
+                { grade: '10', label: 'ថ្នាក់ទី ១០ (10A-10L)' },
+                { grade: '11', label: 'ថ្នាក់ទី ១១ (11A-11J)' },
+                { grade: '12', label: 'ថ្នាក់ទី ១២ (12A-12M)' },
+              ].map((item) => (
+                <button
+                  key={item.grade}
+                  type="button"
+                  onClick={() => handleAddGradeClasses(item.grade)}
+                  className="px-2 py-1 bg-white hover:bg-blue-50 text-blue-700 hover:text-blue-800 border border-slate-200 hover:border-blue-300 rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer"
+                  title={`បន្ថែម ${item.label}`}
+                >
+                  + {item.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center space-x-1.5">
+              <button
+                type="button"
+                onClick={handleRestoreStandardClasses}
+                className="inline-flex items-center px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-bold transition-colors cursor-pointer shadow-2xs"
+                title="បង្កើតថ្នាក់ស្តង់ដារទាំង ៤៩ ថ្នាក់ឡើងវិញ"
+              >
+                <RotateCcw className="w-3 h-3 mr-1" />
+                បង្កើតថ្នាក់ស្តង់ដារ (7A-12M)
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDeleteAllClasses}
+                className="inline-flex items-center px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold transition-colors cursor-pointer shadow-2xs"
+                title="លុបថ្នាក់ទាំងអស់"
+              >
+                <Trash2 className="w-3 h-3 mr-1 text-rose-600" />
+                លុបថ្នាក់ទាំងអស់ ({toKhmerNum(classes.length)})
+              </button>
+            </div>
           </div>
         </div>
 

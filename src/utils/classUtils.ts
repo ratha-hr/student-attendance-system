@@ -1,4 +1,5 @@
 import type { ClassRoom } from '../types';
+import { toKhmerNum } from './dateUtils';
 
 export interface StandardGradeConfig {
   grade: string;
@@ -124,7 +125,7 @@ export function groupClassesByGrade(classes: ClassRoom[]): ClassGradeGroup[] {
   const groups: ClassGradeGroup[] = [];
   map.forEach((items, key) => {
     const num = parseInt(key, 10);
-    const label = !isNaN(num) ? `ថ្នាក់ទី ${key}` : key;
+    const label = !isNaN(num) ? `ថ្នាក់ទី ${toKhmerNum(key)}` : key;
     groups.push({
       grade: key,
       gradeNum: isNaN(num) ? 999 : num,

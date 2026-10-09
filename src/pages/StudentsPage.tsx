@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   FileSpreadsheet,
   Download,
@@ -13,15 +13,19 @@ import {
   Check,
   Users,
   Phone,
-  Sparkles,
   QrCode,
+  Undo2,
+  Redo2,
+  ChevronLeft,
+  ChevronRight,
+  CheckCircle2,
 } from 'lucide-react';
 import type { Student, ClassRoom, AttendanceRecord, Gender, TeacherSettings } from '../types';
 import { db } from '../db/db';
 import { Modal } from '../components/common/Modal';
 import { StudentIDCardsModal } from '../components/StudentIDCardsModal';
 import { PrintButton } from '../components/common/PrintButton';
-import { toKhmerNum, formatKhmerDate } from '../utils/dateUtils';
+import { toKhmerNum, formatKhmerDate, formatToDMY, parseDMYToISO } from '../utils/dateUtils';
 import {
   exportStudentsToExcel,
   downloadStudentTemplate,
@@ -53,8 +57,95 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
   const [lastSavedId, setLastSavedId] = useState<string | null>(null);
   const [isIDCardsOpen, setIsIDCardsOpen] = useState(false);
 
+  // Undo / Redo history stacks
+  const [undoStack, setUndoStack] = useState<Student[][]>([]);
+  const [redoStack, setRedoStack] = useState<Student[][]>([]);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [scrollPercent, setScrollPercent] = useState<number>(0);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const tableScrollRef = useRef<HTMLDivElement>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  // Capture current state snapshot before performing modifications
+  const pushUndo = useCallback(() => {
+    setUndoStack((prev) => [...prev.slice(-20), JSON.parse(JSON.stringify(students))]);
+    setRedoStack([]); // Clear redo on new action
+  }, [students]);
+
+  // Handle Undo
+  const handleUndo = async () => {
+    if (undoStack.length === 0) return;
+    const previous = undoStack[undoStack.length - 1];
+    const newUndo = undoStack.slice(0, undoStack.length - 1);
+
+    // Save current to redo
+    setRedoStack((prev) => [...prev, JSON.parse(JSON.stringify(students))]);
+    setUndoStack(newUndo);
+
+    // Replace students in DB
+    await db.students.clear();
+    await db.students.bulkAdd(previous);
+    onRefresh();
+    showToast('↶ បានត្រឡប់ក្រោយ (Undo) រួចរាល់!');
+  };
+
+  // Handle Redo
+  const handleRedo = async () => {
+    if (redoStack.length === 0) return;
+    const next = redoStack[redoStack.length - 1];
+    const newRedo = redoStack.slice(0, redoStack.length - 1);
+
+    // Save current to undo
+    setUndoStack((prev) => [...prev, JSON.parse(JSON.stringify(students))]);
+    setRedoStack(newRedo);
+
+    // Replace students in DB
+    await db.students.clear();
+    await db.students.bulkAdd(next);
+    onRefresh();
+    showToast('↷ បានធ្វើឡើងវិញ (Redo) រួចរាល់!');
+  };
+
+  // Keyboard shortcut Ctrl+Z / Ctrl+Y
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        if (e.shiftKey) {
+          e.preventDefault();
+          handleRedo();
+        } else {
+          e.preventDefault();
+          handleUndo();
+        }
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        handleRedo();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [undoStack, redoStack, students]);
+
+  // Sync scroll percent on table scroll
+  useEffect(() => {
+    const el = tableScrollRef.current;
+    if (!el) return;
+    const handleScroll = () => {
+      const maxScroll = el.scrollWidth - el.clientWidth;
+      if (maxScroll > 0) {
+        setScrollPercent(Math.round((el.scrollLeft / maxScroll) * 100));
+      } else {
+        setScrollPercent(0);
+      }
+    };
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    return () => el.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Active Class identifier (no inner dropdown - controlled cleanly from top Navbar)
   const activeClassId = selectedClassId === 'ALL' ? (classes[0]?.id || '') : selectedClassId;
@@ -108,6 +199,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
 
   // Direct Duplicate Row Handler (ចម្លងសិស្សដោយផ្ទាល់)
   const handleDirectDuplicate = async (s: Student) => {
+    pushUndo();
     const classStudents = students.filter((stu) => stu.classId === s.classId);
     const nextRoll = classStudents.length + 1;
     const duplicated: Student = {
@@ -121,30 +213,51 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
     await db.students.add(duplicated);
     setLastSavedId(duplicated.id);
     onRefresh();
+    showToast(`📋 បានចម្លងសិស្ស "${duplicated.nameKh}"`);
   };
 
-  // Direct Delete Row Handler (លុបសិស្សដោយផ្ទាល់)
+  // Direct Delete Row Handler (លុបសិស្សដោយផ្ទាល់ មិនបាច់សួរច្រើន អាចចុច Undo បាន)
   const handleDirectDelete = async (s: Student) => {
-    if (window.confirm(`តើអ្នកពិតជាចង់លុបសិស្ស "${s.nameKh}" (អត្តលេខ ${s.studentCode}) មែនទេ?`)) {
-      await db.students.delete(s.id);
-      onRefresh();
-    }
+    pushUndo();
+    await db.students.delete(s.id);
+    onRefresh();
+    showToast(`🗑️ បានលុបសិស្ស "${s.nameKh}" (អាចចុច ↶ Undo ដើម្បីយកមកវិញ)`);
   };
 
-  // Direct Add New Blank Row (បន្ថែមជួរដេក Excel ថ្មីដោយផ្ទាល់ តាមរូបទី២)
+  // Delete all students in active class or all (មិនបាច់ផ្ទៀងផ្ទាត់ អាចចុច Undo បាន)
+  const handleDeleteAllStudents = async () => {
+    pushUndo();
+    if (selectedClassId === 'ALL') {
+      await db.students.clear();
+      showToast('🗑️ បានលុបសិស្សទាំងអស់រួចរាល់! (អាចចុច ↶ Undo ដើម្បីយកមកវិញ)');
+    } else {
+      const idsToDelete = students.filter((s) => s.classId === activeClassId).map((s) => s.id);
+      await db.students.bulkDelete(idsToDelete);
+      showToast(`🗑️ បានលុបសិស្សក្នុងថ្នាក់ ${currentClassName} ទាំងអស់រួចរាល់! (អាចចុច ↶ Undo បាន)`);
+    }
+    onRefresh();
+  };
+
+  // Direct Add New Blank Row (បន្ថែមជួរដេក Excel ថ្មីនៅជួរទី១ តែម្តង ដើម្បីឃើញភ្លាមៗ)
   const handleAddNewBlankRow = async () => {
+    pushUndo();
     const targetClassId = selectedClassId === 'ALL' ? (classes[0]?.id || '') : selectedClassId;
     const classStudents = students.filter((s) => s.classId === targetClassId);
-    const nextRoll = classStudents.length + 1;
-    const codeNumber = String(nextRoll).padStart(3, '0');
+
+    // Shift existing students in this class by +1 so new student is at row 1
+    const updatedClassStudents = classStudents.map((s) => ({
+      ...s,
+      rollNo: (s.rollNo || 0) + 1,
+    }));
+    await db.students.bulkPut(updatedClassStudents);
 
     const newStudent: Student = {
       id: 'stu-' + Date.now(),
       classId: targetClassId,
-      rollNo: nextRoll,
-      studentCode: `STU-${codeNumber}`,
-      nameKh: `សិស្សថ្មី ${toKhmerNum(nextRoll)}`,
-      nameEn: `New Student ${nextRoll}`,
+      rollNo: 1,
+      studentCode: `STU-001`,
+      nameKh: `សិស្សថ្មី`,
+      nameEn: `New Student`,
       gender: 'ប្រុស',
       dob: '2011-01-01',
       age: 14,
@@ -181,6 +294,12 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
     await db.students.add(newStudent);
     setLastSavedId(newStudent.id);
     onRefresh();
+
+    // Smooth scroll to top
+    if (tableScrollRef.current) {
+      tableScrollRef.current.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+    }
+    showToast('✨ បានបន្ថែមសិស្សថ្មីនៅជួរដេកទី ១ ដោយជោគជ័យ!');
   };
 
   // Export to Excel
@@ -295,34 +414,50 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
               </button>
             </div>
 
-            {/* Extra Tools: Auto-populate & ID Cards */}
-            <div className="inline-flex items-center space-x-1">
+            {/* Undo / Redo Controls */}
+            <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs font-bold">
               <button
-                onClick={async () => {
-                  if (window.confirm('តើលោកគ្រូចង់បំពេញព័ត៌មានលម្អិត (ភូមិ ឃុំ ស្រុក ឪពុក ម្តាយ ស្ថានភាព) សម្រាប់សិស្សទាំងអស់តាមរូបភាពទី២ មែនទេ?')) {
-                    const current = await db.students.toArray();
-                    const enriched = current.map((s, i) => enrichStudentWithMoEYSFields(s, i));
-                    await db.students.bulkPut(enriched);
-                    onRefresh();
-                    alert('បានបំពេញព័ត៌មានសិស្សពេញលេញតាមរូបភាពទី២ រួចរាល់!');
-                  }
-                }}
-                className="inline-flex items-center px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl border border-indigo-200 transition-colors cursor-pointer"
-                title="បំពេញទិន្នន័យរូបទី២ ស្វ័យប្រវត្តិ"
+                type="button"
+                onClick={handleUndo}
+                disabled={undoStack.length === 0}
+                className="inline-flex items-center px-2 py-1 rounded-lg text-slate-700 hover:bg-white hover:text-indigo-600 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-700 transition-colors cursor-pointer"
+                title="ត្រឡប់ក្រោយ (Ctrl+Z)"
               >
-                <Sparkles className="w-3.5 h-3.5 mr-1 text-indigo-600" />
-                ទិន្នន័យរូបទី២
+                <Undo2 className="w-3.5 h-3.5 mr-1" />
+                Undo
               </button>
-
               <button
-                onClick={() => setIsIDCardsOpen(true)}
-                className="inline-flex items-center px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-bold rounded-xl border border-purple-200 transition-colors cursor-pointer"
-                title="បោះពុម្ពកាតសិស្សភ្ជាប់ QR"
+                type="button"
+                onClick={handleRedo}
+                disabled={redoStack.length === 0}
+                className="inline-flex items-center px-2 py-1 rounded-lg text-slate-700 hover:bg-white hover:text-indigo-600 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-700 transition-colors cursor-pointer"
+                title="ធ្វើឡើងវិញ (Ctrl+Y)"
               >
-                <QrCode className="w-3.5 h-3.5 mr-1 text-purple-600" />
-                កាតសិស្ស
+                <Redo2 className="w-3.5 h-3.5 mr-1" />
+                Redo
               </button>
             </div>
+
+            {/* Delete All Students Button */}
+            <button
+              type="button"
+              onClick={handleDeleteAllStudents}
+              className="inline-flex items-center px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold rounded-xl border border-rose-200 transition-colors cursor-pointer"
+              title="លុបសិស្សទាំងអស់ (អាចចុច Undo ដើម្បីយកមកវិញបាន)"
+            >
+              <Trash2 className="w-3.5 h-3.5 mr-1 text-rose-600" />
+              លុបសិស្សទាំងអស់
+            </button>
+
+            {/* ID Cards */}
+            <button
+              onClick={() => setIsIDCardsOpen(true)}
+              className="inline-flex items-center px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-bold rounded-xl border border-purple-200 transition-colors cursor-pointer"
+              title="បោះពុម្ពកាតសិស្សភ្ជាប់ QR"
+            >
+              <QrCode className="w-3.5 h-3.5 mr-1 text-purple-600" />
+              កាតសិស្ស
+            </button>
 
             {/* Print with Orientation Selector */}
             <PrintButton defaultOrientation="landscape" label="បោះពុម្ព" />
@@ -594,17 +729,35 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                         </span>
                       </td>
 
-                      {/* ថ្ងៃខែឆ្នាំកំណើត */}
+                      {/* ថ្ងៃខែឆ្នាំកំណើត dd/mm/yyyy */}
                       <td className="py-1 px-1 border-r border-slate-200">
-                        <input
-                          type="date"
-                          value={stu.dob || ''}
-                          title={stu.dob || ''}
-                          onChange={(e) => handleInlineChange(stu.id, 'dob', e.target.value)}
-                          className="w-full text-xs sm:text-[12.5px] font-mono text-slate-800 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
-                        />
-                        <span className="hidden print:block font-mono text-center text-[5.2pt] truncate">
-                          {stu.dob || ''}
+                        <div className="relative flex items-center justify-between">
+                          <input
+                            type="text"
+                            value={formatToDMY(stu.dob)}
+                            title={`ថ្ងៃខែឆ្នាំកំណើត (dd/mm/yyyy): ${formatToDMY(stu.dob)}`}
+                            placeholder="dd/mm/yyyy"
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              const iso = parseDMYToISO(val);
+                              handleInlineChange(stu.id, 'dob', iso || val);
+                            }}
+                            className="w-full text-xs sm:text-[12.5px] font-mono text-center text-slate-800 bg-transparent px-1 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
+                          />
+                          <input
+                            type="date"
+                            value={stu.dob && stu.dob.includes('-') && stu.dob.length === 10 ? stu.dob : ''}
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                handleInlineChange(stu.id, 'dob', e.target.value);
+                              }
+                            }}
+                            className="w-4 h-4 opacity-35 hover:opacity-100 cursor-pointer print:hidden shrink-0 ml-0.5"
+                            title="ជ្រើសរើសពីប្រតិទិន"
+                          />
+                        </div>
+                        <span className="hidden print:block font-mono text-center text-[5.5pt] truncate">
+                          {formatToDMY(stu.dob) || ''}
                         </span>
                       </td>
 
@@ -1041,31 +1194,99 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
           </table>
         </div>
 
-        {/* Quick Horizontal Scroll Assistant Bar */}
-        <div className="bg-slate-100/90 px-4 py-2 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 no-print text-xs">
-          <div className="flex items-center space-x-2 text-slate-600">
-            <span className="font-bold">↔️ របាររំកិលតារាងឆ្វេង-ស្តាំ៖</span>
-            <span className="text-[11px] text-slate-500">
-              (អាចទាញរបាររំកិល Scrollbar ខាងលើ ឬចុចប៊ូតុងរំកិលរហ័សខាងក្រោម)
+        {/* Sticky XLSM Style Horizontal Scroll Navigator (នៅនឹងថ្កល់ខាងក្រោម ស្រួលទាញដូច Microsoft Excel .xlsm) */}
+        <div className="sticky bottom-0 z-30 bg-white/95 backdrop-blur-md px-4 py-2 border-t-2 border-emerald-500 shadow-xl no-print flex flex-col md:flex-row items-center justify-between gap-2.5">
+          {/* Left: Quick Scroll Arrow Buttons + Excel Jump Tabs */}
+          <div className="flex flex-wrap items-center gap-1.5 text-xs">
+            <span className="font-black text-slate-700 mr-1 flex items-center">
+              📑 របារ XLSM៖
             </span>
-          </div>
-          <div className="flex items-center space-x-2">
             <button
               type="button"
               onClick={() => tableScrollRef.current?.scrollBy({ left: -350, behavior: 'smooth' })}
-              className="inline-flex items-center px-3 py-1 bg-white hover:bg-slate-200 border border-slate-300 rounded-lg font-bold text-slate-700 shadow-2xs transition-colors cursor-pointer text-xs"
-              title="រំកិលទៅឆ្វេង"
+              className="inline-flex items-center px-2.5 py-1 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-lg font-bold text-slate-700 shadow-2xs transition-colors cursor-pointer text-xs"
+              title="រំកិលទៅឆ្វេង 350px"
             >
-              ⬅️ រំកិលទៅឆ្វេង
+              <ChevronLeft className="w-3.5 h-3.5 mr-0.5" />
+              ឆ្វេង
             </button>
             <button
               type="button"
               onClick={() => tableScrollRef.current?.scrollBy({ left: 350, behavior: 'smooth' })}
-              className="inline-flex items-center px-3 py-1 bg-white hover:bg-slate-200 border border-slate-300 rounded-lg font-bold text-slate-700 shadow-2xs transition-colors cursor-pointer text-xs"
-              title="រំកិលទៅស្តាំ"
+              className="inline-flex items-center px-2.5 py-1 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-lg font-bold text-slate-700 shadow-2xs transition-colors cursor-pointer text-xs"
+              title="រំកិលទៅស្តាំ 350px"
             >
-              រំកិលទៅស្តាំ ➡️
+              ស្តាំ
+              <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
             </button>
+
+            {/* Direct Section Jump Tabs */}
+            <div className="hidden lg:flex items-center space-x-1 pl-2 border-l border-slate-300">
+              <button
+                type="button"
+                onClick={() => tableScrollRef.current?.scrollTo({ left: 0, behavior: 'smooth' })}
+                className="px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-md font-bold text-[11px] border border-blue-200 transition-colors"
+                title="លោតទៅព័ត៌មានទូទៅ"
+              >
+                1. ព័ត៌មានទូទៅ
+              </button>
+              <button
+                type="button"
+                onClick={() => tableScrollRef.current?.scrollTo({ left: 550, behavior: 'smooth' })}
+                className="px-2 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-md font-bold text-[11px] border border-amber-200 transition-colors"
+                title="លោតទៅទីកន្លែងកំណើត"
+              >
+                2. ទីកន្លែងកំណើត
+              </button>
+              <button
+                type="button"
+                onClick={() => tableScrollRef.current?.scrollTo({ left: 1050, behavior: 'smooth' })}
+                className="px-2 py-0.5 bg-teal-50 hover:bg-teal-100 text-teal-700 rounded-md font-bold text-[11px] border border-teal-200 transition-colors"
+                title="លោតទៅអាសយដ្ឋានបច្ចុប្បន្ន"
+              >
+                3. អាសយដ្ឋាន
+              </button>
+              <button
+                type="button"
+                onClick={() => tableScrollRef.current?.scrollTo({ left: 1500, behavior: 'smooth' })}
+                className="px-2 py-0.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-md font-bold text-[11px] border border-purple-200 transition-colors"
+                title="លោតទៅស្ថានភាពសិស្ស"
+              >
+                4. ស្ថានភាព
+              </button>
+              <button
+                type="button"
+                onClick={() => tableScrollRef.current?.scrollTo({ left: 1950, behavior: 'smooth' })}
+                className="px-2 py-0.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-md font-bold text-[11px] border border-indigo-200 transition-colors"
+                title="លោតទៅឪពុកម្តាយ & អាណាព្យាបាល"
+              >
+                5. ឪពុកម្តាយ
+              </button>
+            </div>
+          </div>
+
+          {/* Right: Synced XLSM Slider Bar */}
+          <div className="flex items-center space-x-2 w-full md:w-72">
+            <span className="text-[11px] font-bold text-slate-500 whitespace-nowrap">ទាញរំកិល៖</span>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={scrollPercent}
+              onChange={(e) => {
+                const val = Number(e.target.value);
+                setScrollPercent(val);
+                if (tableScrollRef.current) {
+                  const max = tableScrollRef.current.scrollWidth - tableScrollRef.current.clientWidth;
+                  tableScrollRef.current.scrollLeft = (val / 100) * max;
+                }
+              }}
+              className="w-full accent-emerald-600 cursor-pointer h-2 bg-slate-200 rounded-lg"
+              title="ទាញរំកិលតារាងឆ្វេង-ស្តាំដូច Excel"
+            />
+            <span className="text-[11px] font-mono font-bold text-slate-600 w-9 text-right">
+              {scrollPercent}%
+            </span>
           </div>
         </div>
 
@@ -1083,7 +1304,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
             className="inline-flex items-center text-emerald-700 hover:text-emerald-900 font-bold hover:underline cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5 mr-1" />
-            + បន្ថែមសិស្សថ្មីមួយជួរដេកទៀត
+            + បន្ថែមសិស្សថ្មីនៅជួរដេកទី ១
           </button>
         </div>
       </div>
@@ -1147,8 +1368,10 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                 <span className="font-bold text-slate-800">{viewingStudent.gender}</span>
               </div>
               <div className="p-2.5 bg-white border border-slate-200 rounded-xl">
-                <span className="text-slate-400 block mb-0.5">ថ្ងៃខែឆ្នាំកំណើត</span>
-                <span className="font-bold text-slate-800">{viewingStudent.dob ? formatKhmerDate(viewingStudent.dob) : '-'}</span>
+                <span className="text-slate-400 block mb-0.5">ថ្ងៃខែឆ្នាំកំណើត (dd/mm/yyyy)</span>
+                <span className="font-bold text-slate-800 font-mono">
+                  {formatToDMY(viewingStudent.dob) || '-'} {viewingStudent.dob && `(${formatKhmerDate(viewingStudent.dob)})`}
+                </span>
               </div>
               <div className="p-2.5 bg-white border border-slate-200 rounded-xl">
                 <span className="text-slate-400 block mb-0.5">អាយុ</span>
@@ -1224,6 +1447,14 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
         currentClass={currentClass || null}
         settings={settings}
       />
+
+      {/* Instant Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-14 right-6 z-50 bg-slate-900/95 text-white px-4 py-2.5 rounded-2xl shadow-2xl flex items-center space-x-2 text-xs font-bold border border-slate-700 animate-in fade-in slide-in-from-bottom duration-200">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
     </div>
   );
 };

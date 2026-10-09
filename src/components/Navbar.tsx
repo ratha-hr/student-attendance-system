@@ -174,28 +174,8 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
 
-        {/* Right side: Sleek Clock Widget & Settings Profile */}
+        {/* Right side: Settings Profile */}
         <div className="flex items-center space-x-2 sm:space-x-3">
-          {/* Enhanced Live Universal Clock Widget */}
-          <button
-            type="button"
-            onClick={() => setUse24hFormat(!use24hFormat)}
-            className="flex items-center space-x-2 px-3 sm:px-3.5 py-1.5 sm:py-2 bg-slate-100/90 hover:bg-slate-200/80 border border-slate-200/90 rounded-2xl shadow-2xs transition-all cursor-pointer select-none"
-            title="ម៉ោងសកល (ចុចដើម្បីប្តូរទម្រង់ ២៤ម៉ោង ឬ AM/PM)"
-          >
-            <div className="relative flex items-center justify-center">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping absolute opacity-75" />
-              <span className="w-2 h-2 rounded-full bg-emerald-600 relative" />
-            </div>
-            <Clock className="w-4 h-4 text-blue-600 shrink-0" />
-            <span className="font-mono font-black text-sm sm:text-base text-slate-900 tracking-wider whitespace-nowrap">
-              {use24hFormat ? universalTime.time24 : universalTime.time12}
-            </span>
-            <span className="font-kantumruy font-bold text-[10px] sm:text-xs text-blue-700 bg-blue-50 border border-blue-200/80 px-1.5 py-0.5 rounded-md leading-none whitespace-nowrap">
-              {use24hFormat ? 'ម៉ោងសកល' : universalTime.khmerPeriod}
-            </span>
-          </button>
-
           {/* Settings button & Teacher Profile */}
           <button
             onClick={onOpenSettings}
