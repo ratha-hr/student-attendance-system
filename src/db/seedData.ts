@@ -1,16 +1,16 @@
 import type { ClassRoom, Student, AttendanceRecord, LessonExtract, YearlyPlanItem, TeacherSettings } from '../types';
 
 export const initialSettings: TeacherSettings = {
-  teacherName: 'ស៊ឹម វីរៈ',
-  schoolName: 'វិទ្យាល័យ ហ៊ុន សែន មិត្តភាព',
-  schoolCode: 'HS-MTP-088',
-  principalName: 'ហេង ពិសាល',
-  specialtySubject: 'ភាសាខ្មែរ និងអក្សរសិល្ប៍',
+  teacherName: 'ហ៊ុន រដ្ឋា',
+  schoolName: 'វិទ្យាល័យ ហ៊ុន សែន កំពង់ត្រឡាច',
+  schoolCode: 'HS-KTL-099',
+  principalName: 'នាយកសាលា',
+  specialtySubject: 'គណិតវិទ្យា',
   academicYear: '២០២៤-២០២៥',
-  provinceCity: 'រាជធានីភ្នំពេញ',
+  provinceCity: 'ខេត្តកំពង់ឆ្នាំង',
   absenceWarningThreshold: 3,
-  phone: '012 889 900',
-  email: 'sim.virak@moeys.edu.kh',
+  phone: '093 486 987 / 089 230 998 / 071 741 1141',
+  email: 'hun.ratha@moeys.edu.kh',
 };
 
 // ៦ ថ្នាក់៖ ពីថ្នាក់ទី ៧ ដល់ ថ្នាក់ទី ១២

@@ -62,10 +62,7 @@ export class TeacherDatabase extends Dexie {
       if ((await this.yearlyPlans.count()) === 0) {
         await this.yearlyPlans.bulkAdd(initialYearlyPlan);
       }
-      const s = await this.settings.get('current_settings');
-      if (!s) {
-        await this.settings.put({ ...initialSettings, id: 'current_settings' });
-      }
+      await this.settings.put({ ...initialSettings, id: 'current_settings' });
     }
   }
 
@@ -82,11 +79,12 @@ export class TeacherDatabase extends Dexie {
     if ((await this.yearlyPlans.count()) === 0) {
       await this.yearlyPlans.bulkAdd(initialYearlyPlan);
     }
+    await this.settings.put({ ...initialSettings, id: 'current_settings' });
   }
 
   async getSettings(): Promise<TeacherSettings> {
     const s = await this.settings.get('current_settings');
-    if (!s) {
+    if (!s || s.teacherName === 'ស៊ឹម វីរៈ') {
       await this.settings.put({ ...initialSettings, id: 'current_settings' });
       return initialSettings;
     }

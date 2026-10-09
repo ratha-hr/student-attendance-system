@@ -22,13 +22,13 @@ interface SettingsPageProps {
 }
 
 export const SettingsPage: React.FC<SettingsPageProps> = ({ settings, onRefresh }) => {
-  const [teacherName, setTeacherName] = useState(settings?.teacherName || 'ស៊ឹម វីរៈ');
-  const [specialtySubject, setSpecialtySubject] = useState(settings?.specialtySubject || 'ភាសាខ្មែរ និងអក្សរសិល្ប៍');
-  const [phone, setPhone] = useState(settings?.phone || '012 889 900');
-  const [email, setEmail] = useState(settings?.email || 'sim.virak@moeys.edu.kh');
-  const [schoolName, setSchoolName] = useState(settings?.schoolName || 'វិទ្យាល័យ ហ៊ុន សែន មិត្តភាព');
-  const [principalName, setPrincipalName] = useState(settings?.principalName || 'ហេង ពិសាល');
-  const [provinceCity, setProvinceCity] = useState(settings?.provinceCity || 'រាជធានីភ្នំពេញ');
+  const [teacherName, setTeacherName] = useState(settings?.teacherName || 'ហ៊ុន រដ្ឋា');
+  const [specialtySubject, setSpecialtySubject] = useState(settings?.specialtySubject || 'គណិតវិទ្យា');
+  const [phone, setPhone] = useState(settings?.phone || '093 486 987 / 089 230 998 / 071 741 1141');
+  const [email, setEmail] = useState(settings?.email || 'hun.ratha@moeys.edu.kh');
+  const [schoolName, setSchoolName] = useState(settings?.schoolName || 'វិទ្យាល័យ ហ៊ុន សែន កំពង់ត្រឡាច');
+  const [principalName, setPrincipalName] = useState(settings?.principalName || 'នាយកសាលា');
+  const [provinceCity, setProvinceCity] = useState(settings?.provinceCity || 'ខេត្តកំពង់ឆ្នាំង');
   const [academicYear, setAcademicYear] = useState(settings?.academicYear || '២០២៤-២០២៥');
   const [absenceWarningThreshold, setAbsenceWarningThreshold] = useState(settings?.absenceWarningThreshold || 3);
 

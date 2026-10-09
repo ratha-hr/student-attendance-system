@@ -6,12 +6,12 @@ import { Sidebar } from './components/Sidebar';
 import { Navbar } from './components/Navbar';
 import { Modal } from './components/common/Modal';
 
-// 5 Core Pages requested by user
+// Core Pages requested by user
 import { AttendancePage } from './pages/AttendancePage';
+import { MonthlyAttendancePage } from './pages/MonthlyAttendancePage';
 import { StudentsPage } from './pages/StudentsPage';
+import { GradesPage } from './pages/GradesPage';
 import { OfficialLettersPage } from './pages/OfficialLettersPage';
-import { LessonExtractsPage } from './pages/LessonExtractsPage';
-import { AnnualPlanPage } from './pages/AnnualPlanPage';
 import { SettingsPage } from './pages/SettingsPage';
 import type { TeacherSettings, ClassRoom } from './types';
 import { Plus, Trash2, BookOpen } from 'lucide-react';
@@ -167,11 +167,35 @@ export function App() {
             />
           )}
 
+          {currentTab === 'monthly-attendance' && (
+            <MonthlyAttendancePage
+              students={students}
+              classes={classes}
+              attendanceRecords={attendanceRecords}
+              settings={settings}
+              selectedClassId={selectedClassId}
+              onSelectClass={setSelectedClassId}
+              onRefresh={handleRefresh}
+              onGenerateLetterForStudent={handleSelectStudentForLetter}
+            />
+          )}
+
           {currentTab === 'students' && (
             <StudentsPage
               students={students}
               classes={classes}
               attendanceRecords={attendanceRecords}
+              settings={settings}
+              selectedClassId={selectedClassId}
+              onSelectClass={setSelectedClassId}
+              onRefresh={handleRefresh}
+            />
+          )}
+
+          {currentTab === 'grades' && (
+            <GradesPage
+              students={students}
+              classes={classes}
               settings={settings}
               selectedClassId={selectedClassId}
               onSelectClass={setSelectedClassId}
@@ -186,21 +210,8 @@ export function App() {
               attendanceRecords={attendanceRecords}
               settings={settings}
               selectedStudentId={selectedStudentForLetter}
-            />
-          )}
-
-          {currentTab === 'extracts' && (
-            <LessonExtractsPage
-              extracts={extracts}
-              onRefresh={handleRefresh}
-            />
-          )}
-
-          {currentTab === 'annual-plan' && (
-            <AnnualPlanPage
-              yearlyPlans={yearlyPlans}
-              settings={settings}
-              onRefresh={handleRefresh}
+              selectedClassId={selectedClassId}
+              onSelectClass={setSelectedClassId}
             />
           )}
         </main>

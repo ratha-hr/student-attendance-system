@@ -192,13 +192,26 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
     <div className="space-y-6">
       {/* Top Controller Bar */}
       <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4 no-print">
-        <div>
-          <h2 className="text-xl font-extrabold text-slate-800 flex items-center">
-            <CalendarCheck2 className="w-6 h-6 text-blue-600 mr-2" />
-            វត្តមានសិស្ស ({currentClass?.name || 'សូមជ្រើសរើសថ្នាក់'})
-          </h2>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            កត់ត្រាវត្តមានប្រចាំថ្ងៃ និងតាមដានរបាយការណ៍វត្តមានប្រចាំខែ
+        <div className="space-y-1">
+          <div className="flex items-center space-x-3">
+            <h2 className="text-xl font-black text-slate-800 flex items-center">
+              <CalendarCheck2 className="w-6 h-6 text-blue-600 mr-2" />
+              វត្តមានសិស្ស ({currentClass?.name || 'សូមជ្រើសរើសថ្នាក់'})
+            </h2>
+            <select
+              value={activeClassId}
+              onChange={(e) => onSelectClass(e.target.value)}
+              className="bg-slate-50 border border-slate-300 font-bold text-xs sm:text-sm rounded-xl px-2.5 py-1.5 text-slate-800 cursor-pointer shadow-2xs"
+            >
+              {classes.map((c) => (
+                <option key={c.id} value={c.id}>
+                  📚 {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <p className="text-xs sm:text-sm text-slate-500">
+            កត់ត្រាវត្តមានប្រចាំថ្ងៃ និងតាមដានរបាយការណ៍វត្តមាន
           </p>
         </div>
 

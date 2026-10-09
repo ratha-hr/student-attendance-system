@@ -51,7 +51,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
             <div>
               <p className="text-xs font-semibold text-slate-800 leading-tight truncate max-w-[220px]">
-                {settings?.schoolName || 'វិទ្យាល័យ ហ៊ុន សែន'}
+                {settings?.schoolName || 'វិទ្យាល័យ ហ៊ុន សែន កំពង់ត្រឡាច'}
               </p>
               <p className="text-[11px] text-slate-400">
                 ឆ្នាំសិក្សា {settings?.academicYear || '២០២៤-២០២៥'}
@@ -121,7 +121,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
             <div className="hidden lg:block text-left">
               <p className="text-xs font-bold text-slate-800 leading-tight">
-                {settings?.teacherName || 'លោកគ្រូ'}
+                {settings?.teacherName || 'ហ៊ុន រដ្ឋា'}
               </p>
               <div className="flex items-center text-[10px] text-slate-400 space-x-1">
                 <span>គ្រូបង្រៀន</span>

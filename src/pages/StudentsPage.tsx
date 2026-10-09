@@ -18,6 +18,8 @@ import {
   MapPin,
   Heart,
   ChevronDown,
+  Copy,
+  Check,
 } from 'lucide-react';
 import type { Student, ClassRoom, AttendanceRecord, Gender, TeacherSettings } from '../types';
 import { db } from '../db/db';
@@ -181,6 +183,30 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
     }
   };
 
+  const handleDuplicateStudent = async (s: Student) => {
+    const classStudents = students.filter((stu) => stu.classId === s.classId);
+    const nextRoll = classStudents.length + 1;
+    const duplicated: Student = {
+      ...s,
+      id: 'stu-' + Date.now(),
+      rollNo: nextRoll,
+      studentCode: `${s.studentCode}-កូពី`,
+      nameKh: `${s.nameKh} (ចម្លង)`,
+      createdAt: new Date().toISOString(),
+    };
+    await db.students.add(duplicated);
+    alert(`បានចម្លងសិស្ស "${s.nameKh}" ទៅជាសិស្សថ្មីលេខរៀង ${toKhmerNum(nextRoll)} ដោយជោគជ័យ!`);
+    onRefresh();
+  };
+
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const handleCopyStudentInfo = (s: Student) => {
+    const text = `ឈ្មោះ៖ ${s.nameKh} (${s.nameEn}) | ភេទ៖ ${s.gender} | អត្តលេខ៖ ${s.studentCode} | ថ្នាក់៖ ${classes.find(c => c.id === s.classId)?.name || ''} | ទូរស័ព្ទអាណាព្យាបាល៖ ${s.guardianPhone}`;
+    navigator.clipboard.writeText(text);
+    setCopiedId(s.id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
   const handleExportExcel = () => {
     const targetClass = classes.find((c) => c.id === selectedClassId);
     const className = targetClass ? targetClass.name : 'ទាំងអស់';
@@ -225,17 +251,36 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
     ? 'ថ្នាក់ទាំងអស់'
     : classes.find((c) => c.id === selectedClassId)?.name || 'ថ្នាក់រៀន';
 
+  const totalFiltered = filteredStudents.length;
+  const femaleFiltered = filteredStudents.filter((s) => s.gender === 'ស្រី').length;
+  const maleFiltered = filteredStudents.filter((s) => s.gender === 'ប្រុស').length;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Top Banner and Quick Excel Actions */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4 no-print">
-        <div>
-          <h2 className="text-xl font-extrabold text-slate-800 flex items-center">
-            <Users className="w-6 h-6 text-blue-600 mr-2" />
-            ពត៌មានសិស្ស ({currentClassName})
-          </h2>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            សរុប {toKhmerNum(filteredStudents.length)} នាក់ (ស្រី {toKhmerNum(filteredStudents.filter((s) => s.gender === 'ស្រី').length)} នាក់, ប្រុស {toKhmerNum(filteredStudents.filter((s) => s.gender === 'ប្រុស').length)} នាក់)
+      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4 no-print">
+        <div className="space-y-1">
+          <div className="flex items-center space-x-3">
+            <h2 className="text-xl font-black text-slate-800 flex items-center">
+              <Users className="w-6 h-6 text-blue-600 mr-2" />
+              ព័ត៌មានសិស្ស ({currentClassName})
+            </h2>
+            {/* Quick Class Selector Dropdown */}
+            <select
+              value={selectedClassId}
+              onChange={(e) => onSelectClass(e.target.value)}
+              className="bg-slate-50 border border-slate-300 font-bold text-xs sm:text-sm rounded-xl px-2.5 py-1.5 text-slate-800 cursor-pointer shadow-2xs"
+            >
+              <option value="ALL">🌟 ថ្នាក់ទាំងអស់ ({students.length})</option>
+              {classes.map((c) => (
+                <option key={c.id} value={c.id}>
+                  📚 {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <p className="text-xs sm:text-sm text-slate-500">
+            គ្រប់គ្រងប្រវត្តិរូបសិស្ស ទម្រង់ Excel កែប្រែ លុប និងចម្លងសិស្សបានងាយស្រួល
           </p>
         </div>
 
@@ -278,7 +323,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
             className="inline-flex items-center px-3 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
           >
             <Printer className="w-3.5 h-3.5 mr-1" />
-            បោះពុម្ពបញ្ជី
+            បោះពុម្ព
           </button>
 
           {/* Add Student */}
@@ -287,8 +332,24 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
             className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md shadow-blue-500/20 transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4 mr-1" />
-            បន្ថែមសិស្សថ្មី
+            បន្ថែមសិស្ស
           </button>
+        </div>
+      </div>
+
+      {/* Stats Badges: Total, Female, Male */}
+      <div className="grid grid-cols-3 gap-3 no-print">
+        <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs text-center">
+          <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">សិស្សសរុប ({currentClassName})</p>
+          <p className="text-2xl font-black text-slate-800 mt-1">{toKhmerNum(totalFiltered)} នាក់</p>
+        </div>
+        <div className="bg-pink-50/70 p-3.5 rounded-2xl border border-pink-200 shadow-2xs text-center">
+          <p className="text-[11px] font-bold text-pink-700 uppercase tracking-wider">សិស្សស្រី</p>
+          <p className="text-2xl font-black text-pink-700 mt-1">{toKhmerNum(femaleFiltered)} នាក់</p>
+        </div>
+        <div className="bg-blue-50/70 p-3.5 rounded-2xl border border-blue-200 shadow-2xs text-center">
+          <p className="text-[11px] font-bold text-blue-700 uppercase tracking-wider">សិស្សប្រុស</p>
+          <p className="text-2xl font-black text-blue-700 mt-1">{toKhmerNum(maleFiltered)} នាក់</p>
         </div>
       </div>
 
@@ -456,23 +517,34 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                       </td>
                       <td className="py-3 px-3 text-center no-print">
                         <div className="flex items-center justify-center space-x-1">
+                          {/* View Profile */}
                           <button
                             onClick={() => setViewingStudent(stu)}
-                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-                            title="មើលលម្អិត"
+                            className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                            title="មើលប្រវត្តិរូបសិស្ស"
                           >
                             <Eye className="w-4 h-4" />
                           </button>
+                          {/* Duplicate Student */}
+                          <button
+                            onClick={() => handleDuplicateStudent(stu)}
+                            className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
+                            title="ចម្លងសិស្ស (បង្កើតសិស្សស្ទួន)"
+                          >
+                            <Copy className="w-4 h-4" />
+                          </button>
+                          {/* Edit Student */}
                           <button
                             onClick={() => openEditModal(stu)}
-                            className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors cursor-pointer"
+                            className="p-1.5 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors cursor-pointer"
                             title="កែប្រែ"
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
+                          {/* Delete Student */}
                           <button
                             onClick={() => handleDeleteStudent(stu)}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                            className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                             title="លុប"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -547,8 +619,32 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
               </div>
             </div>
 
-            <div className="flex justify-end pt-3">
+            <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => handleCopyStudentInfo(viewingStudent)}
+                  className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl border border-indigo-200 transition-colors cursor-pointer"
+                >
+                  <Copy className="w-3.5 h-3.5 mr-1 inline-block" />
+                  {copiedId === viewingStudent.id ? 'បានចម្លង!' : 'ចម្លងព័ត៌មាន'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const s = viewingStudent;
+                    setViewingStudent(null);
+                    openEditModal(s);
+                  }}
+                  className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-bold rounded-xl border border-amber-200 transition-colors cursor-pointer"
+                >
+                  <Edit2 className="w-3.5 h-3.5 mr-1 inline-block" />
+                  កែប្រែ
+                </button>
+              </div>
+
               <button
+                type="button"
                 onClick={() => setViewingStudent(null)}
                 className="px-4 py-2 bg-slate-800 text-white rounded-xl text-xs font-bold hover:bg-slate-900 transition-colors cursor-pointer"
               >

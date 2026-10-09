@@ -3,18 +3,18 @@ import {
   CalendarCheck2,
   Users,
   MailWarning,
-  FileText,
   CalendarDays,
+  GraduationCap,
   BookOpenCheck,
 } from 'lucide-react';
 import type { ClassRoom } from '../types';
 
 export type NavTab =
   | 'attendance'
+  | 'monthly-attendance'
   | 'students'
-  | 'letters'
-  | 'extracts'
-  | 'annual-plan';
+  | 'grades'
+  | 'letters';
 
 interface SidebarProps {
   currentTab: NavTab;
@@ -38,28 +38,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const menuItems = [
     {
       id: 'attendance' as NavTab,
-      label: '១. វត្តមានសិស្ស',
+      label: '១. វត្តមានប្រចាំថ្ងៃ',
       icon: CalendarCheck2,
     },
     {
+      id: 'monthly-attendance' as NavTab,
+      label: '២. វត្តមានប្រចាំខែ',
+      icon: CalendarDays,
+    },
+    {
       id: 'students' as NavTab,
-      label: '២. បញ្ជីឈ្មោះសិស្ស',
+      label: '៣. ព័ត៌មានសិស្ស',
       icon: Users,
     },
     {
+      id: 'grades' as NavTab,
+      label: '៤. ពិន្ទុសិស្សប្រចាំខែ',
+      icon: GraduationCap,
+    },
+    {
       id: 'letters' as NavTab,
-      label: '៣. លិខិតព្រមាន (A4)',
+      label: '៥. លិខិតព្រមាន (A4)',
       icon: MailWarning,
-    },
-    {
-      id: 'extracts' as NavTab,
-      label: '៤. សម្រង់អត្ថបទ',
-      icon: FileText,
-    },
-    {
-      id: 'annual-plan' as NavTab,
-      label: '៥. ផែនការ ១ ឆ្នាំ',
-      icon: CalendarDays,
     },
   ];
 
