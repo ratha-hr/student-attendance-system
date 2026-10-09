@@ -217,162 +217,160 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
   };
 
   return (
-    <div className="space-y-4">
-      {/* Top Banner (No overlapping class dropdown) */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4 no-print">
-        <div className="space-y-1">
-          <div className="flex items-center space-x-3">
-            <h2 className="text-xl font-black text-slate-800 flex items-center">
-              <FileSpreadsheet className="w-6 h-6 text-emerald-600 mr-2" />
-              ព័ត៌មាន និងប្រវត្តិរូបសង្ខេបសិស្ស ({currentClassName})
+    <div className="space-y-3">
+      {/* Clean, Modern, Elegant Header & Action Bar (Replacing messy cluttered panel) */}
+      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3 no-print">
+        {/* Row 1: Title + Quick KPI Badges + Primary Action Buttons */}
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
+          {/* Left: Title & Inline KPI Pills */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h2 className="text-lg font-black text-slate-800 flex items-center">
+              <FileSpreadsheet className="w-5 h-5 text-emerald-600 mr-2" />
+              បញ្ជីស្ថិតិ និងប្រវត្តិរូបសង្ខេបសិស្ស ({currentClassName})
             </h2>
-            <span className="inline-flex items-center px-2.5 py-1 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-lg border border-emerald-200">
-              📊 ទម្រង់ក្រសួងអប់រំ (រូបទី២) XLSM កែប្រែផ្ទាល់
-            </span>
-            {lastSavedId && (
-              <span className="inline-flex items-center text-xs text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full animate-pulse border border-emerald-300">
-                <Check className="w-3.5 h-3.5 mr-1" /> រក្សាទុកស្វ័យប្រវត្តិ
+
+            {/* Compact Inline KPI Badges (No messy big cards) */}
+            <div className="flex items-center gap-1.5 text-xs">
+              <span className="px-2.5 py-1 bg-slate-100 text-slate-700 font-bold rounded-lg border border-slate-200" title="សិស្សសរុប">
+                👥 សរុប៖ <strong>{toKhmerNum(totalFiltered)}</strong> នាក់
               </span>
-            )}
+              <span className="px-2.5 py-1 bg-pink-50 text-pink-700 font-bold rounded-lg border border-pink-200" title="សិស្សស្រី">
+                👩 ស្រី៖ <strong>{toKhmerNum(femaleFiltered)}</strong>
+              </span>
+              <span className="px-2.5 py-1 bg-blue-50 text-blue-700 font-bold rounded-lg border border-blue-200" title="សិស្សប្រុស">
+                👨 ប្រុស៖ <strong>{toKhmerNum(maleFiltered)}</strong>
+              </span>
+              {lastSavedId && (
+                <span className="px-2 py-0.5 text-emerald-600 font-bold text-xs bg-emerald-50 rounded-full border border-emerald-300 animate-pulse">
+                  ✓ រក្សាទុក
+                </span>
+              )}
+            </div>
           </div>
-          <p className="text-xs sm:text-sm text-slate-500">
-            តារាងប្រវត្តិរូបសិស្សពេញលេញតាមរូបទី២៖ ទីកន្លែងកំណើត អាសយដ្ឋានបច្ចុប្បន្ន ស្ថានភាពសិស្ស ព័ត៌មានឪពុកម្តាយ (កែ លុប ចម្លងផ្ទាល់)
-          </p>
+
+          {/* Right: Clean, Grouped Action Buttons */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Primary Action: Add Student */}
+            <button
+              onClick={handleAddNewBlankRow}
+              className="inline-flex items-center px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
+              title="បន្ថែមជួរដេកសិស្សថ្មី"
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              + បន្ថែមសិស្ស
+            </button>
+
+            {/* Excel Group */}
+            <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs font-bold">
+              <label
+                className="inline-flex items-center px-2.5 py-1 rounded-lg text-slate-700 hover:bg-white hover:text-emerald-700 transition-colors cursor-pointer"
+                title="នាំចូលទិន្នន័យពី Excel"
+              >
+                <Upload className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+                នាំចូល
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx, .xls, .xlsm"
+                  className="hidden"
+                  onChange={handleImportFile}
+                />
+              </label>
+
+              <button
+                onClick={handleExportExcel}
+                className="inline-flex items-center px-2.5 py-1 rounded-lg text-slate-700 hover:bg-white hover:text-blue-700 transition-colors cursor-pointer"
+                title="ទាញយកជា Excel .xlsm"
+              >
+                <Download className="w-3.5 h-3.5 mr-1 text-blue-600" />
+                នាំចេញ
+              </button>
+
+              <button
+                onClick={downloadStudentTemplate}
+                className="inline-flex items-center px-2 py-1 rounded-lg text-slate-500 hover:bg-white hover:text-slate-800 transition-colors cursor-pointer"
+                title="ទាញយកគំរូ Excel"
+              >
+                គំរូ
+              </button>
+            </div>
+
+            {/* Extra Tools: Auto-populate & ID Cards */}
+            <div className="inline-flex items-center space-x-1">
+              <button
+                onClick={async () => {
+                  if (window.confirm('តើលោកគ្រូចង់បំពេញព័ត៌មានលម្អិត (ភូមិ ឃុំ ស្រុក ឪពុក ម្តាយ ស្ថានភាព) សម្រាប់សិស្សទាំងអស់តាមរូបភាពទី២ មែនទេ?')) {
+                    const current = await db.students.toArray();
+                    const enriched = current.map((s, i) => enrichStudentWithMoEYSFields(s, i));
+                    await db.students.bulkPut(enriched);
+                    onRefresh();
+                    alert('បានបំពេញព័ត៌មានសិស្សពេញលេញតាមរូបភាពទី២ រួចរាល់!');
+                  }
+                }}
+                className="inline-flex items-center px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl border border-indigo-200 transition-colors cursor-pointer"
+                title="បំពេញទិន្នន័យរូបទី២ ស្វ័យប្រវត្តិ"
+              >
+                <Sparkles className="w-3.5 h-3.5 mr-1 text-indigo-600" />
+                ទិន្នន័យរូបទី២
+              </button>
+
+              <button
+                onClick={() => setIsIDCardsOpen(true)}
+                className="inline-flex items-center px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-bold rounded-xl border border-purple-200 transition-colors cursor-pointer"
+                title="បោះពុម្ពកាតសិស្សភ្ជាប់ QR"
+              >
+                <QrCode className="w-3.5 h-3.5 mr-1 text-purple-600" />
+                កាតសិស្ស
+              </button>
+            </div>
+
+            {/* Print with Orientation Selector */}
+            <PrintButton defaultOrientation="landscape" label="បោះពុម្ព" />
+          </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Add Row Button */}
-          <button
-            onClick={handleAddNewBlankRow}
-            className="inline-flex items-center px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
-            title="បន្ថែមជួរដេកសិស្សថ្មីមួយទៀតនៅខាងក្រោមតារាង"
-          >
-            <Plus className="w-4 h-4 mr-1" />
-            + បន្ថែមជួរដេកថ្មី
-          </button>
-
-          {/* Download Template */}
-          <button
-            onClick={downloadStudentTemplate}
-            className="inline-flex items-center px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
-            title="ទាញយកគំរូ Excel សម្រាប់បំពេញទិន្នន័យ"
-          >
-            <Download className="w-3.5 h-3.5 mr-1 text-slate-600" />
-            គំរូ Excel
-          </button>
-
-          {/* Import Excel */}
-          <label className="inline-flex items-center px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold rounded-xl border border-emerald-300 transition-colors cursor-pointer">
-            <Upload className="w-3.5 h-3.5 mr-1 text-emerald-600" />
-            នាំចូល Excel
+        {/* Row 2: Search + Gender Filters (Unified cleanly) */}
+        <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-2.5">
+          {/* Search Box */}
+          <div className="relative w-full sm:w-80">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
             <input
-              ref={fileInputRef}
-              type="file"
-              accept=".xlsx, .xls, .xlsm"
-              className="hidden"
-              onChange={handleImportFile}
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="ស្វែងរកតាមឈ្មោះ, អត្តលេខ, ស្រុក, ខេត្ត, ទូរស័ព្ទ..."
+              className="w-full pl-9 pr-4 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all"
             />
-          </label>
+          </div>
 
-          {/* Quick Populate All 200 Students with Full Image 2 Data */}
-          <button
-            onClick={async () => {
-              if (window.confirm('តើលោកគ្រូចង់បំពេញព័ត៌មានលម្អិត (ភូមិ ឃុំ ស្រុក ឪពុក ម្តាយ ស្ថានភាព) សម្រាប់សិស្សទាំងអស់តាមរូបភាពទី២ មែនទេ?')) {
-                const current = await db.students.toArray();
-                const enriched = current.map((s, i) => enrichStudentWithMoEYSFields(s, i));
-                await db.students.bulkPut(enriched);
-                onRefresh();
-                alert('បានបំពេញព័ត៌មានសិស្សពេញលេញតាមរូបភាពទី២ រួចរាល់!');
-              }
-            }}
-            className="inline-flex items-center px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 text-xs font-bold rounded-xl border border-indigo-200 transition-colors cursor-pointer"
-            title="ចុចដើម្បីបំពេញព័ត៌មានសិស្សគ្រប់ជួរឈរតាមរូបភាពទី២ ស្វ័យប្រវត្តិ"
-          >
-            <Sparkles className="w-3.5 h-3.5 mr-1 text-indigo-600" />
-            បំពេញទិន្នន័យរូបទី២
-          </button>
-
-          {/* Export Excel */}
-          <button
-            onClick={handleExportExcel}
-            className="inline-flex items-center px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded-xl border border-blue-200 transition-colors cursor-pointer"
-            title="ទាញចេញជាឯកសារ Excel .xlsx / .xlsm"
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5 mr-1 text-blue-600" />
-            នាំចេញ Excel (.xlsm)
-          </button>
-
-          {/* Print ID Cards with QR */}
-          <button
-            onClick={() => setIsIDCardsOpen(true)}
-            className="inline-flex items-center px-3 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-bold rounded-xl border border-purple-200 transition-colors cursor-pointer"
-            title="បោះពុម្ពកាតសម្គាល់ខ្លួនសិស្សភ្ជាប់ QR Code"
-          >
-            <QrCode className="w-3.5 h-3.5 mr-1 text-purple-600" />
-            កាតសិស្ស (QR)
-          </button>
-
-          {/* Print with Orientation Selector */}
-          <PrintButton defaultOrientation="landscape" label="បោះពុម្ព" />
-        </div>
-      </div>
-
-      {/* Summary KPI Badges */}
-      <div className="grid grid-cols-3 gap-3 no-print">
-        <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs text-center">
-          <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">សិស្សសរុប ({currentClassName})</p>
-          <p className="text-2xl font-black text-slate-800 mt-1">{toKhmerNum(totalFiltered)} នាក់</p>
-        </div>
-        <div className="bg-pink-50/70 p-3.5 rounded-2xl border border-pink-200 shadow-2xs text-center">
-          <p className="text-[11px] font-bold text-pink-700 uppercase tracking-wider">សិស្សស្រី</p>
-          <p className="text-2xl font-black text-pink-700 mt-1">{toKhmerNum(femaleFiltered)} នាក់</p>
-        </div>
-        <div className="bg-blue-50/70 p-3.5 rounded-2xl border border-blue-200 shadow-2xs text-center">
-          <p className="text-[11px] font-bold text-blue-700 uppercase tracking-wider">សិស្សប្រុស</p>
-          <p className="text-2xl font-black text-blue-700 mt-1">{toKhmerNum(maleFiltered)} នាក់</p>
-        </div>
-      </div>
-
-      {/* Filter and Search Bar */}
-      <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3 no-print">
-        <div className="relative w-full sm:w-96">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="ស្វែងរកតាមឈ្មោះ, អត្តលេខ, ស្រុក, ខេត្ត, ទូរស័ព្ទ..."
-            className="w-full pl-9 pr-4 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-          />
-        </div>
-
-        <div className="flex items-center space-x-2 w-full sm:w-auto justify-end">
-          <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-medium">
-            <button
-              onClick={() => setGenderFilter('all')}
-              className={`px-3 py-1 rounded-lg transition-colors cursor-pointer ${
-                genderFilter === 'all' ? 'bg-white font-bold text-slate-800 shadow-2xs' : 'text-slate-600'
-              }`}
-            >
-              ទាំងអស់ ({toKhmerNum(students.filter((s) => selectedClassId === 'ALL' || s.classId === activeClassId).length)})
-            </button>
-            <button
-              onClick={() => setGenderFilter('ប្រុស')}
-              className={`px-3 py-1 rounded-lg transition-colors cursor-pointer ${
-                genderFilter === 'ប្រុស' ? 'bg-white font-bold text-blue-700 shadow-2xs' : 'text-slate-600'
-              }`}
-            >
-              ប្រុស
-            </button>
-            <button
-              onClick={() => setGenderFilter('ស្រី')}
-              className={`px-3 py-1 rounded-lg transition-colors cursor-pointer ${
-                genderFilter === 'ស្រី' ? 'bg-white font-bold text-pink-700 shadow-2xs' : 'text-slate-600'
-              }`}
-            >
-              ស្រី
-            </button>
+          {/* Gender Filter Chips */}
+          <div className="flex items-center space-x-1.5 w-full sm:w-auto justify-end">
+            <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-xl text-xs font-bold">
+              <button
+                onClick={() => setGenderFilter('all')}
+                className={`px-3 py-1 rounded-lg transition-colors cursor-pointer ${
+                  genderFilter === 'all' ? 'bg-white font-black text-slate-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                ទាំងអស់ ({toKhmerNum(students.filter((s) => selectedClassId === 'ALL' || s.classId === activeClassId).length)})
+              </button>
+              <button
+                onClick={() => setGenderFilter('ប្រុស')}
+                className={`px-3 py-1 rounded-lg transition-colors cursor-pointer ${
+                  genderFilter === 'ប្រុស' ? 'bg-white font-black text-blue-700 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                👨 ប្រុស
+              </button>
+              <button
+                onClick={() => setGenderFilter('ស្រី')}
+                className={`px-3 py-1 rounded-lg transition-colors cursor-pointer ${
+                  genderFilter === 'ស្រី' ? 'bg-white font-black text-pink-700 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                👩 ស្រី
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -401,7 +399,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
       </div>
 
       {/* Excel/XLSM Interactive Editable Spreadsheet Grid - EXACT REPLICA OF IMAGE 2 */}
-      <div className="bg-white rounded-2xl border-2 border-blue-900/40 shadow-lg overflow-hidden">
+      <div className="bg-white rounded-2xl border-2 border-blue-900/40 shadow-lg overflow-hidden print:border-none print:shadow-none print:rounded-none print:overflow-visible">
         {/* Spreadsheet Header Bar */}
         <div className="bg-[#002060] text-white px-4 py-2 flex items-center justify-between text-xs font-bold no-print">
           <div className="flex items-center space-x-2">
@@ -415,12 +413,62 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
           </div>
         </div>
 
-        <div ref={tableScrollRef} className="max-h-[70vh] overflow-auto table-scrollbar relative">
-          <table className="w-full text-left border-collapse text-[11px]">
+        <div ref={tableScrollRef} className="max-h-[70vh] print:max-h-none print:h-auto overflow-auto print:overflow-visible table-scrollbar relative print:border-none print:shadow-none">
+          <table className="w-full text-left border-collapse text-[11px] print-fit-all">
+            {/* Colgroup for 100% Page Fit in Print Mode */}
+            <colgroup className="hidden print:table-column-group">
+              {/* 1. ល.រ */}
+              <col style={{ width: '2.2%' }} />
+              {/* 2. អត្តលេខ */}
+              <col style={{ width: '4.2%' }} />
+              {/* 3. គោត្តនាម នាម */}
+              <col style={{ width: '8.5%' }} />
+              {/* 4. ភេទ */}
+              <col style={{ width: '2.2%' }} />
+              {/* 5. ថ្ងៃខែឆ្នាំកំណើត */}
+              <col style={{ width: '5.2%' }} />
+              {/* 6. អាយុ */}
+              <col style={{ width: '2.2%' }} />
+              {/* 7. មកពីសាលា */}
+              <col style={{ width: '5.5%' }} />
+              {/* 8-11. ទីកន្លែងកំណើត (ភូមិ, ឃុំ, ស្រុក, ខេត្ត) */}
+              <col style={{ width: '3.2%' }} />
+              <col style={{ width: '3.2%' }} />
+              <col style={{ width: '3.8%' }} />
+              <col style={{ width: '3.8%' }} />
+              {/* 12-15. អាសយដ្ឋានបច្ចុប្បន្ន (ភូមិ, ឃុំ, ស្រុក, ខេត្ត) */}
+              <col style={{ width: '3.2%' }} />
+              <col style={{ width: '3.2%' }} />
+              <col style={{ width: '3.8%' }} />
+              <col style={{ width: '3.8%' }} />
+              {/* 16. លេខទូរស័ព្ទផ្ទាល់ខ្លួន */}
+              <col style={{ width: '4.5%' }} />
+              {/* 17-23. ស្ថានភាពសិស្ស (ឪពុក, ម្តាយ, ឪពុកម្តាយ, ពិការ, ក្រីក្រ, អាហារូបករណ៍, ស្នាក់នៅវត្ត) */}
+              <col style={{ width: '1.5%' }} />
+              <col style={{ width: '1.5%' }} />
+              <col style={{ width: '2.0%' }} />
+              <col style={{ width: '1.5%' }} />
+              <col style={{ width: '1.5%' }} />
+              <col style={{ width: '2.0%' }} />
+              <col style={{ width: '2.0%' }} />
+              {/* 24-26. ឪពុក (ឈ្មោះ, មុខរបរ, ទូរស័ព្ទ) */}
+              <col style={{ width: '4.0%' }} />
+              <col style={{ width: '3.0%' }} />
+              <col style={{ width: '4.0%' }} />
+              {/* 27-29. ម្តាយ (ឈ្មោះ, មុខរបរ, ទូរស័ព្ទ) */}
+              <col style={{ width: '4.0%' }} />
+              <col style={{ width: '3.0%' }} />
+              <col style={{ width: '4.0%' }} />
+              {/* 30. ផ្សេងៗ */}
+              <col style={{ width: '3.5%' }} />
+              {/* 31. សកម្មភាព (Screen only) */}
+              <col className="no-print" />
+            </colgroup>
+
             {/* Table Header: 2 Rows Exactly Matching Image 2 */}
             <thead className="sticky top-0 z-20 shadow-xs">
               {/* Row 1 Header */}
-              <tr className="bg-[#002060] text-white font-bold text-center border-b border-white/20">
+              <tr className="bg-[#002060] text-white font-bold text-center border-b border-white/20 print:bg-slate-100 print:text-black">
                 <th rowSpan={2} className="py-2.5 px-2 border border-white/30 w-10">ល.រ</th>
                 <th rowSpan={2} className="py-2.5 px-2 border border-white/30 min-w-[70px]">អត្តលេខ</th>
                 <th rowSpan={2} className="py-2.5 px-3 border border-white/30 min-w-[130px]">គោត្តនាម នាម</th>
@@ -428,18 +476,18 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                 <th rowSpan={2} className="py-2.5 px-2 border border-white/30 min-w-[95px]">ថ្ងៃខែឆ្នាំកំណើត</th>
                 <th rowSpan={2} className="py-2.5 px-1 border border-white/30 w-12">អាយុ</th>
                 <th rowSpan={2} className="py-2.5 px-2 border border-white/30 min-w-[110px]">មកពីសាលា</th>
-                <th colSpan={4} className="py-1 px-2 border border-white/30 bg-[#0f3b73]">ទីកន្លែងកំណើត</th>
-                <th colSpan={4} className="py-1 px-2 border border-white/30 bg-[#0f3b73]">អាសយដ្ឋានបច្ចុប្បន្ន</th>
+                <th colSpan={4} className="py-1 px-2 border border-white/30 bg-[#0f3b73] print:bg-slate-200">ទីកន្លែងកំណើត</th>
+                <th colSpan={4} className="py-1 px-2 border border-white/30 bg-[#0f3b73] print:bg-slate-200">អាសយដ្ឋានបច្ចុប្បន្ន</th>
                 <th rowSpan={2} className="py-2.5 px-2 border border-white/30 min-w-[100px]">លេខទូរស័ព្ទផ្ទាល់ខ្លួន</th>
-                <th colSpan={7} className="py-1 px-2 border border-white/30 bg-[#0f3b73]">ស្ថានភាពសិស្ស</th>
-                <th colSpan={3} className="py-1 px-2 border border-white/30 bg-[#0f3b73]">គោត្តនាម នាម (ឪពុក)</th>
-                <th colSpan={3} className="py-1 px-2 border border-white/30 bg-[#0f3b73]">គោត្តនាម នាម (ម្តាយ)</th>
+                <th colSpan={7} className="py-1 px-2 border border-white/30 bg-[#0f3b73] print:bg-slate-200">ស្ថានភាពសិស្ស</th>
+                <th colSpan={3} className="py-1 px-2 border border-white/30 bg-[#0f3b73] print:bg-slate-200">គោត្តនាម នាម (ឪពុក)</th>
+                <th colSpan={3} className="py-1 px-2 border border-white/30 bg-[#0f3b73] print:bg-slate-200">គោត្តនាម នាម (ម្តាយ)</th>
                 <th rowSpan={2} className="py-2.5 px-2 border border-white/30 min-w-[80px]">ផ្សេងៗ</th>
                 <th rowSpan={2} className="py-2.5 px-2 border border-white/30 w-24 no-print bg-[#001730]">សកម្មភាព</th>
               </tr>
 
               {/* Row 2 Sub-Headers */}
-              <tr className="bg-[#0f3b73] text-white text-[10px] font-bold text-center border-b border-white/30">
+              <tr className="bg-[#0f3b73] text-white text-[10px] font-bold text-center border-b border-white/30 print:bg-slate-200 print:text-black">
                 {/* ទីកន្លែងកំណើត */}
                 <th className="py-1 px-1 border border-white/30 min-w-[70px]">ភូមិ</th>
                 <th className="py-1 px-1 border border-white/30 min-w-[80px]">ឃុំ/សង្កាត់</th>
@@ -473,7 +521,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
             <tbody className="divide-y divide-slate-200 text-slate-800">
               {filteredStudents.length === 0 ? (
                 <tr>
-                  <td colSpan={28} className="py-12 text-center text-slate-400">
+                  <td colSpan={31} className="py-12 text-center text-slate-400">
                     <Users className="w-10 h-10 mx-auto text-slate-300 mb-2" />
                     មិនមានទិន្នន័យសិស្សត្រូវនឹងលក្ខខណ្ឌស្វែងរកទេ
                   </td>
@@ -485,11 +533,14 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                   return (
                     <tr
                       key={stu.id}
-                      className="hover:bg-blue-50/40 transition-colors group border-b border-slate-200"
+                      className="hover:bg-blue-50/40 transition-colors group border-b border-slate-200 print:break-inside-avoid"
                     >
                       {/* ល.រ (រត់តាមលំដាប់លំដោយ ១, ២, ៣...) */}
                       <td className="py-1 px-1 text-center font-bold text-slate-700 bg-slate-50 border-r border-slate-200 select-none">
-                        <span className="inline-block px-1.5 py-0.5 rounded bg-slate-200/80 text-slate-800 text-[11px] font-black">
+                        <span className="inline-block px-1.5 py-0.5 rounded bg-slate-200/80 text-slate-800 text-[11px] font-black print:hidden">
+                          {toKhmerNum(index + 1)}
+                        </span>
+                        <span className="hidden print:inline-block font-bold text-[5.8pt]">
                           {toKhmerNum(index + 1)}
                         </span>
                       </td>
@@ -500,8 +551,11 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           type="text"
                           value={stu.studentCode}
                           onChange={(e) => handleInlineChange(stu.id, 'studentCode', e.target.value)}
-                          className="w-full font-mono text-[11px] font-bold text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white"
+                          className="w-full font-mono text-[11px] font-bold text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
                         />
+                        <span className="hidden print:block font-mono font-bold truncate text-[5.5pt]">
+                          {stu.studentCode}
+                        </span>
                       </td>
 
                       {/* គោត្តនាម នាម */}
@@ -510,8 +564,11 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           type="text"
                           value={stu.nameKh}
                           onChange={(e) => handleInlineChange(stu.id, 'nameKh', e.target.value)}
-                          className="w-full font-bold text-slate-900 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white"
+                          className="w-full font-bold text-slate-900 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
                         />
+                        <span className="hidden print:block font-bold truncate text-slate-900 text-[6pt]">
+                          {stu.nameKh}
+                        </span>
                       </td>
 
                       {/* ភេទ */}
@@ -519,7 +576,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                         <select
                           value={stu.gender}
                           onChange={(e) => handleInlineChange(stu.id, 'gender', e.target.value as Gender)}
-                          className={`text-[10px] font-bold rounded px-1 py-0.5 cursor-pointer border-0 ${
+                          className={`text-[10px] font-bold rounded px-1 py-0.5 cursor-pointer border-0 print:hidden ${
                             stu.gender === 'ស្រី'
                               ? 'bg-pink-100 text-pink-700'
                               : 'bg-blue-100 text-blue-700'
@@ -528,6 +585,9 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           <option value="ប្រុស">ប្រុស</option>
                           <option value="ស្រី">ស្រី</option>
                         </select>
+                        <span className={`hidden print:block font-bold text-center text-[5.5pt] ${stu.gender === 'ស្រី' ? 'text-pink-800' : 'text-blue-800'}`}>
+                          {stu.gender}
+                        </span>
                       </td>
 
                       {/* ថ្ងៃខែឆ្នាំកំណើត */}
@@ -536,13 +596,19 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           type="date"
                           value={stu.dob || ''}
                           onChange={(e) => handleInlineChange(stu.id, 'dob', e.target.value)}
-                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white"
+                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
                         />
+                        <span className="hidden print:block font-mono text-center text-[5.2pt] truncate">
+                          {stu.dob || ''}
+                        </span>
                       </td>
 
                       {/* អាយុ */}
                       <td className="py-1 px-1 text-center font-bold text-slate-700 bg-slate-50/50 border-r border-slate-200">
-                        {toKhmerNum(age)}
+                        <span className="print:hidden">{toKhmerNum(age)}</span>
+                        <span className="hidden print:block text-center font-bold text-[5.5pt]">
+                          {toKhmerNum(age)}
+                        </span>
                       </td>
 
                       {/* មកពីសាលា */}
@@ -552,8 +618,11 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           value={stu.originSchool || ''}
                           placeholder="សាលាចាស់..."
                           onChange={(e) => handleInlineChange(stu.id, 'originSchool', e.target.value)}
-                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white"
+                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
                         />
+                        <span className="hidden print:block truncate text-[5.5pt]">
+                          {stu.originSchool || ''}
+                        </span>
                       </td>
 
                       {/* ទីកន្លែងកំណើត - ភូមិ */}
@@ -562,8 +631,11 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           type="text"
                           value={stu.pobVillage || ''}
                           onChange={(e) => handleInlineChange(stu.id, 'pobVillage', e.target.value)}
-                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white"
+                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
                         />
+                        <span className="hidden print:block truncate text-[5.2pt]">
+                          {stu.pobVillage || ''}
+                        </span>
                       </td>
 
                       {/* ទីកន្លែងកំណើត - ឃុំ/សង្កាត់ */}
@@ -572,8 +644,11 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           type="text"
                           value={stu.pobCommune || ''}
                           onChange={(e) => handleInlineChange(stu.id, 'pobCommune', e.target.value)}
-                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white"
+                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
                         />
+                        <span className="hidden print:block truncate text-[5.2pt]">
+                          {stu.pobCommune || ''}
+                        </span>
                       </td>
 
                       {/* ទីកន្លែងកំណើត - ស្រុក/ខណ្ឌ */}
@@ -582,8 +657,11 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           type="text"
                           value={stu.pobDistrict || ''}
                           onChange={(e) => handleInlineChange(stu.id, 'pobDistrict', e.target.value)}
-                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white"
+                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
                         />
+                        <span className="hidden print:block truncate text-[5.2pt]">
+                          {stu.pobDistrict || ''}
+                        </span>
                       </td>
 
                       {/* ទីកន្លែងកំណើត - ខេត្ត/រាជធានី */}
@@ -592,8 +670,11 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           type="text"
                           value={stu.pobProvince || stu.pob || ''}
                           onChange={(e) => handleInlineChange(stu.id, 'pobProvince', e.target.value)}
-                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white"
+                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
                         />
+                        <span className="hidden print:block truncate text-[5.2pt]">
+                          {stu.pobProvince || stu.pob || ''}
+                        </span>
                       </td>
 
                       {/* អាសយដ្ឋានបច្ចុប្បន្ន - ភូមិ */}
@@ -602,8 +683,11 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           type="text"
                           value={stu.addrVillage || ''}
                           onChange={(e) => handleInlineChange(stu.id, 'addrVillage', e.target.value)}
-                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white"
+                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
                         />
+                        <span className="hidden print:block truncate text-[5.2pt]">
+                          {stu.addrVillage || ''}
+                        </span>
                       </td>
 
                       {/* អាសយដ្ឋានបច្ចុប្បន្ន - ឃុំ */}
@@ -612,8 +696,11 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           type="text"
                           value={stu.addrCommune || ''}
                           onChange={(e) => handleInlineChange(stu.id, 'addrCommune', e.target.value)}
-                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white"
+                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
                         />
+                        <span className="hidden print:block truncate text-[5.2pt]">
+                          {stu.addrCommune || ''}
+                        </span>
                       </td>
 
                       {/* អាសយដ្ឋានបច្ចុប្បន្ន - ស្រុក */}
@@ -622,8 +709,11 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           type="text"
                           value={stu.addrDistrict || ''}
                           onChange={(e) => handleInlineChange(stu.id, 'addrDistrict', e.target.value)}
-                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white"
+                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
                         />
+                        <span className="hidden print:block truncate text-[5.2pt]">
+                          {stu.addrDistrict || ''}
+                        </span>
                       </td>
 
                       {/* អាសយដ្ឋានបច្ចុប្បន្ន - ខេត្ត */}
@@ -632,8 +722,11 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           type="text"
                           value={stu.addrProvince || stu.currentAddress || ''}
                           onChange={(e) => handleInlineChange(stu.id, 'addrProvince', e.target.value)}
-                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white"
+                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
                         />
+                        <span className="hidden print:block truncate text-[5.2pt]">
+                          {stu.addrProvince || stu.currentAddress || ''}
+                        </span>
                       </td>
 
                       {/* លេខទូរស័ព្ទផ្ទាល់ខ្លួន */}
@@ -643,8 +736,11 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           value={stu.studentPhone || ''}
                           placeholder="ទូរស័ព្ទសិស្ស..."
                           onChange={(e) => handleInlineChange(stu.id, 'studentPhone', e.target.value)}
-                          className="w-full text-[10px] font-mono text-blue-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white"
+                          className="w-full text-[10px] font-mono text-blue-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
                         />
+                        <span className="hidden print:block font-mono text-center text-[5.2pt] truncate">
+                          {stu.studentPhone || ''}
+                        </span>
                       </td>
 
                       {/* ស្ថានភាពសិស្ស - កំព្រាឪពុក */}
@@ -665,8 +761,11 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                                 : 'none'
                             )
                           }
-                          className="rounded text-blue-600 cursor-pointer"
+                          className="rounded text-blue-600 cursor-pointer print:hidden"
                         />
+                        <span className="hidden print:block text-center font-bold text-[7pt]">
+                          {(stu.orphanStatus === 'father' || stu.orphanStatus === 'both') ? '✓' : ''}
+                        </span>
                       </td>
 
                       {/* ស្ថានភាពសិស្ស - កំព្រាម្តាយ */}
@@ -687,8 +786,11 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                                 : 'none'
                             )
                           }
-                          className="rounded text-blue-600 cursor-pointer"
+                          className="rounded text-blue-600 cursor-pointer print:hidden"
                         />
+                        <span className="hidden print:block text-center font-bold text-[7pt]">
+                          {(stu.orphanStatus === 'mother' || stu.orphanStatus === 'both') ? '✓' : ''}
+                        </span>
                       </td>
 
                       {/* ស្ថានភាពសិស្ស - កំព្រាទាំងឪពុកម្តាយ */}
@@ -699,8 +801,11 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           onChange={(e) =>
                             handleInlineChange(stu.id, 'orphanStatus', e.target.checked ? 'both' : 'none')
                           }
-                          className="rounded text-rose-600 cursor-pointer"
+                          className="rounded text-rose-600 cursor-pointer print:hidden"
                         />
+                        <span className="hidden print:block text-center font-bold text-[7pt]">
+                          {stu.orphanStatus === 'both' ? '✓' : ''}
+                        </span>
                       </td>
 
                       {/* ស្ថានភាពសិស្ស - ពិការ */}
@@ -709,8 +814,11 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           type="checkbox"
                           checked={!!stu.isDisabled}
                           onChange={(e) => handleInlineChange(stu.id, 'isDisabled', e.target.checked)}
-                          className="rounded text-amber-600 cursor-pointer"
+                          className="rounded text-amber-600 cursor-pointer print:hidden"
                         />
+                        <span className="hidden print:block text-center font-bold text-[7pt]">
+                          {stu.isDisabled ? '✓' : ''}
+                        </span>
                       </td>
 
                       {/* ស្ថានភាពសិស្ស - ក្រីក្រ */}
@@ -719,8 +827,11 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           type="checkbox"
                           checked={!!stu.isPoor}
                           onChange={(e) => handleInlineChange(stu.id, 'isPoor', e.target.checked)}
-                          className="rounded text-amber-600 cursor-pointer"
+                          className="rounded text-amber-600 cursor-pointer print:hidden"
                         />
+                        <span className="hidden print:block text-center font-bold text-[7pt]">
+                          {stu.isPoor ? '✓' : ''}
+                        </span>
                       </td>
 
                       {/* ស្ថានភាពសិស្ស - អាហារូបករណ៍ */}
@@ -729,8 +840,11 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           type="checkbox"
                           checked={!!stu.hasScholarship}
                           onChange={(e) => handleInlineChange(stu.id, 'hasScholarship', e.target.checked)}
-                          className="rounded text-emerald-600 cursor-pointer"
+                          className="rounded text-emerald-600 cursor-pointer print:hidden"
                         />
+                        <span className="hidden print:block text-center font-bold text-[7pt]">
+                          {stu.hasScholarship ? '✓' : ''}
+                        </span>
                       </td>
 
                       {/* ស្ថានភាពសិស្ស - ស្នាក់នៅវត្ត */}
@@ -739,8 +853,11 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           type="checkbox"
                           checked={!!stu.stayInPagoda}
                           onChange={(e) => handleInlineChange(stu.id, 'stayInPagoda', e.target.checked)}
-                          className="rounded text-indigo-600 cursor-pointer"
+                          className="rounded text-indigo-600 cursor-pointer print:hidden"
                         />
+                        <span className="hidden print:block text-center font-bold text-[7pt]">
+                          {stu.stayInPagoda ? '✓' : ''}
+                        </span>
                       </td>
 
                       {/* ឪពុក - ឈ្មោះ */}
@@ -750,8 +867,11 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           value={stu.fatherName || stu.guardianName || ''}
                           placeholder="ឈ្មោះឪពុក..."
                           onChange={(e) => handleInlineChange(stu.id, 'fatherName', e.target.value)}
-                          className="w-full text-[10px] font-semibold text-slate-800 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white"
+                          className="w-full text-[10px] font-semibold text-slate-800 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
                         />
+                        <span className="hidden print:block truncate text-[5.5pt]">
+                          {stu.fatherName || stu.guardianName || ''}
+                        </span>
                       </td>
 
                       {/* ឪពុក - មុខរបរ */}
@@ -761,8 +881,11 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           value={stu.fatherOccupation || stu.guardianOccupation || ''}
                           placeholder="មុខរបរ..."
                           onChange={(e) => handleInlineChange(stu.id, 'fatherOccupation', e.target.value)}
-                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white"
+                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
                         />
+                        <span className="hidden print:block truncate text-[5.2pt]">
+                          {stu.fatherOccupation || stu.guardianOccupation || ''}
+                        </span>
                       </td>
 
                       {/* ឪពុក - លេខទូរស័ព្ទ */}
@@ -772,8 +895,11 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           value={stu.fatherPhone || stu.guardianPhone || ''}
                           placeholder="ទូរស័ព្ទ..."
                           onChange={(e) => handleInlineChange(stu.id, 'fatherPhone', e.target.value)}
-                          className="w-full text-[10px] font-mono text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white"
+                          className="w-full text-[10px] font-mono text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
                         />
+                        <span className="hidden print:block font-mono text-center text-[5.2pt] truncate">
+                          {stu.fatherPhone || stu.guardianPhone || ''}
+                        </span>
                       </td>
 
                       {/* ម្តាយ - ឈ្មោះ */}
@@ -783,8 +909,11 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           value={stu.motherName || ''}
                           placeholder="ឈ្មោះម្តាយ..."
                           onChange={(e) => handleInlineChange(stu.id, 'motherName', e.target.value)}
-                          className="w-full text-[10px] font-semibold text-slate-800 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white"
+                          className="w-full text-[10px] font-semibold text-slate-800 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
                         />
+                        <span className="hidden print:block truncate text-[5.5pt]">
+                          {stu.motherName || ''}
+                        </span>
                       </td>
 
                       {/* ម្តាយ - មុខរបរ */}
@@ -794,8 +923,11 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           value={stu.motherOccupation || ''}
                           placeholder="មុខរបរ..."
                           onChange={(e) => handleInlineChange(stu.id, 'motherOccupation', e.target.value)}
-                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white"
+                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
                         />
+                        <span className="hidden print:block truncate text-[5.2pt]">
+                          {stu.motherOccupation || ''}
+                        </span>
                       </td>
 
                       {/* ម្តាយ - លេខទូរស័ព្ទ */}
@@ -805,8 +937,11 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           value={stu.motherPhone || ''}
                           placeholder="ទូរស័ព្ទ..."
                           onChange={(e) => handleInlineChange(stu.id, 'motherPhone', e.target.value)}
-                          className="w-full text-[10px] font-mono text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white"
+                          className="w-full text-[10px] font-mono text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
                         />
+                        <span className="hidden print:block font-mono text-center text-[5.2pt] truncate">
+                          {stu.motherPhone || ''}
+                        </span>
                       </td>
 
                       {/* ផ្សេងៗ */}
@@ -816,12 +951,15 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           value={stu.otherNotes || stu.notes || ''}
                           placeholder="ចំណាំ..."
                           onChange={(e) => handleInlineChange(stu.id, 'otherNotes', e.target.value)}
-                          className="w-full text-[10px] text-slate-600 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white"
+                          className="w-full text-[10px] text-slate-600 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
                         />
+                        <span className="hidden print:block truncate text-[5.2pt]">
+                          {stu.otherNotes || stu.notes || ''}
+                        </span>
                       </td>
 
                       {/* សកម្មភាព */}
-                      <td className="py-1 px-1 text-center no-print bg-slate-50/50">
+                      <td className="py-1 px-1 text-center no-print bg-slate-50/50 print:hidden">
                         <div className="flex items-center justify-center space-x-1">
                           {/* ចម្លងសិស្ស */}
                           <button
@@ -907,7 +1045,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
       </div>
 
       {/* Official Signatures on Print */}
-      <div className="hidden print:block mt-8 text-xs">
+      <div className="hidden print:block mt-8 text-xs print:break-inside-avoid">
         <div className="flex justify-between items-start">
           <div className="text-center w-52">
             <p className="font-bold">បានឃើញ និងពិនិត្យត្រឹមត្រូវ</p>
