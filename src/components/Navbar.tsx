@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, School, User, Calendar, Share2, Check, Plus, Settings, Clock, Smartphone } from 'lucide-react';
+import { Menu, School, User, Calendar, Share2, Check, Plus, Settings, Clock, Smartphone, RefreshCw } from 'lucide-react';
 import type { ClassRoom, TeacherSettings } from '../types';
 import { formatKhmerDate, getTodayDateString, toKhmerNum } from '../utils/dateUtils';
 
@@ -158,6 +158,24 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           )}
 
+
+          {/* Quick Action: Refresh App to bypass cache */}
+          <button
+            onClick={() => {
+              if ('caches' in window) {
+                caches.keys().then((keys) => keys.forEach((k) => caches.delete(k)));
+              }
+              if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then((regs) => regs.forEach((r) => r.unregister()));
+              }
+              window.location.href = window.location.origin + window.location.pathname + '?v=' + Date.now();
+            }}
+            className="inline-flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs"
+            title="ចុចដើម្បី Refresh កម្មវិធី និងទាញយកកំណែថ្មីចុងក្រោយបំផុត (Clear Cache & Update)"
+          >
+            <RefreshCw className="w-3.5 h-3.5 text-amber-600" />
+            <span className="hidden md:inline">Refresh កម្មវិធី</span>
+          </button>
 
           {/* Quick Action: Share Link to Students / Class Monitor */}
           <button
