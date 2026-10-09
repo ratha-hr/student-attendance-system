@@ -26,33 +26,20 @@ import { TelegramShareModal } from '../components/TelegramShareModal';
 import { soundEffects } from '../utils/soundEffects';
 import { PrintButton } from '../components/common/PrintButton';
 
-// Preset time options for morning and afternoon shifts
-const MORNING_IN_OPTIONS = [
-  { value: '07:00', label: 'ម៉ោង 7:00' },
-  { value: '07:15', label: 'ម៉ោង 7:15' },
-  { value: '07:30', label: 'ម៉ោង 7:30' },
-  { value: '08:00', label: 'ម៉ោង 8:00' },
+// ម៉ោងចេញចូលសម្រាប់មុខវិជ្ជា វេនព្រឹក និងវេនរសៀល
+const MORNING_HOURS = [
+  { value: '7:00', label: '7:00' },
+  { value: '8:00', label: '8:00' },
+  { value: '9:00', label: '9:00' },
+  { value: '10:00', label: '10:00' },
+  { value: '11:00', label: '11:00' },
 ];
 
-const MORNING_OUT_OPTIONS = [
-  { value: '11:00', label: 'ម៉ោង 11:00' },
-  { value: '10:30', label: 'ម៉ោង 10:30' },
-  { value: '11:15', label: 'ម៉ោង 11:15' },
-  { value: '11:30', label: 'ម៉ោង 11:30' },
-];
-
-const AFTERNOON_IN_OPTIONS = [
-  { value: '14:00', label: 'ម៉ោង 2:00 (14:00)' },
-  { value: '13:00', label: 'ម៉ោង 1:00 (13:00)' },
-  { value: '13:30', label: 'ម៉ោង 1:30 (13:30)' },
-  { value: '14:30', label: 'ម៉ោង 2:30 (14:30)' },
-];
-
-const AFTERNOON_OUT_OPTIONS = [
-  { value: '17:00', label: 'ម៉ោង 5:00 (17:00)' },
-  { value: '16:30', label: 'ម៉ោង 4:30 (16:30)' },
-  { value: '17:15', label: 'ម៉ោង 5:15 (17:15)' },
-  { value: '17:30', label: 'ម៉ោង 5:30 (17:30)' },
+const AFTERNOON_HOURS = [
+  { value: '14:00', label: '14:00' },
+  { value: '15:00', label: '15:00' },
+  { value: '16:00', label: '16:00' },
+  { value: '17:00', label: '17:00' },
 ];
 
 interface AttendancePageProps {
@@ -78,7 +65,7 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
   const [selectedDate, setSelectedDate] = useState(getTodayDateString());
   const [selectedSession, setSelectedSession] = useState<'morning' | 'afternoon'>('morning');
   const [selectedSlot, setSelectedSlot] = useState<'check_in' | 'check_out'>('check_in');
-  const [checkInTime, setCheckInTime] = useState<string>('07:00');
+  const [checkInTime, setCheckInTime] = useState<string>('7:00');
   const [checkOutTime, setCheckOutTime] = useState<string>('11:00');
   const [isTelegramOpen, setIsTelegramOpen] = useState(false);
   const [isSavedFeedback, setIsSavedFeedback] = useState(false);
@@ -110,7 +97,7 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
   const handleSessionChange = (session: 'morning' | 'afternoon') => {
     setSelectedSession(session);
     if (session === 'morning') {
-      setCheckInTime('07:00');
+      setCheckInTime('7:00');
       setCheckOutTime('11:00');
     } else {
       setCheckInTime('14:00');
@@ -118,14 +105,10 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
     }
   };
 
-  // Available selectable preset time options based on active shift & slot
-  const currentPresetOptions = useMemo(() => {
-    if (selectedSession === 'morning') {
-      return selectedSlot === 'check_in' ? MORNING_IN_OPTIONS : MORNING_OUT_OPTIONS;
-    } else {
-      return selectedSlot === 'check_in' ? AFTERNOON_IN_OPTIONS : AFTERNOON_OUT_OPTIONS;
-    }
-  }, [selectedSession, selectedSlot]);
+  // Available selectable hour options based on active shift (Morning or Afternoon)
+  const currentHoursOptions = useMemo(() => {
+    return selectedSession === 'morning' ? MORNING_HOURS : AFTERNOON_HOURS;
+  }, [selectedSession]);
 
   // Students for the active class
   const classStudents = useMemo(() => {
@@ -334,49 +317,69 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
 
           {/* Right: In/Out Selector with Quick Options + Holiday Checkbox */}
           <div className="flex flex-wrap items-center gap-2.5">
-            {/* Slot Switcher: ម៉ោងចូល / ម៉ោងចេញ */}
-            <div className="inline-flex items-center bg-slate-100 p-1 rounded-xl text-xs sm:text-sm font-bold">
-              <button
-                type="button"
-                onClick={() => setSelectedSlot('check_in')}
-                className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center space-x-1.5 ${
-                  selectedSlot === 'check_in'
-                    ? 'bg-emerald-600 text-white shadow-xs font-black'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <span>🚪 ម៉ោងចូល</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedSlot('check_out')}
-                className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center space-x-1.5 ${
-                  selectedSlot === 'check_out'
-                    ? 'bg-blue-600 text-white shadow-xs font-black'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <span>🏁 ម៉ោងចេញ</span>
-              </button>
-            </div>
+            {/* ម៉ោងចេញចូលសម្រាប់មុខវិជ្ជា */}
+            <div className="inline-flex items-center bg-slate-100 p-1 rounded-xl text-xs sm:text-sm font-bold gap-1">
+              {/* ម៉ោងចូល */}
+              <div className="flex items-center space-x-1 pl-1 pr-1.5 py-0.5 rounded-lg bg-white/80 border border-slate-200/80 shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => setSelectedSlot('check_in')}
+                  className={`px-2.5 py-1 rounded-md text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center space-x-1 ${
+                    selectedSlot === 'check_in'
+                      ? 'bg-emerald-600 text-white shadow-xs font-black'
+                      : 'text-slate-700 hover:text-emerald-700 hover:bg-emerald-50'
+                  }`}
+                  title="កត់វត្តមានសម្រាប់ម៉ោងចូល"
+                >
+                  <span>🚪 ម៉ោងចូល</span>
+                </button>
+                <select
+                  value={checkInTime}
+                  onChange={(e) => {
+                    setCheckInTime(e.target.value);
+                    setSelectedSlot('check_in');
+                  }}
+                  className="bg-white border border-slate-300 rounded-md px-2 py-0.5 text-xs sm:text-sm font-black text-slate-800 cursor-pointer shadow-2xs hover:border-emerald-500 focus:ring-2 focus:ring-emerald-500"
+                >
+                  {currentHoursOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-            {/* Selectable Time Dropdown (e.g. ម៉ោង 7:00, 7:15...) */}
-            <div className="relative inline-flex items-center">
-              <Clock className="w-4 h-4 text-slate-500 absolute left-2.5 pointer-events-none" />
-              <select
-                value={selectedSlot === 'check_in' ? checkInTime : checkOutTime}
-                onChange={(e) => {
-                  if (selectedSlot === 'check_in') setCheckInTime(e.target.value);
-                  else setCheckOutTime(e.target.value);
-                }}
-                className="pl-8 pr-3 py-1.5 bg-white border border-slate-300 rounded-xl font-bold text-xs sm:text-sm text-slate-800 cursor-pointer shadow-2xs hover:border-slate-400 focus:ring-2 focus:ring-blue-500"
-              >
-                {currentPresetOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
+              <span className="text-slate-400 font-bold px-0.5">➔</span>
+
+              {/* ម៉ោងចេញ */}
+              <div className="flex items-center space-x-1 pl-1 pr-1.5 py-0.5 rounded-lg bg-white/80 border border-slate-200/80 shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => setSelectedSlot('check_out')}
+                  className={`px-2.5 py-1 rounded-md text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center space-x-1 ${
+                    selectedSlot === 'check_out'
+                      ? 'bg-blue-600 text-white shadow-xs font-black'
+                      : 'text-slate-700 hover:text-blue-700 hover:bg-blue-50'
+                  }`}
+                  title="កត់វត្តមានសម្រាប់ម៉ោងចេញ"
+                >
+                  <span>🏁 ម៉ោងចេញ</span>
+                </button>
+                <select
+                  value={checkOutTime}
+                  onChange={(e) => {
+                    setCheckOutTime(e.target.value);
+                    setSelectedSlot('check_out');
+                  }}
+                  className="bg-white border border-slate-300 rounded-md px-2 py-0.5 text-xs sm:text-sm font-black text-slate-800 cursor-pointer shadow-2xs hover:border-blue-500 focus:ring-2 focus:ring-blue-500"
+                >
+                  {currentHoursOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {/* Holiday Toggle */}
