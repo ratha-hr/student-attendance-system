@@ -36,6 +36,13 @@
   font-family: 'Battambang', sans-serif;
 }
 
+.font-clock {
+  font-family: 'Kantumruy Pro', sans-serif;
+  font-feature-settings: "tnum";
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
 /* Print Styles for Official Documents & Tables */
 @media print {
   html, body {

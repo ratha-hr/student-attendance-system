@@ -24,9 +24,10 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenManageClasses,
 }) => {
   const todayKhmer = formatKhmerDate(getTodayDateString(), true);
-  const [currentTime, setCurrentTime] = useState<string>('');
+  const [timeDigits, setTimeDigits] = useState<string>('');
+  const [timePeriod, setTimePeriod] = useState<string>('');
 
-  // Live Khmer Clock with digital seconds
+  // Live Khmer Clock with smooth typography
   useEffect(() => {
     const updateTime = () => {
       const now = new Date();
@@ -36,7 +37,8 @@ export const Navbar: React.FC<NavbarProps> = ({
       const ampm = hours >= 12 ? 'រសៀល' : 'ព្រឹក';
       if (hours > 12) hours -= 12;
       if (hours === 0) hours = 12;
-      setCurrentTime(`${toKhmerNum(hours)}:${toKhmerNum(mins)}:${toKhmerNum(secs)} ${ampm}`);
+      setTimeDigits(`${toKhmerNum(hours)}:${toKhmerNum(mins)}:${toKhmerNum(secs)}`);
+      setTimePeriod(ampm);
     };
     updateTime();
     const timer = setInterval(updateTime, 1000);
@@ -112,19 +114,22 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Right side: Sleek Clock Widget & Settings Profile */}
         <div className="flex items-center space-x-2 sm:space-x-3">
-          {/* Enhanced Live Clock & Date Widget (រូបទី១៖ កែសម្រួលឱ្យស្អាត លុបដំឡើងកម្មវិធី refresh share) */}
-          {currentTime && (
-            <div className="flex items-center space-x-2 px-3 sm:px-3.5 py-1.5 sm:py-2 bg-linear-to-r from-blue-50/90 to-indigo-50/90 border border-blue-200/90 rounded-2xl shadow-2xs">
+          {/* Enhanced Live Clock & Date Widget (រូបទី១៖ Font ស្អាត ប្រណីត ច្បាស់ភ្នែក) */}
+          {timeDigits && (
+            <div className="flex items-center space-x-2 px-3 sm:px-3.5 py-1.5 sm:py-2 bg-slate-100/90 hover:bg-slate-100 border border-slate-200/90 rounded-2xl shadow-2xs transition-all">
               <div className="relative flex items-center justify-center">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping absolute opacity-75" />
                 <span className="w-2 h-2 rounded-full bg-emerald-600 relative" />
               </div>
               <Clock className="w-4 h-4 text-blue-600 shrink-0" />
-              <span className="font-bold text-xs sm:text-sm text-blue-950 font-mono tracking-tight whitespace-nowrap">
-                {currentTime}
+              <span className="font-clock font-black text-sm sm:text-base text-slate-900 tracking-wide whitespace-nowrap">
+                {timeDigits}
               </span>
-              <span className="hidden xl:inline text-blue-300 font-bold">|</span>
-              <span className="hidden xl:inline text-xs font-bold text-slate-600 whitespace-nowrap">
+              <span className="font-kantumruy font-bold text-[11px] sm:text-xs text-blue-700 bg-blue-50 border border-blue-200/80 px-1.5 py-0.5 rounded-md leading-none whitespace-nowrap">
+                {timePeriod}
+              </span>
+              <span className="hidden xl:inline text-slate-300 font-bold">|</span>
+              <span className="hidden xl:inline text-xs font-bold text-slate-600 font-kantumruy whitespace-nowrap">
                 <Calendar className="w-3.5 h-3.5 text-blue-500 inline-block mr-1 -mt-0.5" />
                 {todayKhmer}
               </span>
