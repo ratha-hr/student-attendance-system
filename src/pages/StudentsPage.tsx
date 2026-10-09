@@ -14,10 +14,12 @@ import {
   Users,
   Phone,
   Sparkles,
+  QrCode,
 } from 'lucide-react';
 import type { Student, ClassRoom, AttendanceRecord, Gender, TeacherSettings } from '../types';
 import { db } from '../db/db';
 import { Modal } from '../components/common/Modal';
+import { StudentIDCardsModal } from '../components/StudentIDCardsModal';
 import { toKhmerNum, formatKhmerDate } from '../utils/dateUtils';
 import {
   exportStudentsToExcel,
@@ -48,6 +50,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
   const [genderFilter, setGenderFilter] = useState<'all' | 'ប្រុស' | 'ស្រី'>('all');
   const [viewingStudent, setViewingStudent] = useState<Student | null>(null);
   const [lastSavedId, setLastSavedId] = useState<string | null>(null);
+  const [isIDCardsOpen, setIsIDCardsOpen] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -291,6 +294,16 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
           >
             <FileSpreadsheet className="w-3.5 h-3.5 mr-1 text-blue-600" />
             នាំចេញ Excel (.xlsm)
+          </button>
+
+          {/* Print ID Cards with QR */}
+          <button
+            onClick={() => setIsIDCardsOpen(true)}
+            className="inline-flex items-center px-3 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-bold rounded-xl border border-purple-200 transition-colors cursor-pointer"
+            title="បោះពុម្ពកាតសម្គាល់ខ្លួនសិស្សភ្ជាប់ QR Code"
+          >
+            <QrCode className="w-3.5 h-3.5 mr-1 text-purple-600" />
+            កាតសិស្ស (QR)
           </button>
 
           {/* Print */}
@@ -994,6 +1007,15 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
           </div>
         )}
       </Modal>
+
+      {/* Student ID Cards Print Modal with QR Code */}
+      <StudentIDCardsModal
+        isOpen={isIDCardsOpen}
+        onClose={() => setIsIDCardsOpen(false)}
+        students={filteredStudents}
+        currentClass={currentClass || null}
+        settings={settings}
+      />
     </div>
   );
 };

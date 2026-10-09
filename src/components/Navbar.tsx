@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { Menu, School, User, Calendar, Share2, Check, Plus, Settings, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Menu, School, User, Calendar, Share2, Check, Plus, Settings, RefreshCw, Clock, Smartphone } from 'lucide-react';
 import type { ClassRoom, TeacherSettings } from '../types';
-import { formatKhmerDate, getTodayDateString } from '../utils/dateUtils';
+import { formatKhmerDate, getTodayDateString, toKhmerNum } from '../utils/dateUtils';
 
 interface NavbarProps {
   onToggleSidebar: () => void;
@@ -24,6 +24,44 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const todayKhmer = formatKhmerDate(getTodayDateString(), true);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [currentTime, setCurrentTime] = useState<string>('');
+
+  // Live Khmer Clock
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      let hours = now.getHours();
+      const mins = String(now.getMinutes()).padStart(2, '0');
+      const secs = String(now.getSeconds()).padStart(2, '0');
+      const ampm = hours >= 12 ? 'រសៀល' : 'ព្រឹក';
+      if (hours > 12) hours -= 12;
+      if (hours === 0) hours = 12;
+      setCurrentTime(`${toKhmerNum(hours)}:${toKhmerNum(mins)}:${toKhmerNum(secs)} ${ampm}`);
+    };
+    updateTime();
+    const timer = setInterval(updateTime, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Listen for PWA Install Prompt
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstallPWA = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setInstallPrompt(null);
+    }
+  };
 
   const handleCopyShareLink = () => {
     const shareUrl = 'https://ratha-hr.github.io/student-attendance-system/';
@@ -94,11 +132,31 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Right side: Share Link & Settings Profile */}
         <div className="flex items-center space-x-2 sm:space-x-3">
+          {/* Live Khmer Clock */}
+          {currentTime && (
+            <div className="hidden lg:flex items-center space-x-1.5 px-3 py-1.5 bg-blue-50/80 border border-blue-200/60 rounded-xl text-xs font-bold text-blue-900 shadow-2xs">
+              <Clock className="w-3.5 h-3.5 text-blue-600" />
+              <span className="font-mono">{currentTime}</span>
+            </div>
+          )}
+
           {/* Today Date Pill */}
-          <div className="hidden xl:flex items-center space-x-1.5 px-3 py-1.5 bg-slate-100 rounded-xl text-xs text-slate-600 font-medium">
+          <div className="hidden 2xl:flex items-center space-x-1.5 px-3 py-1.5 bg-slate-100 rounded-xl text-xs text-slate-600 font-medium">
             <Calendar className="w-3.5 h-3.5 text-blue-600" />
             <span>{todayKhmer}</span>
           </div>
+
+          {/* PWA Install Button */}
+          {installPrompt && (
+            <button
+              onClick={handleInstallPWA}
+              className="inline-flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 bg-linear-to-r from-blue-600 to-indigo-600 text-white rounded-xl text-xs font-bold shadow-xs hover:from-blue-700 hover:to-indigo-700 transition-all cursor-pointer animate-pulse"
+              title="ដំឡើងកម្មវិធីលើទូរស័ព្ទ ឬកុំព្យូទ័រ (Install App)"
+            >
+              <Smartphone className="w-3.5 h-3.5" />
+              <span>ដំឡើង App</span>
+            </button>
+          )}
 
           {/* Version badge & Hard Reload / Cache bypass */}
           <button

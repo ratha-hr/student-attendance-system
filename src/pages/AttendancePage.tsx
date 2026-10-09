@@ -16,11 +16,14 @@ import {
   Filter,
   Send,
   BookOpen,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import type { Student, ClassRoom, AttendanceRecord, AttendanceStatus, TeacherSettings } from '../types';
 import { db } from '../db/db';
 import { toKhmerNum, formatKhmerDate, getTodayDateString, KHMER_MONTHS } from '../utils/dateUtils';
 import { TelegramShareModal } from '../components/TelegramShareModal';
+import { soundEffects } from '../utils/soundEffects';
 
 interface AttendancePageProps {
   students: Student[];
@@ -66,6 +69,8 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
   const [selectedHourSlot, setSelectedHourSlot] = useState<string>('m-all');
   const [isTelegramOpen, setIsTelegramOpen] = useState(false);
   const [isSavedFeedback, setIsSavedFeedback] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'present' | 'permission' | 'absent' | 'late' | 'notRecorded'>('all');
+  const [soundOn, setSoundOn] = useState(true);
 
   // Active class from top navbar
   const activeClassId = selectedClassId === 'ALL' ? (classes[0]?.id || '') : selectedClassId;
@@ -97,8 +102,19 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
     return map;
   }, [attendanceRecords, activeClassId, selectedDate, selectedSession]);
 
+  // Filtered students for display based on quick status chip
+  const displayedStudents = useMemo(() => {
+    return classStudents.filter((s) => {
+      if (statusFilter === 'all') return true;
+      const rec = dailyRecordMap.get(s.id);
+      if (statusFilter === 'notRecorded') return !rec;
+      return rec?.status === statusFilter;
+    });
+  }, [classStudents, statusFilter, dailyRecordMap]);
+
   // Set status for student
   const handleSetStatus = async (studentId: string, status: AttendanceStatus, reason = '') => {
+    if (soundOn) soundEffects.playClick();
     const existing = dailyRecordMap.get(studentId);
     if (existing) {
       await db.attendance.update(existing.id, {
@@ -134,6 +150,7 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
 
   // Mark all students present with 1 click
   const handleMarkAllPresent = async () => {
+    if (soundOn) soundEffects.playSuccess();
     const recordsToPut: AttendanceRecord[] = classStudents.map((s) => {
       const existing = dailyRecordMap.get(s.id);
       return {
@@ -327,6 +344,94 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
         </div>
       </div>
 
+      {/* Quick Filter Status Chips & Sound Toggle */}
+      <div className="flex flex-wrap items-center justify-between gap-2 p-2 bg-slate-100/80 rounded-2xl border border-slate-200/80 no-print">
+        <div className="flex flex-wrap items-center gap-1.5 text-xs font-bold">
+          <span className="text-slate-500 text-[11px] px-1">តម្រងរហ័ស៖</span>
+          <button
+            onClick={() => setStatusFilter('all')}
+            className={`px-2.5 py-1 rounded-xl transition-all cursor-pointer ${
+              statusFilter === 'all'
+                ? 'bg-white text-slate-800 shadow-2xs font-black'
+                : 'text-slate-600 hover:bg-white/60'
+            }`}
+          >
+            ទាំងអស់ ({toKhmerNum(dailyStats.total)})
+          </button>
+          <button
+            onClick={() => setStatusFilter('present')}
+            className={`px-2.5 py-1 rounded-xl transition-all cursor-pointer ${
+              statusFilter === 'present'
+                ? 'bg-emerald-600 text-white shadow-2xs font-black'
+                : 'text-emerald-700 hover:bg-emerald-50'
+            }`}
+          >
+            🟢 មក ({toKhmerNum(dailyStats.present)})
+          </button>
+          <button
+            onClick={() => setStatusFilter('permission')}
+            className={`px-2.5 py-1 rounded-xl transition-all cursor-pointer ${
+              statusFilter === 'permission'
+                ? 'bg-amber-500 text-white shadow-2xs font-black'
+                : 'text-amber-700 hover:bg-amber-50'
+            }`}
+          >
+            🟡 ច្បាប់ ({toKhmerNum(dailyStats.permission)})
+          </button>
+          <button
+            onClick={() => setStatusFilter('absent')}
+            className={`px-2.5 py-1 rounded-xl transition-all cursor-pointer ${
+              statusFilter === 'absent'
+                ? 'bg-rose-600 text-white shadow-2xs font-black'
+                : 'text-rose-700 hover:bg-rose-50'
+            }`}
+          >
+            🔴 ឥតច្បាប់ ({toKhmerNum(dailyStats.absent)})
+          </button>
+          <button
+            onClick={() => setStatusFilter('late')}
+            className={`px-2.5 py-1 rounded-xl transition-all cursor-pointer ${
+              statusFilter === 'late'
+                ? 'bg-blue-600 text-white shadow-2xs font-black'
+                : 'text-blue-700 hover:bg-blue-50'
+            }`}
+          >
+            🔵 យឺត ({toKhmerNum(dailyStats.late)})
+          </button>
+          {dailyStats.notRecorded > 0 && (
+            <button
+              onClick={() => setStatusFilter('notRecorded')}
+              className={`px-2.5 py-1 rounded-xl transition-all cursor-pointer ${
+                statusFilter === 'notRecorded'
+                  ? 'bg-slate-700 text-white shadow-2xs font-black'
+                  : 'text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              ⚪ មិនទាន់កត់ ({toKhmerNum(dailyStats.notRecorded)})
+            </button>
+          )}
+        </div>
+
+        {/* Audio Chime Toggle */}
+        <button
+          onClick={() => setSoundOn(!soundOn)}
+          className="inline-flex items-center space-x-1 px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold border border-slate-200 shadow-2xs transition-colors cursor-pointer"
+          title={soundOn ? 'បិទសំឡេង' : 'បើកសំឡេង'}
+        >
+          {soundOn ? (
+            <>
+              <Volume2 className="w-3.5 h-3.5 text-emerald-600" />
+              <span className="text-[11px]">សំឡេង៖ បើក</span>
+            </>
+          ) : (
+            <>
+              <VolumeX className="w-3.5 h-3.5 text-slate-400" />
+              <span className="text-[11px] text-slate-400">សំឡេង៖ បិទ</span>
+            </>
+          )}
+        </button>
+      </div>
+
       {/* Printable Official Header */}
       <div className="hidden print:block text-center my-4">
         <h3 className="font-moul text-base">ព្រះរាជាណាចក្រកម្ពុជា</h3>
@@ -356,15 +461,15 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
-              {classStudents.length === 0 ? (
+              {displayedStudents.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-slate-400">
                     <Users className="w-10 h-10 mx-auto text-slate-300 mb-2" />
-                    មិនមានទិន្នន័យសិស្សក្នុងថ្នាក់នេះទេ
+                    មិនមានទិន្នន័យសិស្សត្រូវតាមលក្ខខណ្ឌនេះទេ
                   </td>
                 </tr>
               ) : (
-                classStudents.map((stu, index) => {
+                displayedStudents.map((stu, index) => {
                   const record = dailyRecordMap.get(stu.id);
                   const currentStatus = record?.status || null;
                   const reason = record?.reason || '';

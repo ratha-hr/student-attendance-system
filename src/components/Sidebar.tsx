@@ -10,10 +10,12 @@ import {
   Calendar,
   Clock,
   Sliders,
+  LayoutDashboard,
 } from 'lucide-react';
 import type { ClassRoom } from '../types';
 
 export type NavTab =
+  | 'dashboard'
   | 'attendance'
   | 'monthly-attendance'
   | 'students'
@@ -43,6 +45,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenSettings,
 }) => {
   const menuItems = [
+    {
+      id: 'dashboard' as NavTab,
+      label: '០. ផ្ទាំងសង្ខេប & ស្ថិតិ',
+      icon: LayoutDashboard,
+    },
     {
       id: 'attendance' as NavTab,
       label: '១. វត្តមានប្រចាំថ្ងៃ',

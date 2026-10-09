@@ -4,6 +4,7 @@ import { db } from './db/db';
 import type { NavTab } from './components/Sidebar';
 import { Sidebar } from './components/Sidebar';
 import { Navbar } from './components/Navbar';
+import { MobileBottomNav } from './components/MobileBottomNav';
 import { Modal } from './components/common/Modal';
 
 // Core Pages requested by user
@@ -15,6 +16,7 @@ import { TimetablePage } from './pages/TimetablePage';
 import { OfficialLettersPage } from './pages/OfficialLettersPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { GradeCoefficientsConfigPage } from './pages/GradeCoefficientsConfigPage';
+import { DashboardPage } from './pages/DashboardPage';
 import type { TeacherSettings, ClassRoom } from './types';
 import { Plus, Trash2, BookOpen } from 'lucide-react';
 import { toKhmerNum } from './utils/dateUtils';
@@ -128,7 +130,7 @@ export function App() {
         />
 
         {/* Content Body */}
-        <main className="flex-1 p-3 sm:p-5 lg:p-6 max-w-6xl w-full mx-auto">
+        <main className="flex-1 p-3 sm:p-5 lg:p-6 max-w-6xl w-full mx-auto pb-20 lg:pb-6">
           {/* Quick Load 200 Students Banner if database has fewer than 50 students */}
           {students.length < 50 && (
             <div className="mb-4 bg-linear-to-r from-blue-600 to-indigo-600 text-white p-3.5 rounded-2xl shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in no-print">
@@ -153,6 +155,18 @@ export function App() {
                 ផ្ទុក ២០០ នាក់ភ្លាម
               </button>
             </div>
+          )}
+
+          {currentTab === 'dashboard' && (
+            <DashboardPage
+              students={students}
+              classes={classes}
+              attendanceRecords={attendanceRecords}
+              settings={settings}
+              onNavigateTab={setCurrentTab}
+              onSelectClass={setSelectedClassId}
+              onSelectStudentForLetter={handleSelectStudentForLetter}
+            />
           )}
 
           {currentTab === 'attendance' && (
@@ -245,6 +259,13 @@ export function App() {
             />
           )}
         </main>
+
+        {/* Mobile Bottom Navigation Bar */}
+        <MobileBottomNav
+          currentTab={currentTab}
+          onSelectTab={setCurrentTab}
+          onOpenMenu={() => setIsSidebarOpen(true)}
+        />
       </div>
 
       {/* Settings Modal (Teacher info, School info, Backup/Restore JSON) */}
