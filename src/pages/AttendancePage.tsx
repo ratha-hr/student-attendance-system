@@ -28,14 +28,14 @@ import { PrintButton } from '../components/common/PrintButton';
 
 // Preset time options for morning and afternoon shifts
 const MORNING_IN_OPTIONS = [
-  { value: '07:00', label: 'ម៉ោង 7:00 (ទូទៅ)' },
+  { value: '07:00', label: 'ម៉ោង 7:00' },
   { value: '07:15', label: 'ម៉ោង 7:15' },
   { value: '07:30', label: 'ម៉ោង 7:30' },
   { value: '08:00', label: 'ម៉ោង 8:00' },
 ];
 
 const MORNING_OUT_OPTIONS = [
-  { value: '11:00', label: 'ម៉ោង 11:00 (ទូទៅ)' },
+  { value: '11:00', label: 'ម៉ោង 11:00' },
   { value: '10:30', label: 'ម៉ោង 10:30' },
   { value: '11:15', label: 'ម៉ោង 11:15' },
   { value: '11:30', label: 'ម៉ោង 11:30' },
@@ -339,42 +339,37 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
               <button
                 type="button"
                 onClick={() => setSelectedSlot('check_in')}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center space-x-1.5 ${
+                className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center space-x-1.5 ${
                   selectedSlot === 'check_in'
                     ? 'bg-emerald-600 text-white shadow-xs font-black'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 <span>🚪 ម៉ោងចូល</span>
-                <span className="text-xs opacity-90 font-mono">({checkInTime})</span>
               </button>
               <button
                 type="button"
                 onClick={() => setSelectedSlot('check_out')}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center space-x-1.5 ${
+                className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center space-x-1.5 ${
                   selectedSlot === 'check_out'
                     ? 'bg-blue-600 text-white shadow-xs font-black'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 <span>🏁 ម៉ោងចេញ</span>
-                <span className="text-xs opacity-90 font-mono">({checkOutTime})</span>
               </button>
             </div>
 
-            {/* Quick Selectable Time Presets (e.g. ម៉ោង 7:00, 7:15...) */}
-            <div className="flex items-center space-x-1 bg-slate-50 p-1 rounded-xl border border-slate-200">
-              <Clock className="w-4 h-4 text-slate-500 ml-1.5 mr-0.5" />
-              <span className="text-xs sm:text-sm font-bold text-slate-600 whitespace-nowrap mr-1">
-                {selectedSlot === 'check_in' ? 'ម៉ោងចូល៖' : 'ម៉ោងចេញ៖'}
-              </span>
+            {/* Selectable Time Dropdown (e.g. ម៉ោង 7:00, 7:15...) */}
+            <div className="relative inline-flex items-center">
+              <Clock className="w-4 h-4 text-slate-500 absolute left-2.5 pointer-events-none" />
               <select
                 value={selectedSlot === 'check_in' ? checkInTime : checkOutTime}
                 onChange={(e) => {
                   if (selectedSlot === 'check_in') setCheckInTime(e.target.value);
                   else setCheckOutTime(e.target.value);
                 }}
-                className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs sm:text-sm font-bold text-slate-800 cursor-pointer shadow-2xs focus:ring-2 focus:ring-blue-500"
+                className="pl-8 pr-3 py-1.5 bg-white border border-slate-300 rounded-xl font-bold text-xs sm:text-sm text-slate-800 cursor-pointer shadow-2xs hover:border-slate-400 focus:ring-2 focus:ring-blue-500"
               >
                 {currentPresetOptions.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -382,30 +377,6 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
                   </option>
                 ))}
               </select>
-
-              {/* Quick Pills for instant 1-click select */}
-              <div className="hidden sm:flex items-center space-x-1 ml-1">
-                {currentPresetOptions.slice(0, 2).map((opt) => {
-                  const active = (selectedSlot === 'check_in' ? checkInTime : checkOutTime) === opt.value;
-                  return (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => {
-                        if (selectedSlot === 'check_in') setCheckInTime(opt.value);
-                        else setCheckOutTime(opt.value);
-                      }}
-                      className={`px-2 py-0.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                        active
-                          ? 'bg-blue-600 text-white shadow-2xs font-black'
-                          : 'bg-white hover:bg-slate-200 text-slate-700 border border-slate-200'
-                      }`}
-                    >
-                      {opt.label.replace(' (14:00)', '').replace(' (17:00)', '')}
-                    </button>
-                  );
-                })}
-              </div>
             </div>
 
             {/* Holiday Toggle */}
