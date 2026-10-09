@@ -35,12 +35,17 @@ const DAYS = [
   { day: 6, nameKh: 'សៅរ៍', nameEn: 'Saturday' },
 ];
 
-const PERIODS = [
-  { period: 1, time: '០៧:០០ - ០៧:៥០', label: 'ម៉ោងទី ១' },
-  { period: 2, time: '០៧:៥៥ - ០៨:៤៥', label: 'ម៉ោងទី ២' },
-  { period: 3, time: '០៩:០៥ - ០៩:៥៥', label: 'ម៉ោងទី ៣' },
-  { period: 4, time: '១០:០០ - ១០:៥០', label: 'ម៉ោងទី ៤' },
-  { period: 5, time: '១០:៥៥ - ១១:៤៥', label: 'ម៉ោងទី ៥' },
+const MORNING_PERIODS = [
+  { period: 1, time: '០៧:០០ - ០៨:០០', label: 'ម៉ោងទី ១', session: 'morning' as const },
+  { period: 2, time: '០៨:០០ - ០៩:០០', label: 'ម៉ោងទី ២', session: 'morning' as const },
+  { period: 3, time: '០៩:០០ - ១០:០០', label: 'ម៉ោងទី ៣', session: 'morning' as const },
+  { period: 4, time: '១០:០០ - ១១:០០', label: 'ម៉ោងទី ៤', session: 'morning' as const },
+];
+
+const AFTERNOON_PERIODS = [
+  { period: 1, time: '០២:០០ - ០៣:០០', label: 'ម៉ោងទី ១ (រសៀល)', session: 'afternoon' as const },
+  { period: 2, time: '០៣:០០ - ០៤:០០', label: 'ម៉ោងទី ២ (រសៀល)', session: 'afternoon' as const },
+  { period: 3, time: '០៤:០០ - ០៥:០០', label: 'ម៉ោងទី ៣ (រសៀល)', session: 'afternoon' as const },
 ];
 
 export const TimetablePage: React.FC<TimetablePageProps> = ({
@@ -52,6 +57,7 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
   defaultMode = 'class',
 }) => {
   const [activeTab, setActiveTab] = useState<'class' | 'teacher'>(defaultMode);
+  const [selectedSession, setSelectedSession] = useState<'morning' | 'afternoon' | 'all'>('morning');
   const [editingSlot, setEditingSlot] = useState<TimetableSlot | null>(null);
   const [editSubject, setEditSubject] = useState('');
   const [editTeacher, setEditTeacher] = useState('');
@@ -64,11 +70,12 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
 
   // Filter slots for the active class
   const classSlotsMap = useMemo(() => {
-    const map = new Map<string, TimetableSlot>(); // key: `day-period`
+    const map = new Map<string, TimetableSlot>(); // key: `${session}-${day}-${period}`
     timetableSlots
       .filter((s) => s.classId === activeClassId)
       .forEach((s) => {
-        map.set(`${s.dayOfWeek}-${s.periodNumber || 1}`, s);
+        const sess = s.session || 'morning';
+        map.set(`${sess}-${s.dayOfWeek}-${s.periodNumber || 1}`, s);
       });
     return map;
   }, [timetableSlots, activeClassId]);
@@ -82,9 +89,10 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
   }, [timetableSlots, teacherName]);
 
   const teacherSlotsMap = useMemo(() => {
-    const map = new Map<string, TimetableSlot>(); // key: `day-period`
+    const map = new Map<string, TimetableSlot>(); // key: `${session}-${day}-${period}`
     teacherSlots.forEach((s) => {
-      map.set(`${s.dayOfWeek}-${s.periodNumber || 1}`, s);
+      const sess = s.session || 'morning';
+      map.set(`${sess}-${s.dayOfWeek}-${s.periodNumber || 1}`, s);
     });
     return map;
   }, [teacherSlots]);
@@ -114,6 +122,12 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
     onRefresh();
   };
 
+  const displayedPeriods = useMemo(() => {
+    if (selectedSession === 'morning') return MORNING_PERIODS;
+    if (selectedSession === 'afternoon') return AFTERNOON_PERIODS;
+    return [...MORNING_PERIODS, ...AFTERNOON_PERIODS];
+  }, [selectedSession]);
+
   return (
     <div className="space-y-5">
       {/* Top Banner and Mode Switcher */}
@@ -132,13 +146,14 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
           </div>
           <p className="text-xs sm:text-sm text-slate-500">
             {activeTab === 'class'
-              ? 'កាលវិភាគប្រចាំសប្តាហ៍ពីថ្ងៃច័ន្ទ ដល់ថ្ងៃសៅរ៍ បែងចែកតាមម៉ោងសិក្សា និងគ្រូបង្រៀន'
-              : `តារាងម៉ោងបង្រៀនប្រចាំសប្តាហ៍របស់លោកគ្រូ ${teacherName} មុខវិជ្ជា ${settings?.specialtySubject || 'គណិតវិទ្យា'}`}
+              ? 'ម៉ោងសិក្សាតាមរូបទី៥៖ ព្រឹក ៧:០០-១១:០០, រសៀល ២:០០-៥:០០ (គណិតវិទ្យា និងភាសាខ្មែរ ២ ម៉ោង)'
+              : `តារាងម៉ោងបង្រៀនរបស់លោកគ្រូ ${teacherName} មុខវិជ្ជា ${settings?.specialtySubject || 'គណិតវិទ្យា'} (បង្រៀនម្តង ២ ម៉ោង)`}
           </p>
         </div>
 
-        {/* Tab Switcher & Print */}
+        {/* Tab Switcher & Session Switcher */}
         <div className="flex flex-wrap items-center gap-2">
+          {/* Class vs Teacher Tab */}
           <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-bold">
             <button
               onClick={() => setActiveTab('class')}
@@ -164,17 +179,46 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
             </button>
           </div>
 
+          {/* Session Switcher (ព្រឹក / រសៀល / ទាំងអស់) */}
+          <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-bold">
+            <button
+              onClick={() => setSelectedSession('morning')}
+              className={`px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                selectedSession === 'morning' ? 'bg-white text-blue-700 shadow-2xs font-black' : 'text-slate-600'
+              }`}
+            >
+              🌅 វេនព្រឹក
+            </button>
+            <button
+              onClick={() => setSelectedSession('afternoon')}
+              className={`px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                selectedSession === 'afternoon' ? 'bg-white text-amber-700 shadow-2xs font-black' : 'text-slate-600'
+              }`}
+            >
+              🌇 វេនរសៀល
+            </button>
+            <button
+              onClick={() => setSelectedSession('all')}
+              className={`px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                selectedSession === 'all' ? 'bg-white text-slate-800 shadow-2xs font-black' : 'text-slate-600'
+              }`}
+            >
+              ពេញមួយថ្ងៃ
+            </button>
+          </div>
+
+          {/* Print */}
           <button
             onClick={() => window.print()}
             className="inline-flex items-center px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
           >
             <Printer className="w-3.5 h-3.5 mr-1.5" />
-            បោះពុម្ព (Print A4)
+            បោះពុម្ព
           </button>
         </div>
       </div>
 
-      {/* Summary KPI Badges */}
+      {/* KPI Badges */}
       {activeTab === 'teacher' ? (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 no-print">
           <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
@@ -185,7 +229,7 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
           <div className="bg-blue-50/70 p-3.5 rounded-2xl border border-blue-200 shadow-2xs">
             <p className="text-[11px] font-bold text-blue-700 uppercase tracking-wider">សរុបម៉ោងបង្រៀន</p>
             <p className="text-2xl font-black text-blue-700 mt-1">{toKhmerNum(teacherSlots.length)} ម៉ោង/សប្តាហ៍</p>
-            <p className="text-[11px] text-blue-600 font-medium">ស្របតាមស្តង់ដារក្រសួង</p>
+            <p className="text-[11px] text-blue-600 font-medium">ម្តង ២ ម៉ោង (ប្លុកជាប់គ្នា)</p>
           </div>
           <div className="bg-emerald-50/70 p-3.5 rounded-2xl border border-emerald-200 shadow-2xs">
             <p className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider">ចំនួនថ្នាក់បង្រៀន</p>
@@ -202,7 +246,7 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
           <div className="flex items-center space-x-2 text-xs text-blue-900">
             <Sparkles className="w-4 h-4 text-blue-600 shrink-0" />
             <span>
-              ម៉ោងបង្រៀនរបស់ <strong>លោកគ្រូ {teacherName}</strong> (មុខវិជ្ជា <strong>{settings?.specialtySubject || 'គណិតវិទ្យា'}</strong>) ត្រូវបានសម្គាល់ដោយ <strong className="text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded">ពណ៌ខៀវដិត</strong> ងាយស្រួលផ្ទៀងផ្ទាត់!
+              ម៉ោងបង្រៀនរបស់ <strong>លោកគ្រូ {teacherName}</strong> (មុខវិជ្ជា <strong>{settings?.specialtySubject || 'គណិតវិទ្យា'} ២ ម៉ោង</strong>) ត្រូវបានសម្គាល់ដោយ <strong className="text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded">ពណ៌ខៀវដិត</strong> ងាយស្រួលមើល!
             </span>
           </div>
           <span className="text-xs font-bold text-blue-700 hidden sm:inline">
@@ -211,7 +255,7 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
         </div>
       )}
 
-      {/* Official Printable Header (Visible Only on Print) */}
+      {/* Official Printable Header */}
       <div className="hidden print:block text-center mb-6">
         <h3 className="font-moul text-base">ព្រះរាជាណាចក្រកម្ពុជា</h3>
         <h4 className="font-moul text-sm">ជាតិ សាសនា ព្រះមហាក្សត្រ</h4>
@@ -235,13 +279,13 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
         </h2>
       </div>
 
-      {/* Timetable Table (Responsive Grid) */}
+      {/* Timetable Table */}
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-xs sm:text-sm">
             <thead>
               <tr className="bg-slate-800 text-white font-bold text-center">
-                <th className="py-3 px-3 w-32 border border-slate-700">
+                <th className="py-3 px-3 w-36 border border-slate-700">
                   <div className="flex items-center justify-center space-x-1">
                     <Clock className="w-3.5 h-3.5 text-blue-400" />
                     <span>ម៉ោង / ថ្ងៃ</span>
@@ -256,47 +300,96 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 text-slate-700">
-              {PERIODS.map((period, pIdx) => {
+              {displayedPeriods.map((period) => {
+                const sess = period.session;
+
                 return (
-                  <React.Fragment key={period.period}>
-                    {/* Recess separator after period 2 */}
-                    {pIdx === 2 && (
-                      <tr className="bg-amber-50/80 border-y border-amber-200 text-amber-800 text-center font-bold text-xs">
-                        <td colSpan={7} className="py-1.5 px-3 tracking-wider">
-                          ☕ ម៉ោងចេញលេង / សម្រាក (០៨:៤៥ - ០៩:០៥)
-                        </td>
-                      </tr>
-                    )}
-                    <tr>
-                      {/* Period Header */}
-                      <td className="py-3 px-2 bg-slate-50 border border-slate-200 text-center font-bold">
-                        <div className="text-slate-900 font-black">{period.label}</div>
-                        <div className="text-[11px] text-slate-500 font-mono mt-0.5">{period.time}</div>
-                      </td>
+                  <tr key={`${sess}-${period.period}`}>
+                    {/* Period Header */}
+                    <td className="py-3 px-2 bg-slate-50 border border-slate-200 text-center font-bold">
+                      <div className="text-slate-900 font-black">{period.label}</div>
+                      <div className="text-[11px] text-blue-700 font-mono font-bold mt-0.5">{period.time}</div>
+                    </td>
 
-                      {/* Day Columns */}
-                      {DAYS.map((d) => {
-                        const key = `${d.day}-${period.period}`;
-                        const slot = activeTab === 'class' ? classSlotsMap.get(key) : teacherSlotsMap.get(key);
+                    {/* Day Columns */}
+                    {DAYS.map((d) => {
+                      const key = `${sess}-${d.day}-${period.period}`;
+                      const slot = activeTab === 'class' ? classSlotsMap.get(key) : teacherSlotsMap.get(key);
 
-                        if (activeTab === 'teacher') {
-                          // Teacher View
-                          if (slot) {
-                            const slotClass = classes.find((c) => c.id === slot.classId);
-                            return (
-                              <td
-                                key={d.day}
-                                className="py-2.5 px-2.5 border border-slate-200 bg-blue-50/70 hover:bg-blue-100/70 transition-colors text-center relative group"
+                      if (activeTab === 'teacher') {
+                        // Teacher View
+                        if (slot) {
+                          const slotClass = classes.find((c) => c.id === slot.classId);
+                          return (
+                            <td
+                              key={d.day}
+                              className="py-2.5 px-2.5 border border-slate-200 bg-blue-50/80 hover:bg-blue-100/80 transition-colors text-center relative group"
+                            >
+                              <div className="font-black text-blue-900 text-xs sm:text-sm">
+                                {slotClass?.name || 'ថ្នាក់រៀន'}
+                              </div>
+                              <div className="text-[11px] font-bold text-blue-700 mt-0.5">
+                                {slot.subject} (២ ម៉ោង)
+                              </div>
+                              <div className="text-[10px] text-slate-500 mt-0.5">
+                                {slot.room || slotClass?.room || ''}
+                              </div>
+                              <button
+                                onClick={() => handleOpenEdit(slot)}
+                                className="absolute top-1 right-1 p-1 text-slate-400 hover:text-blue-600 rounded bg-white/80 shadow-2xs opacity-0 group-hover:opacity-100 transition-opacity no-print"
+                                title="កែប្រែម៉ោងនេះ"
                               >
-                                <div className="font-black text-blue-900 text-xs sm:text-sm">
-                                  {slotClass?.name || 'ថ្នាក់រៀន'}
+                                <Edit2 className="w-3 h-3" />
+                              </button>
+                            </td>
+                          );
+                        } else {
+                          // Free Period
+                          return (
+                            <td
+                              key={d.day}
+                              className="py-3 px-2 border border-slate-200 bg-slate-50/50 text-center text-slate-300 text-xs"
+                            >
+                              <span className="text-[11px] text-slate-400 font-medium">ម៉ោងទំនេរ</span>
+                            </td>
+                          );
+                        }
+                      } else {
+                        // Class View
+                        const isRatha =
+                          slot?.teacherName &&
+                          slot.teacherName.toLowerCase().includes(teacherName.toLowerCase());
+                        const is2HourSubject =
+                          slot?.subject === 'គណិតវិទ្យា' || slot?.subject === 'ភាសាខ្មែរ';
+
+                        return (
+                          <td
+                            key={d.day}
+                            className={`py-2.5 px-2.5 border border-slate-200 text-center relative group transition-colors ${
+                              isRatha
+                                ? 'bg-blue-50/90 hover:bg-blue-100/90 ring-1 ring-blue-300 inset-0'
+                                : 'bg-white hover:bg-slate-50'
+                            }`}
+                          >
+                            {slot ? (
+                              <>
+                                <div
+                                  className={`font-black text-xs sm:text-sm ${
+                                    isRatha ? 'text-blue-900 font-black' : 'text-slate-800 font-bold'
+                                  }`}
+                                >
+                                  {slot.subject} {is2HourSubject && <span className="text-[10px] font-bold text-blue-600">(២ ម៉ោង)</span>}
                                 </div>
-                                <div className="text-[11px] font-bold text-blue-700 mt-0.5">
-                                  {slot.subject}
+                                <div
+                                  className={`text-[11px] font-semibold mt-0.5 ${
+                                    isRatha ? 'text-blue-700 font-bold' : 'text-slate-600'
+                                  }`}
+                                >
+                                  {isRatha ? `⭐ ${slot.teacherName}` : slot.teacherName || '-'}
                                 </div>
-                                <div className="text-[10px] text-slate-500 mt-0.5">
-                                  {slot.room || slotClass?.room || ''}
-                                </div>
+                                {slot.room && (
+                                  <div className="text-[10px] text-slate-400 mt-0.5">{slot.room}</div>
+                                )}
                                 <button
                                   onClick={() => handleOpenEdit(slot)}
                                   className="absolute top-1 right-1 p-1 text-slate-400 hover:text-blue-600 rounded bg-white/80 shadow-2xs opacity-0 group-hover:opacity-100 transition-opacity no-print"
@@ -304,70 +397,15 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
                                 >
                                   <Edit2 className="w-3 h-3" />
                                 </button>
-                              </td>
-                            );
-                          } else {
-                            // Free Period
-                            return (
-                              <td
-                                key={d.day}
-                                className="py-3 px-2 border border-slate-200 bg-slate-50/50 text-center text-slate-300 text-xs"
-                              >
-                                <span className="text-[11px] text-slate-400 font-medium">ម៉ោងទំនេរ</span>
-                              </td>
-                            );
-                          }
-                        } else {
-                          // Class View
-                          const isRatha =
-                            slot?.teacherName &&
-                            slot.teacherName.toLowerCase().includes(teacherName.toLowerCase());
-
-                          return (
-                            <td
-                              key={d.day}
-                              className={`py-2.5 px-2.5 border border-slate-200 text-center relative group transition-colors ${
-                                isRatha
-                                  ? 'bg-blue-50/90 hover:bg-blue-100/90 ring-1 ring-blue-300 inset-0'
-                                  : 'bg-white hover:bg-slate-50'
-                              }`}
-                            >
-                              {slot ? (
-                                <>
-                                  <div
-                                    className={`font-black text-xs sm:text-sm ${
-                                      isRatha ? 'text-blue-900 font-black' : 'text-slate-800 font-bold'
-                                    }`}
-                                  >
-                                    {slot.subject}
-                                  </div>
-                                  <div
-                                    className={`text-[11px] font-semibold mt-0.5 ${
-                                      isRatha ? 'text-blue-700 font-bold' : 'text-slate-600'
-                                    }`}
-                                  >
-                                    {isRatha ? `⭐ ${slot.teacherName}` : slot.teacherName || '-'}
-                                  </div>
-                                  {slot.room && (
-                                    <div className="text-[10px] text-slate-400 mt-0.5">{slot.room}</div>
-                                  )}
-                                  <button
-                                    onClick={() => handleOpenEdit(slot)}
-                                    className="absolute top-1 right-1 p-1 text-slate-400 hover:text-blue-600 rounded bg-white/80 shadow-2xs opacity-0 group-hover:opacity-100 transition-opacity no-print"
-                                    title="កែប្រែម៉ោងនេះ"
-                                  >
-                                    <Edit2 className="w-3 h-3" />
-                                  </button>
-                                </>
-                              ) : (
-                                <span className="text-slate-300">-</span>
-                              )}
-                            </td>
-                          );
-                        }
-                      })}
-                    </tr>
-                  </React.Fragment>
+                              </>
+                            ) : (
+                              <span className="text-slate-300">-</span>
+                            )}
+                          </td>
+                        );
+                      }
+                    })}
+                  </tr>
                 );
               })}
             </tbody>
@@ -375,7 +413,7 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
         </div>
       </div>
 
-      {/* Official Signatures Block on Print */}
+      {/* Official Signatures on Print */}
       <div className="hidden print:block mt-8 text-xs">
         <div className="flex justify-between items-start">
           <div className="text-center w-52">
@@ -406,9 +444,7 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
         title="កែសម្រួលកាលវិភាគបង្រៀន"
         subtitle={
           editingSlot
-            ? `ថ្ងៃ${DAYS.find((d) => d.day === editingSlot.dayOfWeek)?.nameKh} - ${
-                PERIODS.find((p) => p.period === editingSlot.periodNumber)?.label
-              }`
+            ? `ថ្ងៃ${DAYS.find((d) => d.day === editingSlot.dayOfWeek)?.nameKh} - ${editingSlot.timeSlot}`
             : ''
         }
         maxWidth="md"
@@ -424,7 +460,7 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
                 required
                 value={editSubject}
                 onChange={(e) => setEditSubject(e.target.value)}
-                placeholder="ឧ. គណិតវិទ្យា, រូបវិទ្យា..."
+                placeholder="ឧ. គណិតវិទ្យា, ភាសាខ្មែរ..."
                 className="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500"
               />
             </div>

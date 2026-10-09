@@ -9,6 +9,7 @@ import {
   FileSpreadsheet,
   Calendar,
   Clock,
+  Sliders,
 } from 'lucide-react';
 import type { ClassRoom } from '../types';
 
@@ -17,6 +18,7 @@ export type NavTab =
   | 'monthly-attendance'
   | 'students'
   | 'grades'
+  | 'grade-config'
   | 'timetable-class'
   | 'timetable-teacher'
   | 'letters';
@@ -62,18 +64,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: GraduationCap,
     },
     {
+      id: 'grade-config' as NavTab,
+      label: '៥. កំណត់មេគុណ & ពិន្ទុ',
+      icon: Sliders,
+    },
+    {
       id: 'timetable-class' as NavTab,
-      label: '៥. កាលវិភាគតាមថ្នាក់',
+      label: '៦. កាលវិភាគតាមថ្នាក់',
       icon: Calendar,
     },
     {
       id: 'timetable-teacher' as NavTab,
-      label: '៦. កាលវិភាគគ្រូ (ហ៊ុន រដ្ឋា)',
+      label: '៧. កាលវិភាគគ្រូ (ហ៊ុន រដ្ឋា)',
       icon: Clock,
     },
     {
       id: 'letters' as NavTab,
-      label: '៧. លិខិតព្រមាន (A4)',
+      label: '៨. លិខិតព្រមាន (A4)',
       icon: MailWarning,
     },
   ];

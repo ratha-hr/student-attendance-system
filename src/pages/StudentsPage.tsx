@@ -14,7 +14,6 @@ import {
   Users,
   Phone,
   Sparkles,
-  Edit3,
 } from 'lucide-react';
 import type { Student, ClassRoom, AttendanceRecord, Gender, TeacherSettings } from '../types';
 import { db } from '../db/db';
@@ -24,6 +23,7 @@ import {
   exportStudentsToExcel,
   downloadStudentTemplate,
   parseExcelStudents,
+  calculateAge,
 } from '../utils/excelUtils';
 
 interface StudentsPageProps {
@@ -46,8 +46,6 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [genderFilter, setGenderFilter] = useState<'all' | 'ប្រុស' | 'ស្រី'>('all');
   const [viewingStudent, setViewingStudent] = useState<Student | null>(null);
-  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
-  const [isFullModalOpen, setIsFullModalOpen] = useState(false);
   const [lastSavedId, setLastSavedId] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -65,9 +63,13 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
       const matchesSearch =
         s.nameKh.toLowerCase().includes(searchTerm.toLowerCase()) ||
         s.studentCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (s.pobProvince && s.pobProvince.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (s.pob && s.pob.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (s.addrProvince && s.addrProvince.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (s.currentAddress && s.currentAddress.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (s.guardianPhone && s.guardianPhone.includes(searchTerm));
+        (s.fatherPhone && s.fatherPhone.includes(searchTerm)) ||
+        (s.guardianPhone && s.guardianPhone.includes(searchTerm)) ||
+        (s.studentPhone && s.studentPhone.includes(searchTerm));
       return matchesClass && matchesGender && matchesSearch;
     })
     .sort((a, b) => a.rollNo - b.rollNo);
@@ -79,7 +81,12 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
   // Direct Inline Cell Edit Handler (Auto-Save on blur or change)
   const handleInlineChange = async (studentId: string, field: keyof Student, value: any) => {
     try {
-      await db.students.update(studentId, { [field]: value });
+      const updateData: Partial<Student> = { [field]: value };
+      // If dob is updated, also update age
+      if (field === 'dob') {
+        updateData.age = calculateAge(value);
+      }
+      await db.students.update(studentId, updateData);
       setLastSavedId(studentId);
       setTimeout(() => setLastSavedId(null), 2000);
       onRefresh();
@@ -113,7 +120,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
     }
   };
 
-  // Direct Add New Blank Row (បន្ថែមជួរដេក Excel ថ្មីដោយផ្ទាល់)
+  // Direct Add New Blank Row (បន្ថែមជួរដេក Excel ថ្មីដោយផ្ទាល់ តាមរូបទី២)
   const handleAddNewBlankRow = async () => {
     const targetClassId = selectedClassId === 'ALL' ? (classes[0]?.id || '') : selectedClassId;
     const classStudents = students.filter((s) => s.classId === targetClassId);
@@ -129,13 +136,33 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
       nameEn: `New Student ${nextRoll}`,
       gender: 'ប្រុស',
       dob: '2011-01-01',
-      pob: 'ខេត្តកំពង់ឆ្នាំង',
-      currentAddress: 'កំពង់ត្រឡាច',
+      age: 14,
+      originSchool: 'វិទ្យាល័យ ហ៊ុន សែន កំពង់ត្រឡាច',
+      pobVillage: 'ត្រពាំងព្រីង',
+      pobCommune: 'កំពង់ត្រឡាច',
+      pobDistrict: 'កំពង់ត្រឡាច',
+      pobProvince: 'កំពង់ឆ្នាំង',
+      addrVillage: 'ត្រពាំងព្រីង',
+      addrCommune: 'កំពង់ត្រឡាច',
+      addrDistrict: 'កំពង់ត្រឡាច',
+      addrProvince: 'កំពង់ឆ្នាំង',
+      studentPhone: '',
+      orphanStatus: 'none',
+      isDisabled: false,
+      isPoor: false,
+      hasScholarship: false,
+      stayInPagoda: false,
+      fatherName: '',
+      fatherOccupation: '',
+      fatherPhone: '',
+      motherName: '',
+      motherOccupation: '',
+      motherPhone: '',
       guardianName: '',
       guardianRelationship: 'ឪពុក',
       guardianPhone: '',
       guardianOccupation: '',
-      notes: '',
+      otherNotes: '',
       status: 'active',
       createdAt: new Date().toISOString(),
     };
@@ -145,7 +172,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
     onRefresh();
   };
 
-  // Export to Excel / XLSM compatible format
+  // Export to Excel
   const handleExportExcel = () => {
     exportStudentsToExcel(filteredStudents, currentClassName);
   };
@@ -180,35 +207,35 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Top Banner (Clean - NO duplicate class selector!) */}
+      {/* Top Banner (No overlapping class dropdown) */}
       <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4 no-print">
         <div className="space-y-1">
           <div className="flex items-center space-x-3">
             <h2 className="text-xl font-black text-slate-800 flex items-center">
               <FileSpreadsheet className="w-6 h-6 text-emerald-600 mr-2" />
-              ព័ត៌មានសិស្សទម្រង់ XLSM ({currentClassName})
+              ព័ត៌មាន និងប្រវត្តិរូបសង្ខេបសិស្ស ({currentClassName})
             </h2>
             <span className="inline-flex items-center px-2.5 py-1 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-lg border border-emerald-200">
-              📊 ទម្រង់ Excel/XLSM កែ លុប ចម្លងផ្ទាល់
+              📊 ទម្រង់ក្រសួងអប់រំ (រូបទី២) XLSM កែប្រែផ្ទាល់
             </span>
             {lastSavedId && (
               <span className="inline-flex items-center text-xs text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full animate-pulse border border-emerald-300">
-                <Check className="w-3.5 h-3.5 mr-1" /> បានរក្សាទុកស្វ័យប្រវត្តិ
+                <Check className="w-3.5 h-3.5 mr-1" /> រក្សាទុកស្វ័យប្រវត្តិ
               </span>
             )}
           </div>
           <p className="text-xs sm:text-sm text-slate-500">
-            តារាងប្រវត្តិរូបសង្ខេបសិស្ស៖ អាចវាយបញ្ចូល កែប្រែ លុប និងចម្លងជួរដេកបានដោយផ្ទាល់ក្នុងក្រឡាតារាង (Auto-Save)
+            តារាងប្រវត្តិរូបសិស្សពេញលេញតាមរូបទី២៖ ទីកន្លែងកំណើត អាសយដ្ឋានបច្ចុប្បន្ន ស្ថានភាពសិស្ស ព័ត៌មានឪពុកម្តាយ (កែ លុប ចម្លងផ្ទាល់)
           </p>
         </div>
 
-        {/* Action Buttons: Add Row, Download Template, Import/Export, Print */}
+        {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-2">
           {/* Add Row Button */}
           <button
             onClick={handleAddNewBlankRow}
             className="inline-flex items-center px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
-            title="បន្ថែមជួរដេកសិស្សថ្មីមួយទៀតនៅខាងក្រោមតារាង Excel"
+            title="បន្ថែមជួរដេកសិស្សថ្មីមួយទៀតនៅខាងក្រោមតារាង"
           >
             <Plus className="w-4 h-4 mr-1" />
             + បន្ថែមជួរដេកថ្មី
@@ -258,7 +285,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
         </div>
       </div>
 
-      {/* Spreadsheet Status & Summary KPI Bar */}
+      {/* Summary KPI Badges */}
       <div className="grid grid-cols-3 gap-3 no-print">
         <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs text-center">
           <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">សិស្សសរុប ({currentClassName})</p>
@@ -276,19 +303,17 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
 
       {/* Filter and Search Bar */}
       <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3 no-print">
-        {/* Search Input */}
         <div className="relative w-full sm:w-96">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="ស្វែងរកតាមឈ្មោះ, អត្តលេខ, ទីកន្លែងកំណើត, ទូរស័ព្ទ..."
+            placeholder="ស្វែងរកតាមឈ្មោះ, អត្តលេខ, ស្រុក, ខេត្ត, ទូរស័ព្ទ..."
             className="w-full pl-9 pr-4 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
           />
         </div>
 
-        {/* Gender Filter Buttons */}
         <div className="flex items-center space-x-2 w-full sm:w-auto justify-end">
           <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-medium">
             <button
@@ -297,7 +322,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                 genderFilter === 'all' ? 'bg-white font-bold text-slate-800 shadow-2xs' : 'text-slate-600'
               }`}
             >
-              ទាំងអស់ ({toKhmerNum(students.filter(s => selectedClassId === 'ALL' || s.classId === activeClassId).length)})
+              ទាំងអស់ ({toKhmerNum(students.filter((s) => selectedClassId === 'ALL' || s.classId === activeClassId).length)})
             </button>
             <button
               onClick={() => setGenderFilter('ប្រុស')}
@@ -335,22 +360,22 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
           </div>
         </div>
         <h2 className="font-moul text-base mt-4">
-          តារាងប្រវត្តិរូបសង្ខេបសិស្ស {currentClassName}
+          បញ្ជីស្រង់ស្ថិតិ និងប្រវត្តិរូបសង្ខេបសិស្ស {currentClassName}
         </h2>
         <p className="text-xs mt-1">
           សិស្សសរុប៖ {toKhmerNum(totalFiltered)} នាក់ | ស្រី៖ {toKhmerNum(femaleFiltered)} នាក់ | ប្រុស៖ {toKhmerNum(maleFiltered)} នាក់
         </p>
       </div>
 
-      {/* Excel/XLSM Interactive Editable Spreadsheet Grid */}
-      <div className="bg-white rounded-2xl border-2 border-emerald-700/30 shadow-md overflow-hidden">
-        {/* Spreadsheet Tab Bar */}
-        <div className="bg-emerald-800 text-white px-4 py-2 flex items-center justify-between text-xs font-bold no-print">
+      {/* Excel/XLSM Interactive Editable Spreadsheet Grid - EXACT REPLICA OF IMAGE 2 */}
+      <div className="bg-white rounded-2xl border-2 border-blue-900/40 shadow-lg overflow-hidden">
+        {/* Spreadsheet Header Bar */}
+        <div className="bg-[#002060] text-white px-4 py-2 flex items-center justify-between text-xs font-bold no-print">
           <div className="flex items-center space-x-2">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
-            <span>សន្លឹកទិន្នន័យ (Sheet1): តារាងប្រវត្តិរូបសង្ខេបសិស្ស.xlsm</span>
+            <span>សន្លឹកទិន្នន័យ៖ បញ្ជីស្រង់ស្ថិតិ និងប្រវត្តិរូបសិស្ស.xlsm</span>
           </div>
-          <div className="flex items-center space-x-3 text-[11px] text-emerald-100 font-normal">
+          <div className="flex items-center space-x-3 text-[11px] text-blue-100 font-normal">
             <span>💡 ចុចលើក្រឡាដើម្បីវាយបញ្ចូល/កែប្រែផ្ទាល់</span>
             <span>|</span>
             <span>⚡ រក្សាទុកស្វ័យប្រវត្តិ (Auto-Saved)</span>
@@ -358,75 +383,116 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
+          <table className="w-full text-left border-collapse text-[11px]">
+            {/* Table Header: 2 Rows Exactly Matching Image 2 */}
             <thead>
-              <tr className="bg-slate-100 border-b border-slate-300 text-slate-700 font-bold uppercase tracking-wider text-[11px]">
-                <th className="py-2.5 px-2 text-center border-r border-slate-200 w-12 bg-slate-200/70">ល.រ</th>
-                <th className="py-2.5 px-3 border-r border-slate-200 w-28">អត្តលេខ</th>
-                <th className="py-2.5 px-3 border-r border-slate-200 min-w-[150px]">គោត្តនាម-នាម</th>
-                <th className="py-2.5 px-2 border-r border-slate-200 text-center w-20">ភេទ</th>
-                <th className="py-2.5 px-3 border-r border-slate-200 w-32">ថ្ងៃខែឆ្នាំកំណើត</th>
-                <th className="py-2.5 px-3 border-r border-slate-200 min-w-[140px]">ទីកន្លែងកំណើត</th>
-                <th className="py-2.5 px-3 border-r border-slate-200 min-w-[160px]">អាសយដ្ឋានបច្ចុប្បន្ន</th>
-                <th className="py-2.5 px-3 border-r border-slate-200 min-w-[140px]">អាណាព្យាបាល</th>
-                <th className="py-2.5 px-3 border-r border-slate-200 w-32">លេខទូរស័ព្ទ</th>
-                <th className="py-2.5 px-2 text-center w-28 bg-slate-200/70 no-print">សកម្មភាព</th>
+              {/* Row 1 Header */}
+              <tr className="bg-[#002060] text-white font-bold text-center border-b border-white/20">
+                <th rowSpan={2} className="py-2.5 px-2 border border-white/30 w-10">ល.រ</th>
+                <th rowSpan={2} className="py-2.5 px-2 border border-white/30 min-w-[70px]">អត្តលេខ</th>
+                <th rowSpan={2} className="py-2.5 px-3 border border-white/30 min-w-[130px]">គោត្តនាម នាម</th>
+                <th rowSpan={2} className="py-2.5 px-2 border border-white/30 w-16">ភេទ</th>
+                <th rowSpan={2} className="py-2.5 px-2 border border-white/30 min-w-[95px]">ថ្ងៃខែឆ្នាំកំណើត</th>
+                <th rowSpan={2} className="py-2.5 px-1 border border-white/30 w-12">អាយុ</th>
+                <th rowSpan={2} className="py-2.5 px-2 border border-white/30 min-w-[110px]">មកពីសាលា</th>
+                <th colSpan={4} className="py-1 px-2 border border-white/30 bg-[#0f3b73]">ទីកន្លែងកំណើត</th>
+                <th colSpan={4} className="py-1 px-2 border border-white/30 bg-[#0f3b73]">អាសយដ្ឋានបច្ចុប្បន្ន</th>
+                <th rowSpan={2} className="py-2.5 px-2 border border-white/30 min-w-[100px]">លេខទូរស័ព្ទផ្ទាល់ខ្លួន</th>
+                <th colSpan={7} className="py-1 px-2 border border-white/30 bg-[#0f3b73]">ស្ថានភាពសិស្ស</th>
+                <th colSpan={3} className="py-1 px-2 border border-white/30 bg-[#0f3b73]">គោត្តនាម នាម (ឪពុក)</th>
+                <th colSpan={3} className="py-1 px-2 border border-white/30 bg-[#0f3b73]">គោត្តនាម នាម (ម្តាយ)</th>
+                <th rowSpan={2} className="py-2.5 px-2 border border-white/30 min-w-[80px]">ផ្សេងៗ</th>
+                <th rowSpan={2} className="py-2.5 px-2 border border-white/30 w-24 no-print bg-[#001730]">សកម្មភាព</th>
+              </tr>
+
+              {/* Row 2 Sub-Headers */}
+              <tr className="bg-[#0f3b73] text-white text-[10px] font-bold text-center border-b border-white/30">
+                {/* ទីកន្លែងកំណើត */}
+                <th className="py-1 px-1 border border-white/30 min-w-[70px]">ភូមិ</th>
+                <th className="py-1 px-1 border border-white/30 min-w-[80px]">ឃុំ/សង្កាត់</th>
+                <th className="py-1 px-1 border border-white/30 min-w-[80px]">ស្រុក/ខណ្ឌ</th>
+                <th className="py-1 px-1 border border-white/30 min-w-[85px]">ខេត្ត/រាជធានី</th>
+                {/* អាសយដ្ឋានបច្ចុប្បន្ន */}
+                <th className="py-1 px-1 border border-white/30 min-w-[70px]">ភូមិ</th>
+                <th className="py-1 px-1 border border-white/30 min-w-[75px]">ឃុំ</th>
+                <th className="py-1 px-1 border border-white/30 min-w-[75px]">ស្រុក</th>
+                <th className="py-1 px-1 border border-white/30 min-w-[80px]">ខេត្ត</th>
+                {/* ស្ថានភាពសិស្ស */}
+                <th className="py-1 px-1 border border-white/30 min-w-[42px]" title="កំព្រាឪពុក">ឪពុក</th>
+                <th className="py-1 px-1 border border-white/30 min-w-[42px]" title="កំព្រាម្តាយ">ម្តាយ</th>
+                <th className="py-1 px-1 border border-white/30 min-w-[55px]" title="កំព្រាទាំងឪពុកម្តាយ">ឪពុកម្តាយ</th>
+                <th className="py-1 px-1 border border-white/30 min-w-[42px]">ពិការ</th>
+                <th className="py-1 px-1 border border-white/30 min-w-[42px]">ក្រីក្រ</th>
+                <th className="py-1 px-1 border border-white/30 min-w-[65px]">អាហារូបករណ៍</th>
+                <th className="py-1 px-1 border border-white/30 min-w-[60px]">ស្នាក់នៅវត្ត</th>
+                {/* ឪពុក */}
+                <th className="py-1 px-1 border border-white/30 min-w-[95px]">ឪពុក</th>
+                <th className="py-1 px-1 border border-white/30 min-w-[75px]">មុខរបរ</th>
+                <th className="py-1 px-1 border border-white/30 min-w-[90px]">លេខទូរស័ព្ទ</th>
+                {/* ម្តាយ */}
+                <th className="py-1 px-1 border border-white/30 min-w-[95px]">ម្តាយ</th>
+                <th className="py-1 px-1 border border-white/30 min-w-[75px]">មុខរបរ</th>
+                <th className="py-1 px-1 border border-white/30 min-w-[90px]">លេខទូរស័ព្ទ</th>
               </tr>
             </thead>
+
+            {/* Table Body: Editable Rows */}
             <tbody className="divide-y divide-slate-200 text-slate-800">
               {filteredStudents.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="py-12 text-center text-slate-400">
+                  <td colSpan={28} className="py-12 text-center text-slate-400">
                     <Users className="w-10 h-10 mx-auto text-slate-300 mb-2" />
                     មិនមានទិន្នន័យសិស្សត្រូវនឹងលក្ខខណ្ឌស្វែងរកទេ
                   </td>
                 </tr>
               ) : (
                 filteredStudents.map((stu, index) => {
+                  const age = stu.age || calculateAge(stu.dob);
+
                   return (
                     <tr
                       key={stu.id}
-                      className="hover:bg-emerald-50/40 transition-colors group border-b border-slate-200"
+                      className="hover:bg-blue-50/40 transition-colors group border-b border-slate-200"
                     >
-                      {/* ល.រ (Roll No) */}
-                      <td className="py-2 px-2 text-center font-bold text-slate-600 bg-slate-50/80 border-r border-slate-200">
+                      {/* ល.រ */}
+                      <td className="py-1 px-1 text-center font-bold text-slate-600 bg-slate-50 border-r border-slate-200">
                         <input
                           type="number"
                           value={stu.rollNo}
                           onChange={(e) => handleInlineChange(stu.id, 'rollNo', Number(e.target.value))}
-                          className="w-10 text-center font-bold bg-transparent border-0 focus:ring-1 focus:ring-emerald-500 rounded"
+                          className="w-8 text-center font-bold bg-transparent border-0 focus:ring-1 focus:ring-blue-500 rounded p-0 text-[11px]"
                         />
                       </td>
 
-                      {/* អត្តលេខ (Student Code) */}
-                      <td className="py-1.5 px-2 border-r border-slate-200">
+                      {/* អត្តលេខ */}
+                      <td className="py-1 px-1 border-r border-slate-200">
                         <input
                           type="text"
                           value={stu.studentCode}
                           onChange={(e) => handleInlineChange(stu.id, 'studentCode', e.target.value)}
-                          className="w-full font-mono text-xs font-bold text-slate-700 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-emerald-500 focus:bg-white transition-colors"
+                          className="w-full font-mono text-[11px] font-bold text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white"
                         />
                       </td>
 
-                      {/* គោត្តនាម-នាម (Khmer Name) */}
-                      <td className="py-1.5 px-2 border-r border-slate-200">
+                      {/* គោត្តនាម នាម */}
+                      <td className="py-1 px-1 border-r border-slate-200">
                         <input
                           type="text"
                           value={stu.nameKh}
                           onChange={(e) => handleInlineChange(stu.id, 'nameKh', e.target.value)}
-                          className="w-full font-bold text-slate-900 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-emerald-500 focus:bg-white transition-colors"
+                          className="w-full font-bold text-slate-900 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white"
                         />
                       </td>
 
-                      {/* ភេទ (Gender: ប្រុស / ស្រី) */}
-                      <td className="py-1.5 px-2 text-center border-r border-slate-200">
+                      {/* ភេទ */}
+                      <td className="py-1 px-1 text-center border-r border-slate-200">
                         <select
                           value={stu.gender}
                           onChange={(e) => handleInlineChange(stu.id, 'gender', e.target.value as Gender)}
-                          className={`text-xs font-bold rounded-lg px-2 py-1 cursor-pointer transition-colors border-0 ${
+                          className={`text-[10px] font-bold rounded px-1 py-0.5 cursor-pointer border-0 ${
                             stu.gender === 'ស្រី'
-                              ? 'bg-pink-100 text-pink-700 hover:bg-pink-200'
-                              : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                              ? 'bg-pink-100 text-pink-700'
+                              : 'bg-blue-100 text-blue-700'
                           }`}
                         >
                           <option value="ប្រុស">ប្រុស</option>
@@ -434,96 +500,321 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                         </select>
                       </td>
 
-                      {/* ថ្ងៃខែឆ្នាំកំណើត (DOB) */}
-                      <td className="py-1.5 px-2 border-r border-slate-200">
+                      {/* ថ្ងៃខែឆ្នាំកំណើត */}
+                      <td className="py-1 px-1 border-r border-slate-200">
                         <input
                           type="date"
                           value={stu.dob || ''}
                           onChange={(e) => handleInlineChange(stu.id, 'dob', e.target.value)}
-                          className="w-full text-xs text-slate-700 bg-transparent px-1 py-1 rounded border border-transparent hover:border-slate-300 focus:border-emerald-500 focus:bg-white transition-colors"
+                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white"
                         />
                       </td>
 
-                      {/* ទីកន្លែងកំណើត (Place of Birth) */}
-                      <td className="py-1.5 px-2 border-r border-slate-200">
+                      {/* អាយុ */}
+                      <td className="py-1 px-1 text-center font-bold text-slate-700 bg-slate-50/50 border-r border-slate-200">
+                        {toKhmerNum(age)}
+                      </td>
+
+                      {/* មកពីសាលា */}
+                      <td className="py-1 px-1 border-r border-slate-200">
                         <input
                           type="text"
-                          value={stu.pob || ''}
-                          placeholder="ទីកន្លែងកំណើត..."
-                          onChange={(e) => handleInlineChange(stu.id, 'pob', e.target.value)}
-                          className="w-full text-xs text-slate-700 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-emerald-500 focus:bg-white transition-colors"
+                          value={stu.originSchool || ''}
+                          placeholder="សាលាចាស់..."
+                          onChange={(e) => handleInlineChange(stu.id, 'originSchool', e.target.value)}
+                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white"
                         />
                       </td>
 
-                      {/* អាសយដ្ឋានបច្ចុប្បន្ន (Current Address) */}
-                      <td className="py-1.5 px-2 border-r border-slate-200">
+                      {/* ទីកន្លែងកំណើត - ភូមិ */}
+                      <td className="py-1 px-1 border-r border-slate-200">
                         <input
                           type="text"
-                          value={stu.currentAddress || ''}
-                          placeholder="អាសយដ្ឋានបច្ចុប្បន្ន..."
-                          onChange={(e) => handleInlineChange(stu.id, 'currentAddress', e.target.value)}
-                          className="w-full text-xs text-slate-700 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-emerald-500 focus:bg-white transition-colors"
+                          value={stu.pobVillage || ''}
+                          onChange={(e) => handleInlineChange(stu.id, 'pobVillage', e.target.value)}
+                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white"
                         />
                       </td>
 
-                      {/* អាណាព្យាបាល (Guardian) */}
-                      <td className="py-1.5 px-2 border-r border-slate-200">
+                      {/* ទីកន្លែងកំណើត - ឃុំ/សង្កាត់ */}
+                      <td className="py-1 px-1 border-r border-slate-200">
                         <input
                           type="text"
-                          value={stu.guardianName || ''}
-                          placeholder="ឈ្មោះអាណាព្យាបាល..."
-                          onChange={(e) => handleInlineChange(stu.id, 'guardianName', e.target.value)}
-                          className="w-full text-xs font-semibold text-slate-800 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-emerald-500 focus:bg-white transition-colors"
+                          value={stu.pobCommune || ''}
+                          onChange={(e) => handleInlineChange(stu.id, 'pobCommune', e.target.value)}
+                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white"
                         />
                       </td>
 
-                      {/* លេខទូរស័ព្ទ (Phone) */}
-                      <td className="py-1.5 px-2 border-r border-slate-200">
-                        <div className="flex items-center space-x-1">
-                          <input
-                            type="text"
-                            value={stu.guardianPhone || ''}
-                            placeholder="012 345 678"
-                            onChange={(e) => handleInlineChange(stu.id, 'guardianPhone', e.target.value)}
-                            className="w-full text-xs font-mono text-blue-700 bg-transparent px-1 py-1 rounded border border-transparent hover:border-slate-300 focus:border-emerald-500 focus:bg-white transition-colors"
-                          />
-                          {stu.guardianPhone && (
-                            <a
-                              href={`tel:${stu.guardianPhone}`}
-                              className="p-1 text-blue-600 hover:text-blue-800 rounded no-print"
-                              title="ចុចដើម្បីហៅទូរស័ព្ទ"
-                            >
-                              <Phone className="w-3 h-3" />
-                            </a>
-                          )}
-                        </div>
+                      {/* ទីកន្លែងកំណើត - ស្រុក/ខណ្ឌ */}
+                      <td className="py-1 px-1 border-r border-slate-200">
+                        <input
+                          type="text"
+                          value={stu.pobDistrict || ''}
+                          onChange={(e) => handleInlineChange(stu.id, 'pobDistrict', e.target.value)}
+                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white"
+                        />
                       </td>
 
-                      {/* សកម្មភាព (Actions: ចម្លង, លុប, មើលកាត) */}
-                      <td className="py-1.5 px-2 text-center no-print bg-slate-50/50">
+                      {/* ទីកន្លែងកំណើត - ខេត្ត/រាជធានី */}
+                      <td className="py-1 px-1 border-r border-slate-200">
+                        <input
+                          type="text"
+                          value={stu.pobProvince || stu.pob || ''}
+                          onChange={(e) => handleInlineChange(stu.id, 'pobProvince', e.target.value)}
+                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white"
+                        />
+                      </td>
+
+                      {/* អាសយដ្ឋានបច្ចុប្បន្ន - ភូមិ */}
+                      <td className="py-1 px-1 border-r border-slate-200">
+                        <input
+                          type="text"
+                          value={stu.addrVillage || ''}
+                          onChange={(e) => handleInlineChange(stu.id, 'addrVillage', e.target.value)}
+                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white"
+                        />
+                      </td>
+
+                      {/* អាសយដ្ឋានបច្ចុប្បន្ន - ឃុំ */}
+                      <td className="py-1 px-1 border-r border-slate-200">
+                        <input
+                          type="text"
+                          value={stu.addrCommune || ''}
+                          onChange={(e) => handleInlineChange(stu.id, 'addrCommune', e.target.value)}
+                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white"
+                        />
+                      </td>
+
+                      {/* អាសយដ្ឋានបច្ចុប្បន្ន - ស្រុក */}
+                      <td className="py-1 px-1 border-r border-slate-200">
+                        <input
+                          type="text"
+                          value={stu.addrDistrict || ''}
+                          onChange={(e) => handleInlineChange(stu.id, 'addrDistrict', e.target.value)}
+                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white"
+                        />
+                      </td>
+
+                      {/* អាសយដ្ឋានបច្ចុប្បន្ន - ខេត្ត */}
+                      <td className="py-1 px-1 border-r border-slate-200">
+                        <input
+                          type="text"
+                          value={stu.addrProvince || stu.currentAddress || ''}
+                          onChange={(e) => handleInlineChange(stu.id, 'addrProvince', e.target.value)}
+                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white"
+                        />
+                      </td>
+
+                      {/* លេខទូរស័ព្ទផ្ទាល់ខ្លួន */}
+                      <td className="py-1 px-1 border-r border-slate-200">
+                        <input
+                          type="text"
+                          value={stu.studentPhone || ''}
+                          placeholder="ទូរស័ព្ទសិស្ស..."
+                          onChange={(e) => handleInlineChange(stu.id, 'studentPhone', e.target.value)}
+                          className="w-full text-[10px] font-mono text-blue-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white"
+                        />
+                      </td>
+
+                      {/* ស្ថានភាពសិស្ស - កំព្រាឪពុក */}
+                      <td className="py-1 px-1 text-center border-r border-slate-200">
+                        <input
+                          type="checkbox"
+                          checked={stu.orphanStatus === 'father' || stu.orphanStatus === 'both'}
+                          onChange={(e) =>
+                            handleInlineChange(
+                              stu.id,
+                              'orphanStatus',
+                              e.target.checked
+                                ? stu.orphanStatus === 'mother'
+                                  ? 'both'
+                                  : 'father'
+                                : stu.orphanStatus === 'both'
+                                ? 'mother'
+                                : 'none'
+                            )
+                          }
+                          className="rounded text-blue-600 cursor-pointer"
+                        />
+                      </td>
+
+                      {/* ស្ថានភាពសិស្ស - កំព្រាម្តាយ */}
+                      <td className="py-1 px-1 text-center border-r border-slate-200">
+                        <input
+                          type="checkbox"
+                          checked={stu.orphanStatus === 'mother' || stu.orphanStatus === 'both'}
+                          onChange={(e) =>
+                            handleInlineChange(
+                              stu.id,
+                              'orphanStatus',
+                              e.target.checked
+                                ? stu.orphanStatus === 'father'
+                                  ? 'both'
+                                  : 'mother'
+                                : stu.orphanStatus === 'both'
+                                ? 'father'
+                                : 'none'
+                            )
+                          }
+                          className="rounded text-blue-600 cursor-pointer"
+                        />
+                      </td>
+
+                      {/* ស្ថានភាពសិស្ស - កំព្រាទាំងឪពុកម្តាយ */}
+                      <td className="py-1 px-1 text-center border-r border-slate-200">
+                        <input
+                          type="checkbox"
+                          checked={stu.orphanStatus === 'both'}
+                          onChange={(e) =>
+                            handleInlineChange(stu.id, 'orphanStatus', e.target.checked ? 'both' : 'none')
+                          }
+                          className="rounded text-rose-600 cursor-pointer"
+                        />
+                      </td>
+
+                      {/* ស្ថានភាពសិស្ស - ពិការ */}
+                      <td className="py-1 px-1 text-center border-r border-slate-200">
+                        <input
+                          type="checkbox"
+                          checked={!!stu.isDisabled}
+                          onChange={(e) => handleInlineChange(stu.id, 'isDisabled', e.target.checked)}
+                          className="rounded text-amber-600 cursor-pointer"
+                        />
+                      </td>
+
+                      {/* ស្ថានភាពសិស្ស - ក្រីក្រ */}
+                      <td className="py-1 px-1 text-center border-r border-slate-200">
+                        <input
+                          type="checkbox"
+                          checked={!!stu.isPoor}
+                          onChange={(e) => handleInlineChange(stu.id, 'isPoor', e.target.checked)}
+                          className="rounded text-amber-600 cursor-pointer"
+                        />
+                      </td>
+
+                      {/* ស្ថានភាពសិស្ស - អាហារូបករណ៍ */}
+                      <td className="py-1 px-1 text-center border-r border-slate-200">
+                        <input
+                          type="checkbox"
+                          checked={!!stu.hasScholarship}
+                          onChange={(e) => handleInlineChange(stu.id, 'hasScholarship', e.target.checked)}
+                          className="rounded text-emerald-600 cursor-pointer"
+                        />
+                      </td>
+
+                      {/* ស្ថានភាពសិស្ស - ស្នាក់នៅវត្ត */}
+                      <td className="py-1 px-1 text-center border-r border-slate-200">
+                        <input
+                          type="checkbox"
+                          checked={!!stu.stayInPagoda}
+                          onChange={(e) => handleInlineChange(stu.id, 'stayInPagoda', e.target.checked)}
+                          className="rounded text-indigo-600 cursor-pointer"
+                        />
+                      </td>
+
+                      {/* ឪពុក - ឈ្មោះ */}
+                      <td className="py-1 px-1 border-r border-slate-200">
+                        <input
+                          type="text"
+                          value={stu.fatherName || stu.guardianName || ''}
+                          placeholder="ឈ្មោះឪពុក..."
+                          onChange={(e) => handleInlineChange(stu.id, 'fatherName', e.target.value)}
+                          className="w-full text-[10px] font-semibold text-slate-800 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white"
+                        />
+                      </td>
+
+                      {/* ឪពុក - មុខរបរ */}
+                      <td className="py-1 px-1 border-r border-slate-200">
+                        <input
+                          type="text"
+                          value={stu.fatherOccupation || stu.guardianOccupation || ''}
+                          placeholder="មុខរបរ..."
+                          onChange={(e) => handleInlineChange(stu.id, 'fatherOccupation', e.target.value)}
+                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white"
+                        />
+                      </td>
+
+                      {/* ឪពុក - លេខទូរស័ព្ទ */}
+                      <td className="py-1 px-1 border-r border-slate-200">
+                        <input
+                          type="text"
+                          value={stu.fatherPhone || stu.guardianPhone || ''}
+                          placeholder="ទូរស័ព្ទ..."
+                          onChange={(e) => handleInlineChange(stu.id, 'fatherPhone', e.target.value)}
+                          className="w-full text-[10px] font-mono text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white"
+                        />
+                      </td>
+
+                      {/* ម្តាយ - ឈ្មោះ */}
+                      <td className="py-1 px-1 border-r border-slate-200">
+                        <input
+                          type="text"
+                          value={stu.motherName || ''}
+                          placeholder="ឈ្មោះម្តាយ..."
+                          onChange={(e) => handleInlineChange(stu.id, 'motherName', e.target.value)}
+                          className="w-full text-[10px] font-semibold text-slate-800 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white"
+                        />
+                      </td>
+
+                      {/* ម្តាយ - មុខរបរ */}
+                      <td className="py-1 px-1 border-r border-slate-200">
+                        <input
+                          type="text"
+                          value={stu.motherOccupation || ''}
+                          placeholder="មុខរបរ..."
+                          onChange={(e) => handleInlineChange(stu.id, 'motherOccupation', e.target.value)}
+                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white"
+                        />
+                      </td>
+
+                      {/* ម្តាយ - លេខទូរស័ព្ទ */}
+                      <td className="py-1 px-1 border-r border-slate-200">
+                        <input
+                          type="text"
+                          value={stu.motherPhone || ''}
+                          placeholder="ទូរស័ព្ទ..."
+                          onChange={(e) => handleInlineChange(stu.id, 'motherPhone', e.target.value)}
+                          className="w-full text-[10px] font-mono text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white"
+                        />
+                      </td>
+
+                      {/* ផ្សេងៗ */}
+                      <td className="py-1 px-1 border-r border-slate-200">
+                        <input
+                          type="text"
+                          value={stu.otherNotes || stu.notes || ''}
+                          placeholder="ចំណាំ..."
+                          onChange={(e) => handleInlineChange(stu.id, 'otherNotes', e.target.value)}
+                          className="w-full text-[10px] text-slate-600 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white"
+                        />
+                      </td>
+
+                      {/* សកម្មភាព */}
+                      <td className="py-1 px-1 text-center no-print bg-slate-50/50">
                         <div className="flex items-center justify-center space-x-1">
-                          {/* ចម្លងសិស្ស (Duplicate) */}
+                          {/* ចម្លងសិស្ស */}
                           <button
                             onClick={() => handleDirectDuplicate(stu)}
-                            className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
+                            className="p-1 text-indigo-600 hover:bg-indigo-50 rounded transition-colors cursor-pointer"
                             title="ចម្លងសិស្ស (បង្កើតសិស្សស្ទួន)"
                           >
                             <Copy className="w-3.5 h-3.5" />
                           </button>
 
-                          {/* មើលប្រវត្តិរូបសង្ខេប (View Bio Card) */}
+                          {/* មើលប្រវត្តិរូប */}
                           <button
                             onClick={() => setViewingStudent(stu)}
-                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                            className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors cursor-pointer"
                             title="មើលប្រវត្តិរូបលម្អិត"
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
 
-                          {/* លុប (Delete) */}
+                          {/* លុប */}
                           <button
                             onClick={() => handleDirectDelete(stu)}
-                            className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                            className="p-1 text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
                             title="លុបសិស្សនេះចេញ"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -538,7 +829,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
           </table>
         </div>
 
-        {/* Bottom Status Row of Excel Sheet */}
+        {/* Bottom Status Row */}
         <div className="bg-slate-50 border-t border-slate-200 px-4 py-2.5 flex items-center justify-between text-xs text-slate-500 no-print">
           <div className="flex items-center space-x-3">
             <span>ចំនួនសិស្សក្នុងតារាង៖ <strong className="text-slate-800">{toKhmerNum(filteredStudents.length)}</strong> នាក់</span>
@@ -552,7 +843,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
             className="inline-flex items-center text-emerald-700 hover:text-emerald-900 font-bold hover:underline cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5 mr-1" />
-            ចុចទីនេះដើម្បីបន្ថែមសិស្សថ្មីមួយជួរដេកទៀត
+            + បន្ថែមសិស្សថ្មីមួយជួរដេកទៀត
           </button>
         </div>
       </div>
@@ -585,66 +876,81 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
         onClose={() => setViewingStudent(null)}
         title="ប្រវត្តិរូបសង្ខេបសិស្ស"
         subtitle={viewingStudent?.nameKh}
-        maxWidth="lg"
+        maxWidth="2xl"
       >
         {viewingStudent && (
           <div className="space-y-4">
             <div className="flex items-center space-x-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-              <div className="w-16 h-16 rounded-2xl bg-emerald-600 text-white flex items-center justify-center text-2xl font-black shadow-md">
+              <div className="w-16 h-16 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-2xl font-black shadow-md">
                 {viewingStudent.nameKh.charAt(0)}
               </div>
               <div>
                 <h4 className="text-lg font-bold text-slate-900">{viewingStudent.nameKh}</h4>
                 <p className="text-xs text-slate-500 font-medium">{viewingStudent.nameEn || '-'}</p>
                 <div className="mt-1 flex items-center gap-2">
-                  <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-xs rounded-md font-bold font-mono">
+                  <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-md font-bold font-mono">
                     {viewingStudent.studentCode}
                   </span>
-                  <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-md font-bold">
+                  <span className="px-2 py-0.5 bg-slate-200 text-slate-800 text-xs rounded-md font-bold">
                     {classes.find((c) => c.id === viewingStudent.classId)?.name || 'ថ្នាក់រៀន'}
                   </span>
-                  <span className="px-2 py-0.5 bg-slate-200 text-slate-700 text-xs rounded-md font-bold">
+                  <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-xs rounded-md font-bold">
                     លេខរៀង៖ {toKhmerNum(viewingStudent.rollNo)}
                   </span>
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="p-3 bg-white border border-slate-200 rounded-xl">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+              <div className="p-2.5 bg-white border border-slate-200 rounded-xl">
                 <span className="text-slate-400 block mb-0.5">ភេទ</span>
                 <span className="font-bold text-slate-800">{viewingStudent.gender}</span>
               </div>
-              <div className="p-3 bg-white border border-slate-200 rounded-xl">
+              <div className="p-2.5 bg-white border border-slate-200 rounded-xl">
                 <span className="text-slate-400 block mb-0.5">ថ្ងៃខែឆ្នាំកំណើត</span>
                 <span className="font-bold text-slate-800">{viewingStudent.dob ? formatKhmerDate(viewingStudent.dob) : '-'}</span>
               </div>
+              <div className="p-2.5 bg-white border border-slate-200 rounded-xl">
+                <span className="text-slate-400 block mb-0.5">អាយុ</span>
+                <span className="font-bold text-slate-800">{toKhmerNum(viewingStudent.age || calculateAge(viewingStudent.dob))} ឆ្នាំ</span>
+              </div>
+              <div className="p-2.5 bg-white border border-slate-200 rounded-xl">
+                <span className="text-slate-400 block mb-0.5">ទូរស័ព្ទសិស្ស</span>
+                <span className="font-bold text-blue-700">{viewingStudent.studentPhone || '-'}</span>
+              </div>
             </div>
 
-            <div className="p-3 bg-white border border-slate-200 rounded-xl text-xs space-y-1">
-              <span className="text-slate-400 block">ទីកន្លែងកំណើត</span>
-              <span className="font-bold text-slate-800">{viewingStudent.pob || 'មិនបានបញ្ជាក់'}</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-1">
+                <span className="text-slate-400 font-bold block">ទីកន្លែងកំណើត៖</span>
+                <p><span className="text-slate-500">ភូមិ៖</span> <strong>{viewingStudent.pobVillage || '-'}</strong></p>
+                <p><span className="text-slate-500">ឃុំ/សង្កាត់៖</span> <strong>{viewingStudent.pobCommune || '-'}</strong></p>
+                <p><span className="text-slate-500">ស្រុក/ខណ្ឌ៖</span> <strong>{viewingStudent.pobDistrict || '-'}</strong></p>
+                <p><span className="text-slate-500">ខេត្ត/រាជធានី៖</span> <strong>{viewingStudent.pobProvince || viewingStudent.pob || '-'}</strong></p>
+              </div>
+
+              <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-1">
+                <span className="text-slate-400 font-bold block">អាសយដ្ឋានបច្ចុប្បន្ន៖</span>
+                <p><span className="text-slate-500">ភូមិ៖</span> <strong>{viewingStudent.addrVillage || '-'}</strong></p>
+                <p><span className="text-slate-500">ឃុំ៖</span> <strong>{viewingStudent.addrCommune || '-'}</strong></p>
+                <p><span className="text-slate-500">ស្រុក៖</span> <strong>{viewingStudent.addrDistrict || '-'}</strong></p>
+                <p><span className="text-slate-500">ខេត្ត៖</span> <strong>{viewingStudent.addrProvince || viewingStudent.currentAddress || '-'}</strong></p>
+              </div>
             </div>
 
-            <div className="p-3 bg-white border border-slate-200 rounded-xl text-xs space-y-1">
-              <span className="text-slate-400 block">អាសយដ្ឋានបច្ចុប្បន្ន</span>
-              <span className="font-bold text-slate-800">{viewingStudent.currentAddress || 'មិនបានបញ្ជាក់'}</span>
-            </div>
-
-            <div className="p-4 bg-blue-50/50 border border-blue-100 rounded-2xl text-xs space-y-2">
-              <h5 className="font-bold text-blue-900">ព័ត៌មានអាណាព្យាបាល៖</h5>
-              <div className="grid grid-cols-2 gap-2">
-                <p><span className="text-slate-500">ឈ្មោះ៖</span> <span className="font-bold">{viewingStudent.guardianName || '-'}</span></p>
-                <p><span className="text-slate-500">ត្រូវជា៖</span> <span className="font-bold">{viewingStudent.guardianRelationship || '-'}</span></p>
-                <p>
-                  <span className="text-slate-500">ទូរស័ព្ទ៖</span>{' '}
-                  {viewingStudent.guardianPhone ? (
-                    <a href={`tel:${viewingStudent.guardianPhone}`} className="text-blue-700 font-bold hover:underline">
-                      {viewingStudent.guardianPhone}
-                    </a>
-                  ) : '-'}
-                </p>
-                <p><span className="text-slate-500">មុខរបរ៖</span> <span className="font-bold">{viewingStudent.guardianOccupation || '-'}</span></p>
+            <div className="p-3 bg-blue-50/60 border border-blue-100 rounded-2xl text-xs space-y-2">
+              <h5 className="font-bold text-blue-900">ព័ត៌មានឪពុកម្តាយ & អាណាព្យាបាល៖</h5>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="p-2 bg-white rounded-xl border border-blue-100">
+                  <p className="font-bold text-slate-800">ឪពុក៖ {viewingStudent.fatherName || viewingStudent.guardianName || '-'}</p>
+                  <p className="text-slate-500 mt-0.5">មុខរបរ៖ {viewingStudent.fatherOccupation || viewingStudent.guardianOccupation || '-'}</p>
+                  <p className="text-blue-700 font-bold mt-0.5">ទូរស័ព្ទ៖ {viewingStudent.fatherPhone || viewingStudent.guardianPhone || '-'}</p>
+                </div>
+                <div className="p-2 bg-white rounded-xl border border-blue-100">
+                  <p className="font-bold text-slate-800">ម្តាយ៖ {viewingStudent.motherName || '-'}</p>
+                  <p className="text-slate-500 mt-0.5">មុខរបរ៖ {viewingStudent.motherOccupation || '-'}</p>
+                  <p className="text-blue-700 font-bold mt-0.5">ទូរស័ព្ទ៖ {viewingStudent.motherPhone || '-'}</p>
+                </div>
               </div>
             </div>
 

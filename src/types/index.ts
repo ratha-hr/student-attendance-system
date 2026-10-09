@@ -19,14 +19,44 @@ export interface Student {
   nameEn: string; // ឈ្មោះឡាតាំង
   gender: Gender; // ភេទ
   dob: string; // ថ្ងៃខែឆ្នាំកំណើត YYYY-MM-DD
-  pob: string; // ទីកន្លែងកំណើត
-  currentAddress: string; // អាសយដ្ឋានបច្ចុប្បន្ន
-  guardianName: string; // ឈ្មោះអាណាព្យាបាល
-  guardianRelationship: string; // ឪពុក / ម្តាយ / អាណាព្យាបាល
-  guardianPhone: string; // លេខទូរស័ព្ទអាណាព្យាបាល
-  guardianOccupation?: string; // មុខរបរ
+  age?: number; // អាយុ
+  originSchool?: string; // មកពីសាលា
+  // ទីកន្លែងកំណើត
+  pob?: string;
+  pobVillage?: string; // ភូមិ
+  pobCommune?: string; // ឃុំ/សង្កាត់
+  pobDistrict?: string; // ស្រុក/ខណ្ឌ
+  pobProvince?: string; // ខេត្ត/រាជធានី
+  // អាសយដ្ឋានបច្ចុប្បន្ន
+  currentAddress?: string;
+  addrVillage?: string; // ភូមិ
+  addrCommune?: string; // ឃុំ
+  addrDistrict?: string; // ស្រុក
+  addrProvince?: string; // ខេត្ត
+  // លេខទូរស័ព្ទផ្ទាល់ខ្លួន
+  studentPhone?: string;
+  // ស្ថានភាពសិស្ស
+  orphanStatus?: 'none' | 'father' | 'mother' | 'both'; // កំព្រា (ឪពុក/ម្តាយ/ឪពុកម្តាយ)
+  isDisabled?: boolean; // ពិការ
+  isPoor?: boolean; // ក្រីក្រ
+  hasScholarship?: boolean; // អាហារូបករណ៍
+  stayInPagoda?: boolean; // ស្នាក់នៅវត្ត
+  // ព័ត៌មានឪពុក
+  fatherName?: string;
+  fatherOccupation?: string;
+  fatherPhone?: string;
+  // ព័ត៌មានម្តាយ
+  motherName?: string;
+  motherOccupation?: string;
+  motherPhone?: string;
+  // អាណាព្យាបាល (សម្រាប់ backward compatibility)
+  guardianName?: string;
+  guardianRelationship?: string;
+  guardianPhone?: string;
+  guardianOccupation?: string;
   avatar?: string;
-  notes?: string; // កំណត់ចំណាំពិសេស
+  notes?: string; // កំណត់ចំណាំ
+  otherNotes?: string; // ផ្សេងៗ
   status: 'active' | 'suspended' | 'transferred';
   createdAt: string;
 }
@@ -39,6 +69,8 @@ export interface AttendanceRecord {
   studentId: string;
   date: string; // YYYY-MM-DD
   session: 'morning' | 'afternoon' | 'all-day';
+  timeSlot?: string; // 7:00-8:00, 8:00-9:00, etc.
+  subject?: string;
   status: AttendanceStatus;
   reason?: string;
   createdAt: string;
@@ -126,4 +158,5 @@ export interface TeacherSettings {
   absenceWarningThreshold: number; // ចំនួនថ្ងៃអវត្តមានដែលត្រូវចេញលិខិតព្រមាន (Default: 3)
   phone: string;
   email?: string;
+  customGradeCoefficients?: Record<string, Record<string, { maxScore: number; coefficient: number }>>;
 }

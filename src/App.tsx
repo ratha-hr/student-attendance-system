@@ -14,19 +14,9 @@ import { GradesPage } from './pages/GradesPage';
 import { TimetablePage } from './pages/TimetablePage';
 import { OfficialLettersPage } from './pages/OfficialLettersPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { GradeCoefficientsConfigPage } from './pages/GradeCoefficientsConfigPage';
 import type { TeacherSettings, ClassRoom } from './types';
-import {
-  Plus,
-  Trash2,
-  BookOpen,
-  CalendarCheck2,
-  CalendarDays,
-  FileSpreadsheet,
-  GraduationCap,
-  Calendar,
-  Clock,
-  MailWarning,
-} from 'lucide-react';
+import { Plus, Trash2, BookOpen } from 'lucide-react';
 import { toKhmerNum } from './utils/dateUtils';
 
 export function App() {
@@ -110,17 +100,6 @@ export function App() {
     }
   };
 
-  // Top Menu Navigation Items (Prominently displays Student Info & Timetable)
-  const topNavItems = [
-    { id: 'attendance' as NavTab, label: '១. វត្តមានប្រចាំថ្ងៃ', icon: CalendarCheck2 },
-    { id: 'monthly-attendance' as NavTab, label: '២. វត្តមានប្រចាំខែ', icon: CalendarDays },
-    { id: 'students' as NavTab, label: '៣. ព័ត៌មានសិស្ស (xlsm)', icon: FileSpreadsheet, highlight: true },
-    { id: 'grades' as NavTab, label: '៤. ពិន្ទុសិស្សប្រចាំខែ', icon: GraduationCap },
-    { id: 'timetable-class' as NavTab, label: '៥. កាលវិភាគតាមថ្នាក់', icon: Calendar },
-    { id: 'timetable-teacher' as NavTab, label: '៦. កាលវិភាគគ្រូ (ហ៊ុន រដ្ឋា)', icon: Clock },
-    { id: 'letters' as NavTab, label: '៧. លិខិតព្រមាន (A4)', icon: MailWarning },
-  ];
-
   return (
     <div className="min-h-screen bg-slate-50 flex">
       {/* Sidebar Navigation */}
@@ -147,36 +126,6 @@ export function App() {
           onOpenSettings={() => setIsSettingsOpen(true)}
           onOpenManageClasses={() => setIsManageClassesOpen(true)}
         />
-
-        {/* Top Horizontal Menu Bar (Direct access to all sections including Student Info & Timetables) */}
-        <div className="sticky top-[57px] z-20 bg-white/95 backdrop-blur-md border-b border-slate-200 px-3 sm:px-6 py-2 no-print shadow-2xs">
-          <div className="flex items-center space-x-1.5 overflow-x-auto scrollbar-none py-0.5">
-            {topNavItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = currentTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => setCurrentTab(item.id)}
-                  className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all cursor-pointer ${
-                    isActive
-                      ? 'bg-blue-600 text-white shadow-xs'
-                      : item.highlight
-                      ? 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-300'
-                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                  }`}
-                >
-                  <Icon
-                    className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${
-                      isActive ? 'text-white' : item.highlight ? 'text-emerald-600' : 'text-slate-500'
-                    }`}
-                  />
-                  <span>{item.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
 
         {/* Content Body */}
         <main className="flex-1 p-3 sm:p-5 lg:p-6 max-w-6xl w-full mx-auto">
@@ -250,6 +199,14 @@ export function App() {
               settings={settings}
               selectedClassId={selectedClassId}
               onSelectClass={setSelectedClassId}
+              onRefresh={handleRefresh}
+              onOpenGradeConfig={() => setCurrentTab('grade-config')}
+            />
+          )}
+
+          {currentTab === 'grade-config' && (
+            <GradeCoefficientsConfigPage
+              settings={settings}
               onRefresh={handleRefresh}
             />
           )}
