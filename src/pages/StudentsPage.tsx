@@ -414,7 +414,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
         </div>
 
         <div ref={tableScrollRef} className="max-h-[70vh] print:max-h-none print:h-auto overflow-auto print:overflow-visible table-scrollbar relative print:border-none print:shadow-none">
-          <table className="w-full text-left border-collapse text-[11px] print-fit-all">
+          <table className="w-full text-left border-collapse text-xs sm:text-[13px] print-fit-all">
             {/* Colgroup for 100% Page Fit in Print Mode */}
             <colgroup className="hidden print:table-column-group">
               {/* 1. ល.រ */}
@@ -468,56 +468,56 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
             {/* Table Header: 2 Rows Exactly Matching Image 2 */}
             <thead className="sticky top-0 z-20 shadow-xs">
               {/* Row 1 Header */}
-              <tr className="bg-[#002060] text-white font-bold text-center border-b border-white/20 print:bg-slate-100 print:text-black">
-                <th rowSpan={2} className="py-2.5 px-2 border border-white/30 w-10">ល.រ</th>
-                <th rowSpan={2} className="py-2.5 px-2 border border-white/30 min-w-[70px]">អត្តលេខ</th>
-                <th rowSpan={2} className="py-2.5 px-3 border border-white/30 min-w-[130px]">គោត្តនាម នាម</th>
-                <th rowSpan={2} className="py-2.5 px-2 border border-white/30 w-16">ភេទ</th>
-                <th rowSpan={2} className="py-2.5 px-2 border border-white/30 min-w-[95px]">ថ្ងៃខែឆ្នាំកំណើត</th>
-                <th rowSpan={2} className="py-2.5 px-1 border border-white/30 w-12">អាយុ</th>
-                <th rowSpan={2} className="py-2.5 px-2 border border-white/30 min-w-[110px]">មកពីសាលា</th>
-                <th colSpan={4} className="py-1 px-2 border border-white/30 bg-[#0f3b73] print:bg-slate-200">ទីកន្លែងកំណើត</th>
-                <th colSpan={4} className="py-1 px-2 border border-white/30 bg-[#0f3b73] print:bg-slate-200">អាសយដ្ឋានបច្ចុប្បន្ន</th>
-                <th rowSpan={2} className="py-2.5 px-2 border border-white/30 min-w-[100px]">លេខទូរស័ព្ទផ្ទាល់ខ្លួន</th>
-                <th colSpan={7} className="py-1 px-2 border border-white/30 bg-[#0f3b73] print:bg-slate-200">ស្ថានភាពសិស្ស</th>
-                <th colSpan={3} className="py-1 px-2 border border-white/30 bg-[#0f3b73] print:bg-slate-200">គោត្តនាម នាម (ឪពុក)</th>
-                <th colSpan={3} className="py-1 px-2 border border-white/30 bg-[#0f3b73] print:bg-slate-200">គោត្តនាម នាម (ម្តាយ)</th>
-                <th rowSpan={2} className="py-2.5 px-2 border border-white/30 min-w-[80px]">ផ្សេងៗ</th>
-                <th rowSpan={2} className="py-2.5 px-2 border border-white/30 w-24 no-print bg-[#001730]">សកម្មភាព</th>
+              <tr className="bg-[#002060] text-white font-bold text-center border-b border-white/20 print:bg-slate-100 print:text-black text-xs sm:text-sm">
+                <th rowSpan={2} className="py-3 px-2 border border-white/30 w-11">ល.រ</th>
+                <th rowSpan={2} className="py-3 px-2.5 border border-white/30 min-w-[75px]">អត្តលេខ</th>
+                <th rowSpan={2} className="py-3 px-3 border border-white/30 min-w-[140px]">គោត្តនាម នាម</th>
+                <th rowSpan={2} className="py-3 px-2 border border-white/30 w-16">ភេទ</th>
+                <th rowSpan={2} className="py-3 px-2.5 border border-white/30 min-w-[105px]">ថ្ងៃខែឆ្នាំកំណើត</th>
+                <th rowSpan={2} className="py-3 px-1.5 border border-white/30 w-14">អាយុ</th>
+                <th rowSpan={2} className="py-3 px-2.5 border border-white/30 min-w-[115px]">មកពីសាលា</th>
+                <th colSpan={4} className="py-1.5 px-2 border border-white/30 bg-[#0f3b73] print:bg-slate-200">ទីកន្លែងកំណើត</th>
+                <th colSpan={4} className="py-1.5 px-2 border border-white/30 bg-[#0f3b73] print:bg-slate-200">អាសយដ្ឋានបច្ចុប្បន្ន</th>
+                <th rowSpan={2} className="py-3 px-2 border border-white/30 min-w-[105px]">លេខទូរស័ព្ទផ្ទាល់ខ្លួន</th>
+                <th colSpan={7} className="py-1.5 px-2 border border-white/30 bg-[#0f3b73] print:bg-slate-200">ស្ថានភាពសិស្ស</th>
+                <th colSpan={3} className="py-1.5 px-2 border border-white/30 bg-[#0f3b73] print:bg-slate-200">គោត្តនាម នាម (ឪពុក)</th>
+                <th colSpan={3} className="py-1.5 px-2 border border-white/30 bg-[#0f3b73] print:bg-slate-200">គោត្តនាម នាម (ម្តាយ)</th>
+                <th rowSpan={2} className="py-3 px-2 border border-white/30 min-w-[85px]">ផ្សេងៗ</th>
+                <th rowSpan={2} className="py-3 px-2 border border-white/30 w-24 no-print bg-[#001730]">សកម្មភាព</th>
               </tr>
 
               {/* Row 2 Sub-Headers */}
-              <tr className="bg-[#0f3b73] text-white text-[10px] font-bold text-center border-b border-white/30 print:bg-slate-200 print:text-black">
+              <tr className="bg-[#0f3b73] text-white text-[11px] sm:text-xs font-bold text-center border-b border-white/30 print:bg-slate-200 print:text-black">
                 {/* ទីកន្លែងកំណើត */}
-                <th className="py-1 px-1 border border-white/30 min-w-[70px]">ភូមិ</th>
-                <th className="py-1 px-1 border border-white/30 min-w-[80px]">ឃុំ/សង្កាត់</th>
-                <th className="py-1 px-1 border border-white/30 min-w-[80px]">ស្រុក/ខណ្ឌ</th>
-                <th className="py-1 px-1 border border-white/30 min-w-[85px]">ខេត្ត/រាជធានី</th>
+                <th className="py-1.5 px-1 border border-white/30 min-w-[75px]">ភូមិ</th>
+                <th className="py-1.5 px-1 border border-white/30 min-w-[85px]">ឃុំ/សង្កាត់</th>
+                <th className="py-1.5 px-1 border border-white/30 min-w-[85px]">ស្រុក/ខណ្ឌ</th>
+                <th className="py-1.5 px-1 border border-white/30 min-w-[90px]">ខេត្ត/រាជធានី</th>
                 {/* អាសយដ្ឋានបច្ចុប្បន្ន */}
-                <th className="py-1 px-1 border border-white/30 min-w-[70px]">ភូមិ</th>
-                <th className="py-1 px-1 border border-white/30 min-w-[75px]">ឃុំ</th>
-                <th className="py-1 px-1 border border-white/30 min-w-[75px]">ស្រុក</th>
-                <th className="py-1 px-1 border border-white/30 min-w-[80px]">ខេត្ត</th>
+                <th className="py-1.5 px-1 border border-white/30 min-w-[75px]">ភូមិ</th>
+                <th className="py-1.5 px-1 border border-white/30 min-w-[80px]">ឃុំ</th>
+                <th className="py-1.5 px-1 border border-white/30 min-w-[80px]">ស្រុក</th>
+                <th className="py-1.5 px-1 border border-white/30 min-w-[85px]">ខេត្ត</th>
                 {/* ស្ថានភាពសិស្ស */}
-                <th className="py-1 px-1 border border-white/30 min-w-[42px]" title="កំព្រាឪពុក">ឪពុក</th>
-                <th className="py-1 px-1 border border-white/30 min-w-[42px]" title="កំព្រាម្តាយ">ម្តាយ</th>
-                <th className="py-1 px-1 border border-white/30 min-w-[55px]" title="កំព្រាទាំងឪពុកម្តាយ">ឪពុកម្តាយ</th>
-                <th className="py-1 px-1 border border-white/30 min-w-[42px]">ពិការ</th>
-                <th className="py-1 px-1 border border-white/30 min-w-[42px]">ក្រីក្រ</th>
-                <th className="py-1 px-1 border border-white/30 min-w-[65px]">អាហារូបករណ៍</th>
-                <th className="py-1 px-1 border border-white/30 min-w-[60px]">ស្នាក់នៅវត្ត</th>
+                <th className="py-1.5 px-1 border border-white/30 min-w-[45px]" title="កំព្រាឪពុក">ឪពុក</th>
+                <th className="py-1.5 px-1 border border-white/30 min-w-[45px]" title="កំព្រាម្តាយ">ម្តាយ</th>
+                <th className="py-1.5 px-1 border border-white/30 min-w-[60px]" title="កំព្រាទាំងឪពុកម្តាយ">ឪពុកម្តាយ</th>
+                <th className="py-1.5 px-1 border border-white/30 min-w-[45px]">ពិការ</th>
+                <th className="py-1.5 px-1 border border-white/30 min-w-[45px]">ក្រីក្រ</th>
+                <th className="py-1.5 px-1 border border-white/30 min-w-[70px]">អាហារូបករណ៍</th>
+                <th className="py-1.5 px-1 border border-white/30 min-w-[65px]">ស្នាក់នៅវត្ត</th>
                 {/* ឪពុក */}
-                <th className="py-1 px-1 border border-white/30 min-w-[95px]">ឪពុក</th>
-                <th className="py-1 px-1 border border-white/30 min-w-[75px]">មុខរបរ</th>
-                <th className="py-1 px-1 border border-white/30 min-w-[90px]">លេខទូរស័ព្ទ</th>
+                <th className="py-1.5 px-1 border border-white/30 min-w-[100px]">ឪពុក</th>
+                <th className="py-1.5 px-1 border border-white/30 min-w-[80px]">មុខរបរ</th>
+                <th className="py-1.5 px-1 border border-white/30 min-w-[95px]">លេខទូរស័ព្ទ</th>
                 {/* ម្តាយ */}
-                <th className="py-1 px-1 border border-white/30 min-w-[95px]">ម្តាយ</th>
-                <th className="py-1 px-1 border border-white/30 min-w-[75px]">មុខរបរ</th>
-                <th className="py-1 px-1 border border-white/30 min-w-[90px]">លេខទូរស័ព្ទ</th>
+                <th className="py-1.5 px-1 border border-white/30 min-w-[100px]">ម្តាយ</th>
+                <th className="py-1.5 px-1 border border-white/30 min-w-[80px]">មុខរបរ</th>
+                <th className="py-1.5 px-1 border border-white/30 min-w-[95px]">លេខទូរស័ព្ទ</th>
               </tr>
             </thead>
 
-            {/* Table Body: Editable Rows */}
+            {/* Table Body: Editable Rows with Enhanced Legible Font Sizes */}
             <tbody className="divide-y divide-slate-200 text-slate-800">
               {filteredStudents.length === 0 ? (
                 <tr>
@@ -536,8 +536,8 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                       className="hover:bg-blue-50/40 transition-colors group border-b border-slate-200 print:break-inside-avoid"
                     >
                       {/* ល.រ (រត់តាមលំដាប់លំដោយ ១, ២, ៣...) */}
-                      <td className="py-1 px-1 text-center font-bold text-slate-700 bg-slate-50 border-r border-slate-200 select-none">
-                        <span className="inline-block px-1.5 py-0.5 rounded bg-slate-200/80 text-slate-800 text-[11px] font-black print:hidden">
+                      <td className="py-1.5 px-1 text-center font-bold text-slate-700 bg-slate-50 border-r border-slate-200 select-none">
+                        <span className="inline-block px-2 py-0.5 rounded bg-slate-200/80 text-slate-800 text-xs sm:text-[13px] font-black print:hidden">
                           {toKhmerNum(index + 1)}
                         </span>
                         <span className="hidden print:inline-block font-bold text-[5.8pt]">
@@ -551,7 +551,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           type="text"
                           value={stu.studentCode}
                           onChange={(e) => handleInlineChange(stu.id, 'studentCode', e.target.value)}
-                          className="w-full font-mono text-[11px] font-bold text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
+                          className="w-full font-mono text-xs sm:text-[13px] font-bold text-slate-700 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
                         />
                         <span className="hidden print:block font-mono font-bold truncate text-[5.5pt]">
                           {stu.studentCode}
@@ -564,7 +564,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           type="text"
                           value={stu.nameKh}
                           onChange={(e) => handleInlineChange(stu.id, 'nameKh', e.target.value)}
-                          className="w-full font-bold text-slate-900 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
+                          className="w-full font-bold text-xs sm:text-sm text-slate-900 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
                         />
                         <span className="hidden print:block font-bold truncate text-slate-900 text-[6pt]">
                           {stu.nameKh}
@@ -576,7 +576,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                         <select
                           value={stu.gender}
                           onChange={(e) => handleInlineChange(stu.id, 'gender', e.target.value as Gender)}
-                          className={`text-[10px] font-bold rounded px-1 py-0.5 cursor-pointer border-0 print:hidden ${
+                          className={`text-xs sm:text-[13px] font-bold rounded px-2 py-1 cursor-pointer border-0 print:hidden ${
                             stu.gender === 'ស្រី'
                               ? 'bg-pink-100 text-pink-700'
                               : 'bg-blue-100 text-blue-700'
@@ -596,7 +596,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           type="date"
                           value={stu.dob || ''}
                           onChange={(e) => handleInlineChange(stu.id, 'dob', e.target.value)}
-                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
+                          className="w-full text-xs sm:text-[13px] text-slate-700 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
                         />
                         <span className="hidden print:block font-mono text-center text-[5.2pt] truncate">
                           {stu.dob || ''}
@@ -604,7 +604,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                       </td>
 
                       {/* អាយុ */}
-                      <td className="py-1 px-1 text-center font-bold text-slate-700 bg-slate-50/50 border-r border-slate-200">
+                      <td className="py-1 px-1 text-center font-bold text-xs sm:text-[13px] text-slate-700 bg-slate-50/50 border-r border-slate-200">
                         <span className="print:hidden">{toKhmerNum(age)}</span>
                         <span className="hidden print:block text-center font-bold text-[5.5pt]">
                           {toKhmerNum(age)}
@@ -618,7 +618,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           value={stu.originSchool || ''}
                           placeholder="សាលាចាស់..."
                           onChange={(e) => handleInlineChange(stu.id, 'originSchool', e.target.value)}
-                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
+                          className="w-full text-xs sm:text-[13px] text-slate-700 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
                         />
                         <span className="hidden print:block truncate text-[5.5pt]">
                           {stu.originSchool || ''}
@@ -631,7 +631,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           type="text"
                           value={stu.pobVillage || ''}
                           onChange={(e) => handleInlineChange(stu.id, 'pobVillage', e.target.value)}
-                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
+                          className="w-full text-xs sm:text-[13px] text-slate-700 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
                         />
                         <span className="hidden print:block truncate text-[5.2pt]">
                           {stu.pobVillage || ''}
@@ -644,7 +644,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           type="text"
                           value={stu.pobCommune || ''}
                           onChange={(e) => handleInlineChange(stu.id, 'pobCommune', e.target.value)}
-                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
+                          className="w-full text-xs sm:text-[13px] text-slate-700 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
                         />
                         <span className="hidden print:block truncate text-[5.2pt]">
                           {stu.pobCommune || ''}
@@ -657,7 +657,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           type="text"
                           value={stu.pobDistrict || ''}
                           onChange={(e) => handleInlineChange(stu.id, 'pobDistrict', e.target.value)}
-                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
+                          className="w-full text-xs sm:text-[13px] text-slate-700 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
                         />
                         <span className="hidden print:block truncate text-[5.2pt]">
                           {stu.pobDistrict || ''}
@@ -670,7 +670,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           type="text"
                           value={stu.pobProvince || stu.pob || ''}
                           onChange={(e) => handleInlineChange(stu.id, 'pobProvince', e.target.value)}
-                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
+                          className="w-full text-xs sm:text-[13px] text-slate-700 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
                         />
                         <span className="hidden print:block truncate text-[5.2pt]">
                           {stu.pobProvince || stu.pob || ''}
@@ -683,7 +683,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           type="text"
                           value={stu.addrVillage || ''}
                           onChange={(e) => handleInlineChange(stu.id, 'addrVillage', e.target.value)}
-                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
+                          className="w-full text-xs sm:text-[13px] text-slate-700 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
                         />
                         <span className="hidden print:block truncate text-[5.2pt]">
                           {stu.addrVillage || ''}
@@ -696,7 +696,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           type="text"
                           value={stu.addrCommune || ''}
                           onChange={(e) => handleInlineChange(stu.id, 'addrCommune', e.target.value)}
-                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
+                          className="w-full text-xs sm:text-[13px] text-slate-700 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
                         />
                         <span className="hidden print:block truncate text-[5.2pt]">
                           {stu.addrCommune || ''}
@@ -709,7 +709,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           type="text"
                           value={stu.addrDistrict || ''}
                           onChange={(e) => handleInlineChange(stu.id, 'addrDistrict', e.target.value)}
-                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
+                          className="w-full text-xs sm:text-[13px] text-slate-700 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
                         />
                         <span className="hidden print:block truncate text-[5.2pt]">
                           {stu.addrDistrict || ''}
@@ -722,7 +722,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           type="text"
                           value={stu.addrProvince || stu.currentAddress || ''}
                           onChange={(e) => handleInlineChange(stu.id, 'addrProvince', e.target.value)}
-                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
+                          className="w-full text-xs sm:text-[13px] text-slate-700 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
                         />
                         <span className="hidden print:block truncate text-[5.2pt]">
                           {stu.addrProvince || stu.currentAddress || ''}
@@ -736,7 +736,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           value={stu.studentPhone || ''}
                           placeholder="ទូរស័ព្ទសិស្ស..."
                           onChange={(e) => handleInlineChange(stu.id, 'studentPhone', e.target.value)}
-                          className="w-full text-[10px] font-mono text-blue-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
+                          className="w-full text-xs sm:text-[13px] font-mono font-bold text-blue-700 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
                         />
                         <span className="hidden print:block font-mono text-center text-[5.2pt] truncate">
                           {stu.studentPhone || ''}
@@ -761,7 +761,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                                 : 'none'
                             )
                           }
-                          className="rounded text-blue-600 cursor-pointer print:hidden"
+                          className="w-4 h-4 rounded text-blue-600 cursor-pointer print:hidden"
                         />
                         <span className="hidden print:block text-center font-bold text-[7pt]">
                           {(stu.orphanStatus === 'father' || stu.orphanStatus === 'both') ? '✓' : ''}
@@ -786,7 +786,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                                 : 'none'
                             )
                           }
-                          className="rounded text-blue-600 cursor-pointer print:hidden"
+                          className="w-4 h-4 rounded text-blue-600 cursor-pointer print:hidden"
                         />
                         <span className="hidden print:block text-center font-bold text-[7pt]">
                           {(stu.orphanStatus === 'mother' || stu.orphanStatus === 'both') ? '✓' : ''}
@@ -801,7 +801,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           onChange={(e) =>
                             handleInlineChange(stu.id, 'orphanStatus', e.target.checked ? 'both' : 'none')
                           }
-                          className="rounded text-rose-600 cursor-pointer print:hidden"
+                          className="w-4 h-4 rounded text-rose-600 cursor-pointer print:hidden"
                         />
                         <span className="hidden print:block text-center font-bold text-[7pt]">
                           {stu.orphanStatus === 'both' ? '✓' : ''}
@@ -814,7 +814,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           type="checkbox"
                           checked={!!stu.isDisabled}
                           onChange={(e) => handleInlineChange(stu.id, 'isDisabled', e.target.checked)}
-                          className="rounded text-amber-600 cursor-pointer print:hidden"
+                          className="w-4 h-4 rounded text-amber-600 cursor-pointer print:hidden"
                         />
                         <span className="hidden print:block text-center font-bold text-[7pt]">
                           {stu.isDisabled ? '✓' : ''}
@@ -827,7 +827,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           type="checkbox"
                           checked={!!stu.isPoor}
                           onChange={(e) => handleInlineChange(stu.id, 'isPoor', e.target.checked)}
-                          className="rounded text-amber-600 cursor-pointer print:hidden"
+                          className="w-4 h-4 rounded text-amber-600 cursor-pointer print:hidden"
                         />
                         <span className="hidden print:block text-center font-bold text-[7pt]">
                           {stu.isPoor ? '✓' : ''}
@@ -840,7 +840,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           type="checkbox"
                           checked={!!stu.hasScholarship}
                           onChange={(e) => handleInlineChange(stu.id, 'hasScholarship', e.target.checked)}
-                          className="rounded text-emerald-600 cursor-pointer print:hidden"
+                          className="w-4 h-4 rounded text-emerald-600 cursor-pointer print:hidden"
                         />
                         <span className="hidden print:block text-center font-bold text-[7pt]">
                           {stu.hasScholarship ? '✓' : ''}
@@ -853,7 +853,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           type="checkbox"
                           checked={!!stu.stayInPagoda}
                           onChange={(e) => handleInlineChange(stu.id, 'stayInPagoda', e.target.checked)}
-                          className="rounded text-indigo-600 cursor-pointer print:hidden"
+                          className="w-4 h-4 rounded text-indigo-600 cursor-pointer print:hidden"
                         />
                         <span className="hidden print:block text-center font-bold text-[7pt]">
                           {stu.stayInPagoda ? '✓' : ''}
@@ -867,7 +867,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           value={stu.fatherName || stu.guardianName || ''}
                           placeholder="ឈ្មោះឪពុក..."
                           onChange={(e) => handleInlineChange(stu.id, 'fatherName', e.target.value)}
-                          className="w-full text-[10px] font-semibold text-slate-800 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
+                          className="w-full text-xs sm:text-[13px] font-semibold text-slate-800 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
                         />
                         <span className="hidden print:block truncate text-[5.5pt]">
                           {stu.fatherName || stu.guardianName || ''}
@@ -881,7 +881,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           value={stu.fatherOccupation || stu.guardianOccupation || ''}
                           placeholder="មុខរបរ..."
                           onChange={(e) => handleInlineChange(stu.id, 'fatherOccupation', e.target.value)}
-                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
+                          className="w-full text-xs sm:text-[13px] text-slate-700 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
                         />
                         <span className="hidden print:block truncate text-[5.2pt]">
                           {stu.fatherOccupation || stu.guardianOccupation || ''}
@@ -895,7 +895,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           value={stu.fatherPhone || stu.guardianPhone || ''}
                           placeholder="ទូរស័ព្ទ..."
                           onChange={(e) => handleInlineChange(stu.id, 'fatherPhone', e.target.value)}
-                          className="w-full text-[10px] font-mono text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
+                          className="w-full text-xs sm:text-[13px] font-mono text-slate-700 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
                         />
                         <span className="hidden print:block font-mono text-center text-[5.2pt] truncate">
                           {stu.fatherPhone || stu.guardianPhone || ''}
@@ -909,7 +909,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           value={stu.motherName || ''}
                           placeholder="ឈ្មោះម្តាយ..."
                           onChange={(e) => handleInlineChange(stu.id, 'motherName', e.target.value)}
-                          className="w-full text-[10px] font-semibold text-slate-800 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
+                          className="w-full text-xs sm:text-[13px] font-semibold text-slate-800 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
                         />
                         <span className="hidden print:block truncate text-[5.5pt]">
                           {stu.motherName || ''}
@@ -923,7 +923,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           value={stu.motherOccupation || ''}
                           placeholder="មុខរបរ..."
                           onChange={(e) => handleInlineChange(stu.id, 'motherOccupation', e.target.value)}
-                          className="w-full text-[10px] text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
+                          className="w-full text-xs sm:text-[13px] text-slate-700 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
                         />
                         <span className="hidden print:block truncate text-[5.2pt]">
                           {stu.motherOccupation || ''}
@@ -937,7 +937,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           value={stu.motherPhone || ''}
                           placeholder="ទូរស័ព្ទ..."
                           onChange={(e) => handleInlineChange(stu.id, 'motherPhone', e.target.value)}
-                          className="w-full text-[10px] font-mono text-slate-700 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
+                          className="w-full text-xs sm:text-[13px] font-mono text-slate-700 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
                         />
                         <span className="hidden print:block font-mono text-center text-[5.2pt] truncate">
                           {stu.motherPhone || ''}
@@ -951,7 +951,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           value={stu.otherNotes || stu.notes || ''}
                           placeholder="ចំណាំ..."
                           onChange={(e) => handleInlineChange(stu.id, 'otherNotes', e.target.value)}
-                          className="w-full text-[10px] text-slate-600 bg-transparent px-1 py-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
+                          className="w-full text-xs sm:text-[13px] text-slate-600 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
                         />
                         <span className="hidden print:block truncate text-[5.2pt]">
                           {stu.otherNotes || stu.notes || ''}
@@ -964,28 +964,28 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                           {/* ចម្លងសិស្ស */}
                           <button
                             onClick={() => handleDirectDuplicate(stu)}
-                            className="p-1 text-indigo-600 hover:bg-indigo-50 rounded transition-colors cursor-pointer"
+                            className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
                             title="ចម្លងសិស្ស (បង្កើតសិស្សស្ទួន)"
                           >
-                            <Copy className="w-3.5 h-3.5" />
+                            <Copy className="w-4 h-4" />
                           </button>
 
                           {/* មើលប្រវត្តិរូប */}
                           <button
                             onClick={() => setViewingStudent(stu)}
-                            className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors cursor-pointer"
+                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
                             title="មើលប្រវត្តិរូបលម្អិត"
                           >
-                            <Eye className="w-3.5 h-3.5" />
+                            <Eye className="w-4 h-4" />
                           </button>
 
                           {/* លុប */}
                           <button
                             onClick={() => handleDirectDelete(stu)}
-                            className="p-1 text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                            className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                             title="លុបសិស្សនេះចេញ"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
                       </td>

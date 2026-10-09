@@ -88,10 +88,10 @@ export const Navbar: React.FC<NavbarProps> = ({
               <School className="w-4 h-4" />
             </div>
             <div>
-              <p className="text-xs font-semibold text-slate-800 leading-tight truncate max-w-[220px]">
+              <p className="text-sm sm:text-base font-bold text-slate-800 leading-tight truncate max-w-[260px]">
                 {settings?.schoolName || 'វិទ្យាល័យ ហ៊ុន សែន កំពង់ត្រឡាច'}
               </p>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-xs text-slate-500 font-medium">
                 ឆ្នាំសិក្សា {settings?.academicYear || '២០២៤-២០២៥'}
               </p>
             </div>
@@ -134,8 +134,8 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="flex items-center space-x-2 sm:space-x-3">
           {/* Live Khmer Clock */}
           {currentTime && (
-            <div className="hidden lg:flex items-center space-x-1.5 px-3 py-1.5 bg-blue-50/80 border border-blue-200/60 rounded-xl text-xs font-bold text-blue-900 shadow-2xs">
-              <Clock className="w-3.5 h-3.5 text-blue-600" />
+            <div className="hidden lg:flex items-center space-x-2 px-3 py-1.5 bg-blue-50/80 border border-blue-200/60 rounded-xl text-xs sm:text-sm font-black text-blue-900 shadow-2xs">
+              <Clock className="w-4 h-4 text-blue-600" />
               <span className="font-mono">{currentTime}</span>
             </div>
           )}

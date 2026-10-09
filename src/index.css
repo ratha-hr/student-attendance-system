@@ -1,13 +1,31 @@
 @import "tailwindcss";
 
 @layer base {
+  html {
+    font-size: 16px;
+    -webkit-text-size-adjust: 100%;
+  }
+
   body {
     font-family: 'Kantumruy Pro', 'Battambang', system-ui, -apple-system, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    letter-spacing: 0.015em;
+    color: #1e293b;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Global form control typography & sizing */
+  input, select, textarea, button {
+    font-family: 'Kantumruy Pro', 'Battambang', system-ui, sans-serif;
   }
 }
 
 .font-moul {
   font-family: 'Moul', cursive, serif;
+  line-height: 1.5;
 }
 
 .font-kantumruy {
