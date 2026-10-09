@@ -16,6 +16,7 @@ import type { ClassRoom, TimetableSlot, TeacherSettings } from '../types';
 import { db } from '../db/db';
 import { toKhmerNum } from '../utils/dateUtils';
 import { Modal } from '../components/common/Modal';
+import { PrintButton } from '../components/common/PrintButton';
 
 interface TimetablePageProps {
   classes: ClassRoom[];
@@ -207,14 +208,8 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
             </button>
           </div>
 
-          {/* Print */}
-          <button
-            onClick={() => window.print()}
-            className="inline-flex items-center px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
-          >
-            <Printer className="w-3.5 h-3.5 mr-1.5" />
-            បោះពុម្ព
-          </button>
+          {/* Print with Orientation Selector */}
+          <PrintButton defaultOrientation="landscape" label="បោះពុម្ព" />
         </div>
       </div>
 

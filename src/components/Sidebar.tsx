@@ -57,16 +57,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const menuSections: MenuSection[] = [
     {
+      title: 'ទូទៅ & ស្ថិតិសង្ខេប',
       items: [
         {
           id: 'dashboard',
           label: 'ផ្ទាំងសង្ខេប & ស្ថិតិ',
           icon: LayoutDashboard,
         },
+        {
+          id: 'students',
+          label: 'ព័ត៌មានសិស្ស (xlsm)',
+          icon: FileSpreadsheet,
+        },
       ],
     },
     {
-      title: 'វត្តមាន & សិស្ស',
+      title: 'ការគ្រប់គ្រងវត្តមាន',
       items: [
         {
           id: 'attendance',
@@ -77,11 +83,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           id: 'monthly-attendance',
           label: 'វត្តមានប្រចាំខែ',
           icon: CalendarDays,
-        },
-        {
-          id: 'students',
-          label: 'ព័ត៌មានសិស្ស (xlsm)',
-          icon: FileSpreadsheet,
         },
       ],
     },

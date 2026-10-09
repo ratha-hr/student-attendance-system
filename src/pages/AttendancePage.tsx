@@ -1,13 +1,13 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   CalendarCheck2,
   Calendar,
+  CalendarDays,
   CheckCircle,
   Clock,
   AlertCircle,
   XCircle,
   Save,
-  Printer,
   ChevronLeft,
   ChevronRight,
   Sparkles,
@@ -21,9 +21,10 @@ import {
 } from 'lucide-react';
 import type { Student, ClassRoom, AttendanceRecord, AttendanceStatus, TeacherSettings } from '../types';
 import { db } from '../db/db';
-import { toKhmerNum, formatKhmerDate, getTodayDateString, KHMER_MONTHS } from '../utils/dateUtils';
+import { toKhmerNum, formatKhmerDate, getTodayDateString, checkIfHolidayDate } from '../utils/dateUtils';
 import { TelegramShareModal } from '../components/TelegramShareModal';
 import { soundEffects } from '../utils/soundEffects';
+import { PrintButton } from '../components/common/PrintButton';
 
 interface AttendancePageProps {
   students: Student[];
@@ -36,25 +37,6 @@ interface AttendancePageProps {
   onGenerateLetterForStudent?: (studentId: string) => void;
 }
 
-const MORNING_HOURS = [
-  { id: 'm-all', label: 'ពេញវេនព្រឹក (០៧:០០ - ១១:០០)', short: 'ពេញវេនព្រឹក' },
-  { id: 'm-1', label: 'ម៉ោង ៧:០០ - ៨:០០', short: '៧:០០ - ៨:០០' },
-  { id: 'm-2', label: 'ម៉ោង ៨:០០ - ៩:០០', short: '៨:០០ - ៩:០០' },
-  { id: 'm-3', label: 'ម៉ោង ៩:០០ - ១០:០០', short: '៩:០០ - ១០:០០' },
-  { id: 'm-4', label: 'ម៉ោង ១០:០០ - ១១:០០', short: '១០:០០ - ១១:០០' },
-  { id: 'm-math2', label: 'គណិតវិទ្យា (២ ម៉ោង)', short: 'គណិត (២ម៉ោង)' },
-  { id: 'm-khmer2', label: 'ភាសាខ្មែរ (២ ម៉ោង)', short: 'ខ្មែរ (២ម៉ោង)' },
-];
-
-const AFTERNOON_HOURS = [
-  { id: 'a-all', label: 'ពេញវេនរសៀល (០២:០០ - ០៥:០០)', short: 'ពេញវេនរសៀល' },
-  { id: 'a-1', label: 'ម៉ោង ២:០០ - ៣:០០', short: '២:០០ - ៣:០០' },
-  { id: 'a-2', label: 'ម៉ោង ៣:០០ - ៤:០០', short: '៣:០០ - ៤:០០' },
-  { id: 'a-3', label: 'ម៉ោង ៤:០០ - ៥:០០', short: '៤:០០ - ៥:០០' },
-  { id: 'a-math2', label: 'គណិតវិទ្យា (២ ម៉ោង)', short: 'គណិត (២ម៉ោង)' },
-  { id: 'a-khmer2', label: 'ភាសាខ្មែរ (២ ម៉ោង)', short: 'ខ្មែរ (២ម៉ោង)' },
-];
-
 export const AttendancePage: React.FC<AttendancePageProps> = ({
   students,
   classes,
@@ -66,23 +48,46 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
 }) => {
   const [selectedDate, setSelectedDate] = useState(getTodayDateString());
   const [selectedSession, setSelectedSession] = useState<'morning' | 'afternoon'>('morning');
-  const [selectedHourSlot, setSelectedHourSlot] = useState<string>('m-all');
+  const [selectedSlot, setSelectedSlot] = useState<'check_in' | 'check_out'>('check_in');
+  const [checkInTime, setCheckInTime] = useState<string>('07:00');
+  const [checkOutTime, setCheckOutTime] = useState<string>('11:00');
   const [isTelegramOpen, setIsTelegramOpen] = useState(false);
   const [isSavedFeedback, setIsSavedFeedback] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'all' | 'present' | 'permission' | 'absent' | 'late' | 'notRecorded'>('all');
   const [soundOn, setSoundOn] = useState(true);
 
+  // Holiday detection & override
+  const holidayInfo = useMemo(() => checkIfHolidayDate(selectedDate), [selectedDate]);
+  const [isHolidayMode, setIsHolidayMode] = useState<boolean>(false);
+  const [holidayNote, setHolidayNote] = useState<string>('');
+
+  // Auto-detect and prefill holiday
+  useEffect(() => {
+    const info = checkIfHolidayDate(selectedDate);
+    if (info.isHoliday) {
+      setIsHolidayMode(true);
+      setHolidayNote(info.holidayName ? `ឈប់សម្រាក៖ ${info.holidayName}` : 'ថ្ងៃឈប់សម្រាកប្រចាំសប្ដាហ៍ (ថ្ងៃអាទិត្យ)');
+    } else {
+      setIsHolidayMode(false);
+      setHolidayNote('');
+    }
+  }, [selectedDate]);
+
   // Active class from top navbar
   const activeClassId = selectedClassId === 'ALL' ? (classes[0]?.id || '') : selectedClassId;
   const currentClass = classes.find((c) => c.id === activeClassId);
 
-  // When session switches, reset hour slot default
+  // When session switches, update default check-in/out times
   const handleSessionChange = (session: 'morning' | 'afternoon') => {
     setSelectedSession(session);
-    setSelectedHourSlot(session === 'morning' ? 'm-all' : 'a-all');
+    if (session === 'morning') {
+      setCheckInTime('07:00');
+      setCheckOutTime('11:00');
+    } else {
+      setCheckInTime('14:00');
+      setCheckOutTime('17:00');
+    }
   };
-
-  const hourSlotOptions = selectedSession === 'morning' ? MORNING_HOURS : AFTERNOON_HOURS;
 
   // Students for the active class
   const classStudents = useMemo(() => {
@@ -95,12 +100,17 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
   const dailyRecordMap = useMemo(() => {
     const map = new Map<string, AttendanceRecord>();
     attendanceRecords.forEach((r) => {
-      if (r.classId === activeClassId && r.date === selectedDate && r.session === selectedSession) {
+      if (
+        r.classId === activeClassId &&
+        r.date === selectedDate &&
+        r.session === selectedSession &&
+        (!r.timeSlot || r.timeSlot.includes(selectedSlot))
+      ) {
         map.set(r.studentId, r);
       }
     });
     return map;
-  }, [attendanceRecords, activeClassId, selectedDate, selectedSession]);
+  }, [attendanceRecords, activeClassId, selectedDate, selectedSession, selectedSlot]);
 
   // Filtered students for display based on quick status chip
   const displayedStudents = useMemo(() => {
@@ -116,11 +126,13 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
   const handleSetStatus = async (studentId: string, status: AttendanceStatus, reason = '') => {
     if (soundOn) soundEffects.playClick();
     const existing = dailyRecordMap.get(studentId);
+    const currentTimeStr = selectedSlot === 'check_in' ? checkInTime : checkOutTime;
+    const timeSlotStr = `${selectedSlot}-${currentTimeStr}`;
     if (existing) {
       await db.attendance.update(existing.id, {
         status,
         reason: reason || existing.reason || '',
-        timeSlot: selectedHourSlot,
+        timeSlot: timeSlotStr,
       });
     } else {
       const newRec: AttendanceRecord = {
@@ -129,7 +141,7 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
         studentId,
         date: selectedDate,
         session: selectedSession,
-        timeSlot: selectedHourSlot,
+        timeSlot: timeSlotStr,
         status,
         reason,
         createdAt: new Date().toISOString(),
@@ -151,6 +163,8 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
   // Mark all students present with 1 click
   const handleMarkAllPresent = async () => {
     if (soundOn) soundEffects.playSuccess();
+    const currentTimeStr = selectedSlot === 'check_in' ? checkInTime : checkOutTime;
+    const timeSlotStr = `${selectedSlot}-${currentTimeStr}`;
     const recordsToPut: AttendanceRecord[] = classStudents.map((s) => {
       const existing = dailyRecordMap.get(s.id);
       return {
@@ -159,7 +173,7 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
         studentId: s.id,
         date: selectedDate,
         session: selectedSession,
-        timeSlot: selectedHourSlot,
+        timeSlot: timeSlotStr,
         status: 'present' as AttendanceStatus,
         reason: '',
         createdAt: existing?.createdAt || new Date().toISOString(),
@@ -226,14 +240,8 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
             ផ្ញើ Telegram
           </button>
 
-          {/* Print Button */}
-          <button
-            onClick={() => window.print()}
-            className="inline-flex items-center px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
-          >
-            <Printer className="w-3.5 h-3.5 mr-1" />
-            បោះពុម្ព
-          </button>
+          {/* Print Button with Orientation Selector */}
+          <PrintButton defaultOrientation="portrait" label="បោះពុម្ព" />
         </div>
       </div>
 
@@ -291,24 +299,82 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
         </button>
       </div>
 
-      {/* Hourly / Subject Selector according to user instructions */}
-      <div className="bg-slate-100/80 p-2 sm:p-2.5 rounded-2xl border border-slate-200 flex items-center space-x-1.5 overflow-x-auto no-print">
-        <span className="text-[11px] font-bold text-slate-500 whitespace-nowrap pl-2">
-          {selectedSession === 'morning' ? 'ម៉ោងពេលព្រឹក៖' : 'ម៉ោងពេលរសៀល៖'}
-        </span>
-        {hourSlotOptions.map((opt) => (
-          <button
-            key={opt.id}
-            onClick={() => setSelectedHourSlot(opt.id)}
-            className={`px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
-              selectedHourSlot === opt.id
-                ? 'bg-blue-600 text-white shadow-2xs'
-                : 'bg-white text-slate-700 hover:bg-slate-200 border border-slate-200'
-            }`}
-          >
-            {opt.label}
-          </button>
-        ))}
+      {/* Time: Check-in / Check-out Selector & Holiday Controls */}
+      <div className="bg-white p-3 sm:p-3.5 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3 no-print">
+        {/* Check-in vs Check-out toggle */}
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-xs font-bold text-slate-600">កត់វត្តមានតាម៖</span>
+          <div className="inline-flex items-center bg-slate-100 p-1 rounded-xl text-xs font-bold">
+            <button
+              type="button"
+              onClick={() => setSelectedSlot('check_in')}
+              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center space-x-1.5 ${
+                selectedSlot === 'check_in'
+                  ? 'bg-emerald-600 text-white shadow-xs font-black'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <span>🚪 ម៉ោងចូល</span>
+              <span className="text-[11px] opacity-90 font-mono">({checkInTime})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedSlot('check_out')}
+              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center space-x-1.5 ${
+                selectedSlot === 'check_out'
+                  ? 'bg-blue-600 text-white shadow-xs font-black'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <span>🏁 ម៉ោងចេញ</span>
+              <span className="text-[11px] opacity-90 font-mono">({checkOutTime})</span>
+            </button>
+          </div>
+
+          {/* Time Picker */}
+          <div className="flex items-center space-x-1.5 bg-slate-50 px-2.5 py-1 rounded-xl border border-slate-200 text-xs">
+            <Clock className="w-3.5 h-3.5 text-slate-500" />
+            <span className="text-slate-500 font-medium">
+              {selectedSlot === 'check_in' ? 'ម៉ោងចូល៖' : 'ម៉ោងចេញ៖'}
+            </span>
+            <input
+              type="time"
+              value={selectedSlot === 'check_in' ? checkInTime : checkOutTime}
+              onChange={(e) => {
+                if (selectedSlot === 'check_in') setCheckInTime(e.target.value);
+                else setCheckOutTime(e.target.value);
+              }}
+              className="bg-white border border-slate-300 rounded px-1.5 py-0.5 text-xs font-bold text-slate-800 font-mono shadow-2xs"
+            />
+          </div>
+        </div>
+
+        {/* Holiday Toggle & Clear Official Note */}
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="inline-flex items-center space-x-2 bg-rose-50 hover:bg-rose-100/80 px-3 py-1.5 rounded-xl border border-rose-200 cursor-pointer transition-colors shadow-2xs">
+            <input
+              type="checkbox"
+              checked={isHolidayMode}
+              onChange={(e) => setIsHolidayMode(e.target.checked)}
+              className="w-4 h-4 text-rose-600 rounded border-rose-300 focus:ring-rose-500 cursor-pointer"
+            />
+            <span className="text-xs font-black text-rose-700">
+              🏖️ ថ្ងៃឈប់សម្រាក (Merge តារាង & កត់ត្រា)
+            </span>
+          </label>
+
+          {isHolidayMode && (
+            <div className="flex items-center space-x-1.5">
+              <input
+                type="text"
+                value={holidayNote}
+                onChange={(e) => setHolidayNote(e.target.value)}
+                placeholder="វាយកំណត់ត្រាថ្ងៃឈប់សម្រាកនៅទីនេះ..."
+                className="px-3 py-1 text-xs font-bold bg-white text-rose-900 border border-rose-300 rounded-xl focus:ring-2 focus:ring-rose-500 min-w-[240px] shadow-2xs"
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Daily Summary Statistics Bar - EXACT REPLICA OF IMAGE 4 (Single Line, 5 Columns) */}
@@ -441,8 +507,13 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
           បញ្ជីវត្តមានប្រចាំថ្ងៃ {currentClass?.name} - {formatKhmerDate(selectedDate, true)}
         </h2>
         <p className="text-xs mt-1">
-          {selectedSession === 'morning' ? 'វេនព្រឹក (០៧:០០ - ១១:០០)' : 'វេនរសៀល (០២:០០ - ០៥:០០)'}
+          {selectedSession === 'morning' ? `វេនព្រឹក (${checkInTime} - ${checkOutTime})` : `វេនរសៀល (${checkInTime} - ${checkOutTime})`}
         </p>
+        {isHolidayMode && (
+          <div className="mt-2 p-2 border border-rose-300 bg-rose-50 rounded-xl text-rose-800 text-xs font-bold inline-block">
+            🎉 ថ្ងៃឈប់សម្រាកផ្លូវការ៖ {holidayNote || holidayInfo.holidayName || 'ឈប់សម្រាក'}
+          </div>
+        )}
       </div>
 
       {/* Attendance Student Table */}
@@ -461,7 +532,37 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
-              {displayedStudents.length === 0 ? (
+              {isHolidayMode ? (
+                <tr>
+                  <td
+                    colSpan={7}
+                    className="py-14 px-6 text-center bg-rose-50/50 border-2 border-dashed border-rose-300 rounded-2xl"
+                  >
+                    <div className="max-w-xl mx-auto space-y-3">
+                      <div className="inline-flex p-3.5 bg-rose-100 text-rose-700 rounded-2xl shadow-xs">
+                        <CalendarDays className="w-9 h-9" />
+                      </div>
+                      <h3 className="text-xl font-black text-rose-800">
+                        🎉 {holidayInfo.holidayName || 'ថ្ងៃឈប់សម្រាកផ្លូវការ'}
+                      </h3>
+                      <div className="p-3.5 bg-white border border-rose-200 rounded-xl shadow-2xs text-left">
+                        <p className="text-xs text-rose-500 font-bold uppercase tracking-wider mb-1">
+                          📝 កំណត់ត្រាផ្លូវការ៖
+                        </p>
+                        <p className="text-base font-black text-rose-700">
+                          {holidayNote || 'សាលារៀនឈប់សម្រាកផ្លូវការ មិនមានការបង្រៀន និងមិនមានកត់វត្តមានឡើយ'}
+                        </p>
+                      </div>
+                      <p className="text-xs text-slate-500 font-medium">
+                        កាលបរិច្ឆេទ៖ {formatKhmerDate(selectedDate, true)} | {selectedSession === 'morning' ? 'វេនព្រឹក' : 'វេនរសៀល'}
+                      </p>
+                      <p className="text-[11px] text-slate-400 no-print">
+                        💡 ចំណាំ៖ ប្រសិនបើលោកគ្រូចង់កត់វត្តមានសិស្សសម្រាប់ម៉ោងបង្រៀនសង សូមដោះធីក «🏖️ ថ្ងៃឈប់សម្រាក» ខាងលើ។
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              ) : displayedStudents.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-slate-400">
                     <Users className="w-10 h-10 mx-auto text-slate-300 mb-2" />

@@ -17,6 +17,7 @@ import {
 import type { Student, ClassRoom, TeacherSettings, StudentGrade } from '../types';
 import { db } from '../db/db';
 import { toKhmerNum, KHMER_MONTHS } from '../utils/dateUtils';
+import { PrintButton } from '../components/common/PrintButton';
 import {
   resolveGradeTrack,
   getTrackSubjects,
@@ -275,14 +276,8 @@ export const GradesPage: React.FC<GradesPageProps> = ({
             ទាញចេញ Excel
           </button>
 
-          {/* Print */}
-          <button
-            onClick={() => window.print()}
-            className="inline-flex items-center px-3 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
-          >
-            <Printer className="w-3.5 h-3.5 mr-1" />
-            បោះពុម្ព
-          </button>
+          {/* Print with Orientation Selector */}
+          <PrintButton defaultOrientation="landscape" label="បោះពុម្ព" />
 
           {/* Save Scores */}
           <button
@@ -351,9 +346,9 @@ export const GradesPage: React.FC<GradesPageProps> = ({
 
       {/* Main Score Spreadsheet Table */}
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-auto max-h-[72vh] table-scrollbar">
           <table className="w-full text-left border-collapse text-xs">
-            <thead>
+            <thead className="sticky top-0 z-20 shadow-xs">
               <tr className="bg-slate-800 text-white font-bold text-center">
                 <th className="py-2.5 px-2 border border-slate-700 w-10">ល.រ</th>
                 <th className="py-2.5 px-2 border border-slate-700 w-24">អត្តលេខ</th>
@@ -401,8 +396,8 @@ export const GradesPage: React.FC<GradesPageProps> = ({
                       }`}
                     >
                       {/* ល.រ */}
-                      <td className="py-2 px-2 text-center font-bold text-slate-600 border border-slate-200 bg-slate-50">
-                        {toKhmerNum(stu.rollNo || idx + 1)}
+                      <td className="py-2 px-2 text-center font-bold text-slate-700 border border-slate-200 bg-slate-50">
+                        {toKhmerNum(idx + 1)}
                       </td>
 
                       {/* អត្តលេខ */}

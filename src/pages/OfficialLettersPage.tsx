@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import type { Student, ClassRoom, AttendanceRecord, TeacherSettings, LetterType } from '../types';
 import { toKhmerNum, formatKhmerDate, getTodayDateString } from '../utils/dateUtils';
+import { PrintButton } from '../components/common/PrintButton';
 
 interface OfficialLettersPageProps {
   students: Student[];
@@ -306,14 +307,11 @@ export const OfficialLettersPage: React.FC<OfficialLettersPageProps> = ({
             </button>
           </div>
 
-          {/* Print Trigger */}
-          <button
-            onClick={handlePrint}
-            className="inline-flex items-center px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
-          >
-            <Printer className="w-4 h-4 mr-1.5" />
-            {printMode === 'batch' ? `បោះពុម្ពទាំងអស់ (${toKhmerNum(batchStudents.length)} នាក់)` : 'បោះពុម្ពលិខិត'}
-          </button>
+          {/* Print Trigger with Orientation Selector */}
+          <PrintButton
+            defaultOrientation="portrait"
+            label={printMode === 'batch' ? `បោះពុម្ពទាំងអស់ (${toKhmerNum(batchStudents.length)} នាក់)` : 'បោះពុម្ពលិខិត'}
+          />
         </div>
       </div>
 

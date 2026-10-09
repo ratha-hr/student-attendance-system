@@ -3,6 +3,7 @@ import { Printer, Download, X, QrCode, User, CheckSquare, Square } from 'lucide-
 import type { Student, ClassRoom, TeacherSettings } from '../types';
 import { generateStudentQRCodeSVG } from '../utils/qrCode';
 import { toKhmerNum, formatKhmerDate } from '../utils/dateUtils';
+import { PrintButton } from './common/PrintButton';
 
 interface StudentIDCardsModalProps {
   isOpen: boolean;
@@ -57,13 +58,10 @@ export const StudentIDCardsModal: React.FC<StudentIDCardsModalProps> = ({
           </div>
 
           <div className="flex items-center space-x-2">
-            <button
-              onClick={() => window.print()}
-              className="inline-flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md transition-colors cursor-pointer"
-            >
-              <Printer className="w-4 h-4 mr-1.5" />
-              បោះពុម្ព ({printableStudents.length} កាត)
-            </button>
+            <PrintButton
+              defaultOrientation="portrait"
+              label={`បោះពុម្ព (${printableStudents.length} កាត)`}
+            />
             <button
               onClick={onClose}
               className="p-2 text-blue-200 hover:text-white hover:bg-white/10 rounded-xl transition-colors cursor-pointer"

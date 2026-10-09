@@ -88,3 +88,19 @@ export function getKhmerHoliday(month: number, day: number): string | null {
 export function isSunday(year: number, monthIndex: number, day: number): boolean {
   return new Date(year, monthIndex, day).getDay() === 0;
 }
+
+export function checkIfHolidayDate(dateStr: string): { isHoliday: boolean; holidayName: string | null; isSun: boolean } {
+  if (!dateStr) return { isHoliday: false, holidayName: null, isSun: false };
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return { isHoliday: false, holidayName: null, isSun: false };
+  const month = d.getMonth() + 1;
+  const day = d.getDate();
+  const holidayName = getKhmerHoliday(month, day);
+  const isSun = d.getDay() === 0;
+  return {
+    isHoliday: !!holidayName || isSun,
+    holidayName: holidayName || (isSun ? 'ថ្ងៃអាទិត្យ (ថ្ងៃឈប់សម្រាកប្រចាំសប្ដាហ៍)' : null),
+    isSun,
+  };
+}
+

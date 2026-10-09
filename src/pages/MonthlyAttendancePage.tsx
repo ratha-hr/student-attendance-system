@@ -14,6 +14,7 @@ import {
   Send,
 } from 'lucide-react';
 import type { Student, ClassRoom, AttendanceRecord, TeacherSettings, AttendanceStatus } from '../types';
+import { PrintButton } from '../components/common/PrintButton';
 import {
   toKhmerNum,
   formatKhmerDate,
@@ -171,14 +172,8 @@ export const MonthlyAttendancePage: React.FC<MonthlyAttendancePageProps> = ({
             </select>
           </div>
 
-          {/* Print Button */}
-          <button
-            onClick={() => window.print()}
-            className="inline-flex items-center px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
-          >
-            <Printer className="w-4 h-4 mr-1.5" />
-            បោះពុម្ពតារាងខែ
-          </button>
+          {/* Print Button with Orientation Selector */}
+          <PrintButton defaultOrientation="landscape" label="បោះពុម្ពតារាងខែ" />
         </div>
       </div>
 
@@ -287,7 +282,7 @@ export const MonthlyAttendancePage: React.FC<MonthlyAttendancePageProps> = ({
 
       {/* Main Monthly Attendance Matrix Table */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-        <div className="overflow-x-auto max-h-[72vh]">
+        <div className="overflow-auto max-h-[72vh] table-scrollbar">
           <table className="w-full text-left border-collapse text-[11px] sm:text-xs">
             <thead className="sticky top-0 z-20 bg-slate-100 shadow-xs">
               <tr className="border-b border-slate-300 text-slate-700 font-bold">

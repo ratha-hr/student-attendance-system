@@ -20,6 +20,7 @@ import type { Student, ClassRoom, AttendanceRecord, Gender, TeacherSettings } fr
 import { db } from '../db/db';
 import { Modal } from '../components/common/Modal';
 import { StudentIDCardsModal } from '../components/StudentIDCardsModal';
+import { PrintButton } from '../components/common/PrintButton';
 import { toKhmerNum, formatKhmerDate } from '../utils/dateUtils';
 import {
   exportStudentsToExcel,
@@ -53,6 +54,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
   const [isIDCardsOpen, setIsIDCardsOpen] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const tableScrollRef = useRef<HTMLDivElement>(null);
 
   // Active Class identifier (no inner dropdown - controlled cleanly from top Navbar)
   const activeClassId = selectedClassId === 'ALL' ? (classes[0]?.id || '') : selectedClassId;
@@ -76,7 +78,12 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
         (s.studentPhone && s.studentPhone.includes(searchTerm));
       return matchesClass && matchesGender && matchesSearch;
     })
-    .sort((a, b) => a.rollNo - b.rollNo);
+    .sort((a, b) => {
+      if (selectedClassId === 'ALL' && a.classId !== b.classId) {
+        return a.classId.localeCompare(b.classId);
+      }
+      return a.rollNo - b.rollNo;
+    });
 
   const totalFiltered = filteredStudents.length;
   const femaleFiltered = filteredStudents.filter((s) => s.gender === 'ស្រី').length;
@@ -306,14 +313,8 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
             កាតសិស្ស (QR)
           </button>
 
-          {/* Print */}
-          <button
-            onClick={() => window.print()}
-            className="inline-flex items-center px-3 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
-          >
-            <Printer className="w-3.5 h-3.5 mr-1" />
-            បោះពុម្ព
-          </button>
+          {/* Print with Orientation Selector */}
+          <PrintButton defaultOrientation="landscape" label="បោះពុម្ព" />
         </div>
       </div>
 
@@ -414,10 +415,10 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div ref={tableScrollRef} className="max-h-[70vh] overflow-auto table-scrollbar relative">
           <table className="w-full text-left border-collapse text-[11px]">
             {/* Table Header: 2 Rows Exactly Matching Image 2 */}
-            <thead>
+            <thead className="sticky top-0 z-20 shadow-xs">
               {/* Row 1 Header */}
               <tr className="bg-[#002060] text-white font-bold text-center border-b border-white/20">
                 <th rowSpan={2} className="py-2.5 px-2 border border-white/30 w-10">ល.រ</th>
@@ -486,14 +487,11 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                       key={stu.id}
                       className="hover:bg-blue-50/40 transition-colors group border-b border-slate-200"
                     >
-                      {/* ល.រ */}
-                      <td className="py-1 px-1 text-center font-bold text-slate-600 bg-slate-50 border-r border-slate-200">
-                        <input
-                          type="number"
-                          value={stu.rollNo}
-                          onChange={(e) => handleInlineChange(stu.id, 'rollNo', Number(e.target.value))}
-                          className="w-8 text-center font-bold bg-transparent border-0 focus:ring-1 focus:ring-blue-500 rounded p-0 text-[11px]"
-                        />
+                      {/* ល.រ (រត់តាមលំដាប់លំដោយ ១, ២, ៣...) */}
+                      <td className="py-1 px-1 text-center font-bold text-slate-700 bg-slate-50 border-r border-slate-200 select-none">
+                        <span className="inline-block px-1.5 py-0.5 rounded bg-slate-200/80 text-slate-800 text-[11px] font-black">
+                          {toKhmerNum(index + 1)}
+                        </span>
                       </td>
 
                       {/* អត្តលេខ */}
@@ -859,6 +857,34 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Quick Horizontal Scroll Assistant Bar */}
+        <div className="bg-slate-100/90 px-4 py-2 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 no-print text-xs">
+          <div className="flex items-center space-x-2 text-slate-600">
+            <span className="font-bold">↔️ របាររំកិលតារាងឆ្វេង-ស្តាំ៖</span>
+            <span className="text-[11px] text-slate-500">
+              (អាចទាញរបាររំកិល Scrollbar ខាងលើ ឬចុចប៊ូតុងរំកិលរហ័សខាងក្រោម)
+            </span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <button
+              type="button"
+              onClick={() => tableScrollRef.current?.scrollBy({ left: -350, behavior: 'smooth' })}
+              className="inline-flex items-center px-3 py-1 bg-white hover:bg-slate-200 border border-slate-300 rounded-lg font-bold text-slate-700 shadow-2xs transition-colors cursor-pointer text-xs"
+              title="រំកិលទៅឆ្វេង"
+            >
+              ⬅️ រំកិលទៅឆ្វេង
+            </button>
+            <button
+              type="button"
+              onClick={() => tableScrollRef.current?.scrollBy({ left: 350, behavior: 'smooth' })}
+              className="inline-flex items-center px-3 py-1 bg-white hover:bg-slate-200 border border-slate-300 rounded-lg font-bold text-slate-700 shadow-2xs transition-colors cursor-pointer text-xs"
+              title="រំកិលទៅស្តាំ"
+            >
+              រំកិលទៅស្តាំ ➡️
+            </button>
+          </div>
         </div>
 
         {/* Bottom Status Row */}

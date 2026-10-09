@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, School, User, Calendar, Share2, Check, Plus, Settings, RefreshCw, Clock, Smartphone } from 'lucide-react';
+import { Menu, School, User, Calendar, Share2, Check, Plus, Settings, Clock, Smartphone } from 'lucide-react';
 import type { ClassRoom, TeacherSettings } from '../types';
 import { formatKhmerDate, getTodayDateString, toKhmerNum } from '../utils/dateUtils';
 
@@ -158,18 +158,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           )}
 
-          {/* Version badge & Hard Reload / Cache bypass */}
-          <button
-            onClick={() => {
-              window.location.href = window.location.origin + window.location.pathname + '?v=' + Date.now();
-            }}
-            className="inline-flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs"
-            title="ចុចដើម្បីផ្ទុកកំណែចុងក្រោយ (Hard Reload / Clear Cache)"
-          >
-            <RefreshCw className="w-3.5 h-3.5 text-indigo-600 animate-spin-hover" />
-            <span className="hidden sm:inline">កំណែថ្មី v2.6 (ពេញអេក្រង់)</span>
-            <span className="sm:hidden">v2.6</span>
-          </button>
 
           {/* Quick Action: Share Link to Students / Class Monitor */}
           <button
