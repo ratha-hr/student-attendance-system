@@ -20,6 +20,8 @@ import {
   initialTimetable,
 } from './seedData';
 
+import { enrichStudentWithMoEYSFields } from '../utils/studentEnricher';
+
 export class TeacherDatabase extends Dexie {
   classes!: Table<ClassRoom, string>;
   students!: Table<Student, string>;
@@ -55,7 +57,8 @@ export class TeacherDatabase extends Dexie {
       await this.students.clear();
       await this.attendance.clear();
       await this.classes.bulkAdd(initialClasses);
-      await this.students.bulkAdd(initialStudents);
+      const enriched = initialStudents.map((s, i) => enrichStudentWithMoEYSFields(s, i));
+      await this.students.bulkAdd(enriched);
       await this.attendance.bulkAdd(initialAttendance);
       if ((await this.extracts.count()) === 0) {
         await this.extracts.bulkAdd(initialExtracts);
@@ -68,6 +71,15 @@ export class TeacherDatabase extends Dexie {
       }
       await this.settings.put({ ...initialSettings, id: 'current_settings' });
     } else {
+      // Auto-enrich existing students if they don't have Image 2 fields yet
+      const current = await this.students.toArray();
+      const needsEnrich = current.some((s) => !s.fatherName || !s.pobVillage || !s.motherName);
+      if (needsEnrich) {
+        console.log('Auto-enriching existing students with Image 2 fields...');
+        const enriched = current.map((s, i) => enrichStudentWithMoEYSFields(s, i));
+        await this.students.bulkPut(enriched);
+      }
+
       if ((await this.timetable.count()) === 0) {
         await this.timetable.bulkAdd(initialTimetable);
       }
@@ -80,7 +92,8 @@ export class TeacherDatabase extends Dexie {
     await this.attendance.clear();
     await this.timetable.clear();
     await this.classes.bulkAdd(initialClasses);
-    await this.students.bulkAdd(initialStudents);
+    const enriched = initialStudents.map((s, i) => enrichStudentWithMoEYSFields(s, i));
+    await this.students.bulkAdd(enriched);
     await this.attendance.bulkAdd(initialAttendance);
     await this.timetable.bulkAdd(initialTimetable);
     if ((await this.extracts.count()) === 0) {

@@ -25,6 +25,7 @@ import {
   parseExcelStudents,
   calculateAge,
 } from '../utils/excelUtils';
+import { enrichStudentWithMoEYSFields } from '../utils/studentEnricher';
 
 interface StudentsPageProps {
   students: Student[];
@@ -263,6 +264,24 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
               onChange={handleImportFile}
             />
           </label>
+
+          {/* Quick Populate All 200 Students with Full Image 2 Data */}
+          <button
+            onClick={async () => {
+              if (window.confirm('តើលោកគ្រូចង់បំពេញព័ត៌មានលម្អិត (ភូមិ ឃុំ ស្រុក ឪពុក ម្តាយ ស្ថានភាព) សម្រាប់សិស្សទាំងអស់តាមរូបភាពទី២ មែនទេ?')) {
+                const current = await db.students.toArray();
+                const enriched = current.map((s, i) => enrichStudentWithMoEYSFields(s, i));
+                await db.students.bulkPut(enriched);
+                onRefresh();
+                alert('បានបំពេញព័ត៌មានសិស្សពេញលេញតាមរូបភាពទី២ រួចរាល់!');
+              }
+            }}
+            className="inline-flex items-center px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 text-xs font-bold rounded-xl border border-indigo-200 transition-colors cursor-pointer"
+            title="ចុចដើម្បីបំពេញព័ត៌មានសិស្សគ្រប់ជួរឈរតាមរូបភាពទី២ ស្វ័យប្រវត្តិ"
+          >
+            <Sparkles className="w-3.5 h-3.5 mr-1 text-indigo-600" />
+            បំពេញទិន្នន័យរូបទី២
+          </button>
 
           {/* Export Excel */}
           <button
