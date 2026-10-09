@@ -21,6 +21,7 @@ import {
 } from './seedData';
 
 import { enrichStudentWithMoEYSFields } from '../utils/studentEnricher';
+import { generateStandardClasses } from '../utils/classUtils';
 
 export class TeacherDatabase extends Dexie {
   classes!: Table<ClassRoom, string>;
@@ -84,6 +85,96 @@ export class TeacherDatabase extends Dexie {
         await this.timetable.bulkAdd(initialTimetable);
       }
     }
+
+    // Always ensure all 49 standard classes exist and room/building are removed
+    await this.ensureStandardClasses();
+  }
+
+  async ensureStandardClasses() {
+    const existingClasses = await this.classes.toArray();
+
+    // 1. Rename existing legacy classes and strip room/building
+    const legacyMap: Record<string, { name: string; grade: string }> = {
+      'class-7': { name: 'ថ្នាក់ទី 7A', grade: '7' },
+      'class-8': { name: 'ថ្នាក់ទី 8A', grade: '8' },
+      'class-9': { name: 'ថ្នាក់ទី 9A', grade: '9' },
+      'class-10': { name: 'ថ្នាក់ទី 10A', grade: '10' },
+      'class-11': { name: 'ថ្នាក់ទី 11A', grade: '11' },
+      'class-12': { name: 'ថ្នាក់ទី 12A', grade: '12' },
+    };
+
+    for (const c of existingClasses) {
+      let changed = false;
+      let newName = c.name;
+      let newGrade = c.grade;
+
+      if (legacyMap[c.id]) {
+        newName = legacyMap[c.id].name;
+        newGrade = legacyMap[c.id].grade;
+        changed = true;
+      } else if (c.name.includes('៧ ក')) {
+        newName = 'ថ្នាក់ទី 7A';
+        newGrade = '7';
+        changed = true;
+      } else if (c.name.includes('៨ ក')) {
+        newName = 'ថ្នាក់ទី 8A';
+        newGrade = '8';
+        changed = true;
+      } else if (c.name.includes('៩ ក')) {
+        newName = 'ថ្នាក់ទី 9A';
+        newGrade = '9';
+        changed = true;
+      } else if (c.name.includes('១០ វិទ្យាសាស្ត្រ')) {
+        newName = 'ថ្នាក់ទី 10A';
+        newGrade = '10';
+        changed = true;
+      } else if (c.name.includes('១១ សង្គម')) {
+        newName = 'ថ្នាក់ទី 11A';
+        newGrade = '11';
+        changed = true;
+      } else if (c.name.includes('១២ វិទ្យាសាស្ត្រ')) {
+        newName = 'ថ្នាក់ទី 12A';
+        newGrade = '12';
+        changed = true;
+      }
+
+      if (c.room) {
+        c.room = '';
+        changed = true;
+      }
+
+      if (changed) {
+        await this.classes.put({
+          ...c,
+          name: newName,
+          grade: newGrade,
+          room: '',
+        });
+      }
+    }
+
+    // 2. Add missing standard classes from 7A-E, 8A-E, 9A-D, 10A-L, 11A-J, 12A-M
+    const standard = generateStandardClasses();
+    const updatedClasses = await this.classes.toArray();
+    const nameSet = new Set(updatedClasses.map((c) => c.name));
+    const idSet = new Set(updatedClasses.map((c) => c.id));
+
+    const toAdd: ClassRoom[] = [];
+    for (const sc of standard) {
+      if (!nameSet.has(sc.name) && !idSet.has(sc.id)) {
+        toAdd.push(sc);
+      }
+    }
+
+    if (toAdd.length > 0) {
+      await this.classes.bulkAdd(toAdd);
+    }
+  }
+
+  async resetToStandardClasses() {
+    const standard = generateStandardClasses();
+    await this.classes.clear();
+    await this.classes.bulkAdd(standard);
   }
 
   async loadSample200Students() {

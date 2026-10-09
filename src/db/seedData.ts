@@ -13,63 +13,11 @@ export const initialSettings: TeacherSettings = {
   email: 'hun.ratha@moeys.edu.kh',
 };
 
-// ៦ ថ្នាក់៖ ពីថ្នាក់ទី ៧ ដល់ ថ្នាក់ទី ១២
-export const initialClasses: ClassRoom[] = [
-  {
-    "id": "class-7",
-    "name": "ថ្នាក់ទី ៧ ក",
-    "grade": "៧",
-    "academicYear": "២០២៤-២០២៥",
-    "room": "បន្ទប់ ១០១ (អគារ A)",
-    "description": "ថ្នាក់អនុវិទ្យាល័យ ឆ្នាំទី១",
-    "createdAt": "2024-10-01T08:00:00Z"
-  },
-  {
-    "id": "class-8",
-    "name": "ថ្នាក់ទី ៨ ក",
-    "grade": "៨",
-    "academicYear": "២០២៤-២០២៥",
-    "room": "បន្ទប់ ២០១ (អគារ A)",
-    "description": "ថ្នាក់អនុវិទ្យាល័យ ឆ្នាំទី២",
-    "createdAt": "2024-10-01T08:00:00Z"
-  },
-  {
-    "id": "class-9",
-    "name": "ថ្នាក់ទី ៩ ក",
-    "grade": "៩",
-    "academicYear": "២០២៤-២០២៥",
-    "room": "បន្ទប់ ៣០១ (អគារ B)",
-    "description": "ថ្នាក់ត្រៀមប្រឡងឌីប្លូម",
-    "createdAt": "2024-10-01T08:00:00Z"
-  },
-  {
-    "id": "class-10",
-    "name": "ថ្នាក់ទី ១០ វិទ្យាសាស្ត្រ",
-    "grade": "១០",
-    "academicYear": "២០២៤-២០២៥",
-    "room": "បន្ទប់ ១០២ (អគារ C)",
-    "description": "ថ្នាក់វិទ្យាល័យ ឆ្នាំទី១ (វិទ្យាសាស្ត្រពិត)",
-    "createdAt": "2024-10-01T08:00:00Z"
-  },
-  {
-    "id": "class-11",
-    "name": "ថ្នាក់ទី ១១ សង្គម",
-    "grade": "១១",
-    "academicYear": "២០២៤-២០២៥",
-    "room": "បន្ទប់ ២០២ (អគារ C)",
-    "description": "ថ្នាក់វិទ្យាសាស្ត្រសង្គម",
-    "createdAt": "2024-10-01T08:00:00Z"
-  },
-  {
-    "id": "class-12",
-    "name": "ថ្នាក់ទី ១២ វិទ្យាសាស្ត្រ",
-    "grade": "១២",
-    "academicYear": "២០២៤-២០២៥",
-    "room": "បន្ទប់ ៣០២ (អគារ C)",
-    "description": "ថ្នាក់ត្រៀមប្រឡងបាក់ឌុប",
-    "createdAt": "2024-10-01T08:00:00Z"
-  }
-];
+import { generateStandardClasses } from '../utils/classUtils';
+
+// ៤៩ ថ្នាក់ស្តង់ដារ៖ 7A-E, 8A-E, 9A-D, 10A-L, 11A-J, 12A-M (ដកបន្ទប់ និងអគារចេញ)
+export const initialClasses: ClassRoom[] = generateStandardClasses();
+
 
 // សិស្សសរុប ២០០ នាក់ (ចែកតាមថ្នាក់ទី ៧ ដល់ ទី ១២)
 export const initialStudents: Student[] = [

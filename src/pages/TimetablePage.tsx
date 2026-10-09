@@ -245,7 +245,7 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
             </span>
           </div>
           <span className="text-xs font-bold text-blue-700 hidden sm:inline">
-            បន្ទប់៖ {currentClass?.room || 'អគារសិក្សា'}
+            ថ្នាក់រៀន៖ {currentClass?.name || 'ទូទៅ'}
           </span>
         </div>
       )}
@@ -326,9 +326,6 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
                               <div className="text-[11px] font-bold text-blue-700 mt-0.5">
                                 {slot.subject} (២ ម៉ោង)
                               </div>
-                              <div className="text-[10px] text-slate-500 mt-0.5">
-                                {slot.room || slotClass?.room || ''}
-                              </div>
                               <button
                                 onClick={() => handleOpenEdit(slot)}
                                 className="absolute top-1 right-1 p-1 text-slate-400 hover:text-blue-600 rounded bg-white/80 shadow-2xs opacity-0 group-hover:opacity-100 transition-opacity no-print"
@@ -382,9 +379,6 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
                                 >
                                   {isRatha ? `⭐ ${slot.teacherName}` : slot.teacherName || '-'}
                                 </div>
-                                {slot.room && (
-                                  <div className="text-[10px] text-slate-400 mt-0.5">{slot.room}</div>
-                                )}
                                 <button
                                   onClick={() => handleOpenEdit(slot)}
                                   className="absolute top-1 right-1 p-1 text-slate-400 hover:text-blue-600 rounded bg-white/80 shadow-2xs opacity-0 group-hover:opacity-100 transition-opacity no-print"

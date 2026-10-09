@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Menu, School, User, Calendar, Share2, Check, Plus, Settings, Clock, Smartphone, RefreshCw } from 'lucide-react';
 import type { ClassRoom, TeacherSettings } from '../types';
 import { formatKhmerDate, getTodayDateString, toKhmerNum } from '../utils/dateUtils';
+import { groupClassesByGrade } from '../utils/classUtils';
 
 interface NavbarProps {
   onToggleSidebar: () => void;
@@ -70,6 +71,8 @@ export const Navbar: React.FC<NavbarProps> = ({
     setTimeout(() => setCopiedLink(false), 2500);
   };
 
+  const gradeGroups = useMemo(() => groupClassesByGrade(classes), [classes]);
+
   return (
     <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-6 2xl:px-8 py-3 no-print">
       <div className="flex items-center justify-between gap-4">
@@ -98,7 +101,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
 
-        {/* Center / Class Switcher Dropdown */}
+        {/* Center / Class Switcher Dropdown (Organized by Grade, Rooms/Buildings Removed) */}
         <div className="flex items-center space-x-2">
           <label htmlFor="class-select" className="hidden md:inline-block text-xs font-semibold text-slate-500 whitespace-nowrap">
             ជ្រើសរើសថ្នាក់៖
@@ -108,23 +111,28 @@ export const Navbar: React.FC<NavbarProps> = ({
               id="class-select"
               value={selectedClassId}
               onChange={(e) => onSelectClass(e.target.value)}
-              className="bg-slate-50 border border-slate-300 hover:border-blue-500 text-slate-800 text-xs sm:text-sm font-semibold rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block px-3 py-1.5 sm:py-2 transition-all cursor-pointer shadow-xs"
+              className="bg-slate-50 border border-slate-300 hover:border-blue-500 text-slate-800 text-xs sm:text-sm font-bold rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block px-3 py-1.5 sm:py-2 transition-all cursor-pointer shadow-xs max-w-[210px] sm:max-w-xs truncate"
             >
-              <option value="ALL">🌟 ថ្នាក់ទាំងអស់ ({classes.length})</option>
-              {classes.map((c) => (
-                <option key={c.id} value={c.id}>
-                  📚 {c.name} {c.room ? `(${c.room})` : ''}
-                </option>
+              <option value="ALL">🌟 ថ្នាក់ទាំងអស់ ({toKhmerNum(classes.length)})</option>
+              {gradeGroups.map((group) => (
+                <optgroup key={group.grade} label={`── ${group.label} (${toKhmerNum(group.classes.length)}) ──`}>
+                  {group.classes.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      📚 {c.name}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
             {onOpenManageClasses && (
               <button
                 type="button"
                 onClick={onOpenManageClasses}
-                className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl transition-colors cursor-pointer"
-                title="បន្ថែមថ្នាក់ថ្មី (+ថ្នាក់)"
+                className="inline-flex items-center space-x-1 px-2.5 py-1.5 sm:py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs sm:text-sm rounded-xl border border-blue-200 transition-colors cursor-pointer shadow-2xs shrink-0"
+                title="គ្រប់គ្រងថ្នាក់ (បន្ថែម បន្ថយ ឬកែប្រែថ្នាក់)"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">គ្រប់គ្រងថ្នាក់</span>
               </button>
             )}
           </div>
