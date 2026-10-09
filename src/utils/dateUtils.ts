@@ -104,3 +104,149 @@ export function checkIfHolidayDate(dateStr: string): { isHoliday: boolean; holid
   };
 }
 
+// សត្វទាំង ១២ (Khmer 12 Zodiac Animal Years)
+export const KHMER_ANIMALS = [
+  'ជូត', 'ឆ្លូវ', 'ខាល', 'ថោះ', 'រោង', 'ម្សាញ់', 'មមី', 'មមែ', 'វក', 'រកា', 'ច', 'កុរ'
+];
+
+// ស័កទាំង ១០ (Khmer 10 Sak / Decennial Cycle)
+export const KHMER_SAK = [
+  'សំរឹទ្ធិស័ក', 'ឯកស័ក', 'ទោស័ក', 'ត្រីស័ក', 'ចត្វាស័ក', 'បញ្ចស័ក', 'ឆស័ក', 'សប្តស័ក', 'អដ្ឋស័ក', 'នព្វស័ក'
+];
+
+// ខែចន្ទគតិទាំង ១២ (Khmer 12 Lunar Months)
+export const KHMER_LUNAR_MONTHS = [
+  'មិគសិរ', 'បុស្ស', 'មាឃ', 'ផល្គុន', 'ចេត្រ', 'ពិសាខ',
+  'ជេស្ឋ', 'អាសាឍ', 'ស្រាពណ៍', 'ភទ្របទ', 'អស្សុជ', 'កត្តិក'
+];
+
+export interface KhmerLunarInfo {
+  dayOfWeek: string;
+  moonPhase: string;
+  lunarMonth: string;
+  animalYear: string;
+  sak: string;
+  beYear: string;
+  fullLunarStr: string;
+  shortLunarStr: string;
+}
+
+export interface KhmerSolarInfo {
+  fullSolarStr: string;
+  shortSolarStr: string;
+  dayOfWeek: string;
+  dayNum: string;
+  monthName: string;
+  yearNum: string;
+}
+
+/**
+ * គណនាថ្ងៃខែឆ្នាំបែបចន្ទគតិខ្មែរ (Khmer Lunar Calendar)
+ * ឧទាហរណ៍៖ ថ្ងៃសុក្រ ១៣រោច ខែអស្សុជ ឆ្នាំមមី អដ្ឋស័ក ព.ស. ២៥៧០
+ */
+export function getKhmerLunarDate(d: Date | string = new Date()): KhmerLunarInfo {
+  const date = typeof d === 'string' ? new Date(d) : d;
+  const validDate = isNaN(date.getTime()) ? new Date() : date;
+
+  const dayOfWeek = KHMER_DAYS[validDate.getDay()];
+
+  // Synodic month calculation (29.53058867 days per lunar cycle)
+  const refTime = new Date('2000-01-06T18:14:00Z').getTime();
+  const synodic = 29.53058867;
+  const diffDays = (validDate.getTime() - refTime) / (1000 * 60 * 60 * 24);
+  const cycle = (diffDays % synodic + synodic) % synodic;
+
+  const dayInPhase = Math.floor(cycle) + 1;
+  const moonPhase = dayInPhase <= 15
+    ? `${toKhmerNum(dayInPhase)}កើត`
+    : `${toKhmerNum(dayInPhase - 15)}រោច`;
+
+  // Animal year & Sak calculation (Khmer New Year occurs around April 14)
+  const year = validDate.getFullYear();
+  const month = validDate.getMonth();
+  const day = validDate.getDate();
+  const isAfterKNY = month > 3 || (month === 3 && day >= 14);
+  const effectiveYear = isAfterKNY ? year : year - 1;
+
+  // Animal Zodiac (2020: ជូត (0), 2024: រោង (4), 2026: មមី (6))
+  const animalIdx = ((effectiveYear - 4) % 12 + 12) % 12;
+  const animalYear = `ឆ្នាំ${KHMER_ANIMALS[animalIdx]}`;
+
+  // Sak (2024: ឆស័ក (6), 2026: អដ្ឋស័ក (8))
+  const sakIdx = ((effectiveYear + 2) % 10 + 10) % 10;
+  const sak = KHMER_SAK[sakIdx];
+
+  // Buddhist Era (ពុទ្ធសករាជ ព.ស.)
+  const beYear = toKhmerNum(effectiveYear + 544);
+
+  // Lunar Month (Aligned with Chet new moon reference in April 2024)
+  const refChet = new Date('2024-04-08T18:21:00Z').getTime();
+  const cycles = Math.floor((validDate.getTime() - refChet) / (synodic * 24 * 3600 * 1000));
+  const monthIdx = ((4 + cycles) % 12 + 12) % 12;
+  const lunarMonth = `ខែ${KHMER_LUNAR_MONTHS[monthIdx]}`;
+
+  const fullLunarStr = `ថ្ងៃ${dayOfWeek} ${moonPhase} ${lunarMonth} ${animalYear} ${sak} ព.ស. ${beYear}`;
+  const shortLunarStr = `${moonPhase} ${lunarMonth} ${animalYear}`;
+
+  return {
+    dayOfWeek,
+    moonPhase,
+    lunarMonth,
+    animalYear,
+    sak,
+    beYear,
+    fullLunarStr,
+    shortLunarStr,
+  };
+}
+
+/**
+ * គណនាថ្ងៃខែឆ្នាំបែបសុរិយគតិ (Solar Calendar)
+ * ឧទាហរណ៍៖ ថ្ងៃសុក្រ ទី០៩ ខែតុលា ឆ្នាំ២០២៦
+ */
+export function getKhmerSolarDate(d: Date | string = new Date()): KhmerSolarInfo {
+  const date = typeof d === 'string' ? new Date(d) : d;
+  const validDate = isNaN(date.getTime()) ? new Date() : date;
+
+  const dayOfWeek = KHMER_DAYS[validDate.getDay()];
+  const day = validDate.getDate();
+  const dayNum = toKhmerNum(String(day).padStart(2, '0'));
+  const monthName = KHMER_MONTHS[validDate.getMonth()];
+  const yearNum = toKhmerNum(validDate.getFullYear());
+
+  const fullSolarStr = `ថ្ងៃ${dayOfWeek} ទី${dayNum} ខែ${monthName} ឆ្នាំ${yearNum}`;
+  const shortSolarStr = `ថ្ងៃទី${dayNum} ខែ${monthName} ឆ្នាំ${yearNum}`;
+
+  return {
+    fullSolarStr,
+    shortSolarStr,
+    dayOfWeek,
+    dayNum,
+    monthName,
+    yearNum,
+  };
+}
+
+/**
+ * ទម្រង់ម៉ោងសកល (Universal / International Standard Time)
+ * ប្រើប្រាស់លេខសកល (0-9) សម្រាប់ម៉ោង នាទី វិនាទី
+ */
+export function formatUniversalTime(date: Date = new Date()): {
+  time24: string;
+  time12: string;
+  period: 'AM' | 'PM';
+  khmerPeriod: 'ព្រឹក' | 'រសៀល';
+} {
+  const h = date.getHours();
+  const m = String(date.getMinutes()).padStart(2, '0');
+  const s = String(date.getSeconds()).padStart(2, '0');
+  const time24 = `${String(h).padStart(2, '0')}:${m}:${s}`;
+  const h12 = h % 12 || 12;
+  const time12 = `${String(h12).padStart(2, '0')}:${m}:${s}`;
+  const period: 'AM' | 'PM' = h >= 12 ? 'PM' : 'AM';
+  const khmerPeriod: 'ព្រឹក' | 'រសៀល' = h >= 12 ? 'រសៀល' : 'ព្រឹក';
+
+  return { time24, time12, period, khmerPeriod };
+}
+
+

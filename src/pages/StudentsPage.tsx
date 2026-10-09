@@ -466,54 +466,54 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
             </colgroup>
 
             {/* Table Header: 2 Rows Exactly Matching Image 2 */}
-            <thead className="sticky top-0 z-20 shadow-xs">
+            <thead className="sticky top-0 z-20 shadow-xs font-kantumruy">
               {/* Row 1 Header */}
               <tr className="bg-[#002060] text-white font-bold text-center border-b border-white/20 print:bg-slate-100 print:text-black text-xs sm:text-sm">
-                <th rowSpan={2} className="py-3 px-2 border border-white/30 w-11">ល.រ</th>
-                <th rowSpan={2} className="py-3 px-2.5 border border-white/30 min-w-[75px]">អត្តលេខ</th>
-                <th rowSpan={2} className="py-3 px-3 border border-white/30 min-w-[140px]">គោត្តនាម នាម</th>
-                <th rowSpan={2} className="py-3 px-2 border border-white/30 w-16">ភេទ</th>
-                <th rowSpan={2} className="py-3 px-2.5 border border-white/30 min-w-[105px]">ថ្ងៃខែឆ្នាំកំណើត</th>
-                <th rowSpan={2} className="py-3 px-1.5 border border-white/30 w-14">អាយុ</th>
-                <th rowSpan={2} className="py-3 px-2.5 border border-white/30 min-w-[115px]">មកពីសាលា</th>
+                <th rowSpan={2} className="py-3 px-2 border border-white/30 w-12 min-w-[48px] sticky left-0 z-30 bg-[#002060]">ល.រ</th>
+                <th rowSpan={2} className="py-3 px-2.5 border border-white/30 min-w-[110px]">អត្តលេខ</th>
+                <th rowSpan={2} className="py-3 px-3 border border-white/30 min-w-[160px]">គោត្តនាម នាម</th>
+                <th rowSpan={2} className="py-3 px-2 border border-white/30 w-20 min-w-[70px]">ភេទ</th>
+                <th rowSpan={2} className="py-3 px-2.5 border border-white/30 min-w-[135px]">ថ្ងៃខែឆ្នាំកំណើត</th>
+                <th rowSpan={2} className="py-3 px-1.5 border border-white/30 w-14 min-w-[50px]">អាយុ</th>
+                <th rowSpan={2} className="py-3 px-2.5 border border-white/30 min-w-[160px]">មកពីសាលា</th>
                 <th colSpan={4} className="py-1.5 px-2 border border-white/30 bg-[#0f3b73] print:bg-slate-200">ទីកន្លែងកំណើត</th>
                 <th colSpan={4} className="py-1.5 px-2 border border-white/30 bg-[#0f3b73] print:bg-slate-200">អាសយដ្ឋានបច្ចុប្បន្ន</th>
-                <th rowSpan={2} className="py-3 px-2 border border-white/30 min-w-[105px]">លេខទូរស័ព្ទផ្ទាល់ខ្លួន</th>
+                <th rowSpan={2} className="py-3 px-2 border border-white/30 min-w-[120px]">លេខទូរស័ព្ទផ្ទាល់ខ្លួន</th>
                 <th colSpan={7} className="py-1.5 px-2 border border-white/30 bg-[#0f3b73] print:bg-slate-200">ស្ថានភាពសិស្ស</th>
                 <th colSpan={3} className="py-1.5 px-2 border border-white/30 bg-[#0f3b73] print:bg-slate-200">គោត្តនាម នាម (ឪពុក)</th>
                 <th colSpan={3} className="py-1.5 px-2 border border-white/30 bg-[#0f3b73] print:bg-slate-200">គោត្តនាម នាម (ម្តាយ)</th>
-                <th rowSpan={2} className="py-3 px-2 border border-white/30 min-w-[85px]">ផ្សេងៗ</th>
-                <th rowSpan={2} className="py-3 px-2 border border-white/30 w-24 no-print bg-[#001730]">សកម្មភាព</th>
+                <th rowSpan={2} className="py-3 px-2 border border-white/30 min-w-[120px]">ផ្សេងៗ</th>
+                <th rowSpan={2} className="py-3 px-2 border border-white/30 w-24 min-w-[95px] no-print bg-[#001730]">សកម្មភាព</th>
               </tr>
 
               {/* Row 2 Sub-Headers */}
               <tr className="bg-[#0f3b73] text-white text-[11px] sm:text-xs font-bold text-center border-b border-white/30 print:bg-slate-200 print:text-black">
                 {/* ទីកន្លែងកំណើត */}
-                <th className="py-1.5 px-1 border border-white/30 min-w-[75px]">ភូមិ</th>
-                <th className="py-1.5 px-1 border border-white/30 min-w-[85px]">ឃុំ/សង្កាត់</th>
-                <th className="py-1.5 px-1 border border-white/30 min-w-[85px]">ស្រុក/ខណ្ឌ</th>
-                <th className="py-1.5 px-1 border border-white/30 min-w-[90px]">ខេត្ត/រាជធានី</th>
+                <th className="py-1.5 px-1 border border-white/30 min-w-[100px]">ភូមិ</th>
+                <th className="py-1.5 px-1 border border-white/30 min-w-[110px]">ឃុំ/សង្កាត់</th>
+                <th className="py-1.5 px-1 border border-white/30 min-w-[110px]">ស្រុក/ខណ្ឌ</th>
+                <th className="py-1.5 px-1 border border-white/30 min-w-[120px]">ខេត្ត/រាជធានី</th>
                 {/* អាសយដ្ឋានបច្ចុប្បន្ន */}
-                <th className="py-1.5 px-1 border border-white/30 min-w-[75px]">ភូមិ</th>
-                <th className="py-1.5 px-1 border border-white/30 min-w-[80px]">ឃុំ</th>
-                <th className="py-1.5 px-1 border border-white/30 min-w-[80px]">ស្រុក</th>
-                <th className="py-1.5 px-1 border border-white/30 min-w-[85px]">ខេត្ត</th>
+                <th className="py-1.5 px-1 border border-white/30 min-w-[100px]">ភូមិ</th>
+                <th className="py-1.5 px-1 border border-white/30 min-w-[110px]">ឃុំ</th>
+                <th className="py-1.5 px-1 border border-white/30 min-w-[110px]">ស្រុក</th>
+                <th className="py-1.5 px-1 border border-white/30 min-w-[120px]">ខេត្ត</th>
                 {/* ស្ថានភាពសិស្ស */}
-                <th className="py-1.5 px-1 border border-white/30 min-w-[45px]" title="កំព្រាឪពុក">ឪពុក</th>
-                <th className="py-1.5 px-1 border border-white/30 min-w-[45px]" title="កំព្រាម្តាយ">ម្តាយ</th>
-                <th className="py-1.5 px-1 border border-white/30 min-w-[60px]" title="កំព្រាទាំងឪពុកម្តាយ">ឪពុកម្តាយ</th>
-                <th className="py-1.5 px-1 border border-white/30 min-w-[45px]">ពិការ</th>
-                <th className="py-1.5 px-1 border border-white/30 min-w-[45px]">ក្រីក្រ</th>
-                <th className="py-1.5 px-1 border border-white/30 min-w-[70px]">អាហារូបករណ៍</th>
-                <th className="py-1.5 px-1 border border-white/30 min-w-[65px]">ស្នាក់នៅវត្ត</th>
+                <th className="py-1.5 px-1 border border-white/30 min-w-[50px]" title="កំព្រាឪពុក">ឪពុក</th>
+                <th className="py-1.5 px-1 border border-white/30 min-w-[50px]" title="កំព្រាម្តាយ">ម្តាយ</th>
+                <th className="py-1.5 px-1 border border-white/30 min-w-[65px]" title="កំព្រាទាំងឪពុកម្តាយ">ឪពុកម្តាយ</th>
+                <th className="py-1.5 px-1 border border-white/30 min-w-[50px]">ពិការ</th>
+                <th className="py-1.5 px-1 border border-white/30 min-w-[50px]">ក្រីក្រ</th>
+                <th className="py-1.5 px-1 border border-white/30 min-w-[75px]">អាហារូបករណ៍</th>
+                <th className="py-1.5 px-1 border border-white/30 min-w-[70px]">ស្នាក់នៅវត្ត</th>
                 {/* ឪពុក */}
-                <th className="py-1.5 px-1 border border-white/30 min-w-[100px]">ឪពុក</th>
-                <th className="py-1.5 px-1 border border-white/30 min-w-[80px]">មុខរបរ</th>
-                <th className="py-1.5 px-1 border border-white/30 min-w-[95px]">លេខទូរស័ព្ទ</th>
+                <th className="py-1.5 px-1 border border-white/30 min-w-[135px]">ឪពុក</th>
+                <th className="py-1.5 px-1 border border-white/30 min-w-[105px]">មុខរបរ</th>
+                <th className="py-1.5 px-1 border border-white/30 min-w-[120px]">លេខទូរស័ព្ទ</th>
                 {/* ម្តាយ */}
-                <th className="py-1.5 px-1 border border-white/30 min-w-[100px]">ម្តាយ</th>
-                <th className="py-1.5 px-1 border border-white/30 min-w-[80px]">មុខរបរ</th>
-                <th className="py-1.5 px-1 border border-white/30 min-w-[95px]">លេខទូរស័ព្ទ</th>
+                <th className="py-1.5 px-1 border border-white/30 min-w-[135px]">ម្តាយ</th>
+                <th className="py-1.5 px-1 border border-white/30 min-w-[105px]">មុខរបរ</th>
+                <th className="py-1.5 px-1 border border-white/30 min-w-[120px]">លេខទូរស័ព្ទ</th>
               </tr>
             </thead>
 
@@ -535,9 +535,9 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                       key={stu.id}
                       className="hover:bg-blue-50/40 transition-colors group border-b border-slate-200 print:break-inside-avoid"
                     >
-                      {/* ល.រ (រត់តាមលំដាប់លំដោយ ១, ២, ៣...) */}
-                      <td className="py-1.5 px-1 text-center font-bold text-slate-700 bg-slate-50 border-r border-slate-200 select-none">
-                        <span className="inline-block px-2 py-0.5 rounded bg-slate-200/80 text-slate-800 text-xs sm:text-[13px] font-black print:hidden">
+                      {/* ល.រ (រត់តាមលំដាប់លំដោយ ១, ២, ៣... Sticky on horizontal scroll) */}
+                      <td className="py-1 px-1 text-center font-bold text-slate-700 bg-slate-50/95 border-r border-slate-300 select-none sticky left-0 z-10 shadow-xs">
+                        <span className="inline-block px-2 py-0.5 rounded bg-slate-200/90 text-slate-800 text-xs sm:text-[13px] font-black print:hidden">
                           {toKhmerNum(index + 1)}
                         </span>
                         <span className="hidden print:inline-block font-bold text-[5.8pt]">
@@ -550,8 +550,10 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                         <input
                           type="text"
                           value={stu.studentCode}
+                          title={stu.studentCode}
+                          placeholder="STU-001"
                           onChange={(e) => handleInlineChange(stu.id, 'studentCode', e.target.value)}
-                          className="w-full font-mono text-xs sm:text-[13px] font-bold text-slate-700 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
+                          className="w-full font-mono text-xs sm:text-[12.5px] font-bold text-slate-800 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
                         />
                         <span className="hidden print:block font-mono font-bold truncate text-[5.5pt]">
                           {stu.studentCode}
@@ -563,8 +565,10 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                         <input
                           type="text"
                           value={stu.nameKh}
+                          title={stu.nameKh}
+                          placeholder="ឈ្មោះសិស្ស..."
                           onChange={(e) => handleInlineChange(stu.id, 'nameKh', e.target.value)}
-                          className="w-full font-bold text-xs sm:text-sm text-slate-900 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
+                          className="w-full font-bold text-xs sm:text-[13px] text-slate-900 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
                         />
                         <span className="hidden print:block font-bold truncate text-slate-900 text-[6pt]">
                           {stu.nameKh}
@@ -576,10 +580,10 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                         <select
                           value={stu.gender}
                           onChange={(e) => handleInlineChange(stu.id, 'gender', e.target.value as Gender)}
-                          className={`text-xs sm:text-[13px] font-bold rounded px-2 py-1 cursor-pointer border-0 print:hidden ${
+                          className={`w-full text-xs sm:text-[12px] font-bold rounded px-1.5 py-1 cursor-pointer border-0 print:hidden text-center transition-all ${
                             stu.gender === 'ស្រី'
-                              ? 'bg-pink-100 text-pink-700'
-                              : 'bg-blue-100 text-blue-700'
+                              ? 'bg-pink-100 text-pink-700 hover:bg-pink-200/80'
+                              : 'bg-blue-100 text-blue-700 hover:bg-blue-200/80'
                           }`}
                         >
                           <option value="ប្រុស">ប្រុស</option>
@@ -595,8 +599,9 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                         <input
                           type="date"
                           value={stu.dob || ''}
+                          title={stu.dob || ''}
                           onChange={(e) => handleInlineChange(stu.id, 'dob', e.target.value)}
-                          className="w-full text-xs sm:text-[13px] text-slate-700 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
+                          className="w-full text-xs sm:text-[12.5px] font-mono text-slate-800 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
                         />
                         <span className="hidden print:block font-mono text-center text-[5.2pt] truncate">
                           {stu.dob || ''}
@@ -605,7 +610,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
 
                       {/* អាយុ */}
                       <td className="py-1 px-1 text-center font-bold text-xs sm:text-[13px] text-slate-700 bg-slate-50/50 border-r border-slate-200">
-                        <span className="print:hidden">{toKhmerNum(age)}</span>
+                        <span className="print:hidden font-mono font-bold">{toKhmerNum(age)}</span>
                         <span className="hidden print:block text-center font-bold text-[5.5pt]">
                           {toKhmerNum(age)}
                         </span>
@@ -616,9 +621,10 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                         <input
                           type="text"
                           value={stu.originSchool || ''}
+                          title={stu.originSchool || ''}
                           placeholder="សាលាចាស់..."
                           onChange={(e) => handleInlineChange(stu.id, 'originSchool', e.target.value)}
-                          className="w-full text-xs sm:text-[13px] text-slate-700 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
+                          className="w-full text-xs sm:text-[12.5px] text-slate-800 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
                         />
                         <span className="hidden print:block truncate text-[5.5pt]">
                           {stu.originSchool || ''}
@@ -630,8 +636,10 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                         <input
                           type="text"
                           value={stu.pobVillage || ''}
+                          title={stu.pobVillage || ''}
+                          placeholder="ភូមិ..."
                           onChange={(e) => handleInlineChange(stu.id, 'pobVillage', e.target.value)}
-                          className="w-full text-xs sm:text-[13px] text-slate-700 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
+                          className="w-full text-xs sm:text-[12.5px] text-slate-800 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
                         />
                         <span className="hidden print:block truncate text-[5.2pt]">
                           {stu.pobVillage || ''}
@@ -643,8 +651,10 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                         <input
                           type="text"
                           value={stu.pobCommune || ''}
+                          title={stu.pobCommune || ''}
+                          placeholder="ឃុំ/សង្កាត់..."
                           onChange={(e) => handleInlineChange(stu.id, 'pobCommune', e.target.value)}
-                          className="w-full text-xs sm:text-[13px] text-slate-700 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
+                          className="w-full text-xs sm:text-[12.5px] text-slate-800 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
                         />
                         <span className="hidden print:block truncate text-[5.2pt]">
                           {stu.pobCommune || ''}
@@ -656,8 +666,10 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                         <input
                           type="text"
                           value={stu.pobDistrict || ''}
+                          title={stu.pobDistrict || ''}
+                          placeholder="ស្រុក/ខណ្ឌ..."
                           onChange={(e) => handleInlineChange(stu.id, 'pobDistrict', e.target.value)}
-                          className="w-full text-xs sm:text-[13px] text-slate-700 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
+                          className="w-full text-xs sm:text-[12.5px] text-slate-800 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
                         />
                         <span className="hidden print:block truncate text-[5.2pt]">
                           {stu.pobDistrict || ''}
@@ -669,8 +681,10 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                         <input
                           type="text"
                           value={stu.pobProvince || stu.pob || ''}
+                          title={stu.pobProvince || stu.pob || ''}
+                          placeholder="ខេត្ត/រាជធានី..."
                           onChange={(e) => handleInlineChange(stu.id, 'pobProvince', e.target.value)}
-                          className="w-full text-xs sm:text-[13px] text-slate-700 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
+                          className="w-full text-xs sm:text-[12.5px] text-slate-800 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
                         />
                         <span className="hidden print:block truncate text-[5.2pt]">
                           {stu.pobProvince || stu.pob || ''}
@@ -682,8 +696,10 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                         <input
                           type="text"
                           value={stu.addrVillage || ''}
+                          title={stu.addrVillage || ''}
+                          placeholder="ភូមិ..."
                           onChange={(e) => handleInlineChange(stu.id, 'addrVillage', e.target.value)}
-                          className="w-full text-xs sm:text-[13px] text-slate-700 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
+                          className="w-full text-xs sm:text-[12.5px] text-slate-800 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
                         />
                         <span className="hidden print:block truncate text-[5.2pt]">
                           {stu.addrVillage || ''}
@@ -695,8 +711,10 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                         <input
                           type="text"
                           value={stu.addrCommune || ''}
+                          title={stu.addrCommune || ''}
+                          placeholder="ឃុំ..."
                           onChange={(e) => handleInlineChange(stu.id, 'addrCommune', e.target.value)}
-                          className="w-full text-xs sm:text-[13px] text-slate-700 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
+                          className="w-full text-xs sm:text-[12.5px] text-slate-800 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
                         />
                         <span className="hidden print:block truncate text-[5.2pt]">
                           {stu.addrCommune || ''}
@@ -708,8 +726,10 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                         <input
                           type="text"
                           value={stu.addrDistrict || ''}
+                          title={stu.addrDistrict || ''}
+                          placeholder="ស្រុក..."
                           onChange={(e) => handleInlineChange(stu.id, 'addrDistrict', e.target.value)}
-                          className="w-full text-xs sm:text-[13px] text-slate-700 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
+                          className="w-full text-xs sm:text-[12.5px] text-slate-800 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
                         />
                         <span className="hidden print:block truncate text-[5.2pt]">
                           {stu.addrDistrict || ''}
@@ -721,8 +741,10 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                         <input
                           type="text"
                           value={stu.addrProvince || stu.currentAddress || ''}
+                          title={stu.addrProvince || stu.currentAddress || ''}
+                          placeholder="ខេត្ត..."
                           onChange={(e) => handleInlineChange(stu.id, 'addrProvince', e.target.value)}
-                          className="w-full text-xs sm:text-[13px] text-slate-700 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
+                          className="w-full text-xs sm:text-[12.5px] text-slate-800 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
                         />
                         <span className="hidden print:block truncate text-[5.2pt]">
                           {stu.addrProvince || stu.currentAddress || ''}
@@ -734,9 +756,10 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                         <input
                           type="text"
                           value={stu.studentPhone || ''}
+                          title={stu.studentPhone || ''}
                           placeholder="ទូរស័ព្ទសិស្ស..."
                           onChange={(e) => handleInlineChange(stu.id, 'studentPhone', e.target.value)}
-                          className="w-full text-xs sm:text-[13px] font-mono font-bold text-blue-700 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
+                          className="w-full text-xs sm:text-[12.5px] font-mono font-bold text-blue-700 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
                         />
                         <span className="hidden print:block font-mono text-center text-[5.2pt] truncate">
                           {stu.studentPhone || ''}
@@ -745,24 +768,26 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
 
                       {/* ស្ថានភាពសិស្ស - កំព្រាឪពុក */}
                       <td className="py-1 px-1 text-center border-r border-slate-200">
-                        <input
-                          type="checkbox"
-                          checked={stu.orphanStatus === 'father' || stu.orphanStatus === 'both'}
-                          onChange={(e) =>
-                            handleInlineChange(
-                              stu.id,
-                              'orphanStatus',
-                              e.target.checked
-                                ? stu.orphanStatus === 'mother'
-                                  ? 'both'
-                                  : 'father'
-                                : stu.orphanStatus === 'both'
-                                ? 'mother'
-                                : 'none'
-                            )
-                          }
-                          className="w-4 h-4 rounded text-blue-600 cursor-pointer print:hidden"
-                        />
+                        <div className="flex items-center justify-center">
+                          <input
+                            type="checkbox"
+                            checked={stu.orphanStatus === 'father' || stu.orphanStatus === 'both'}
+                            onChange={(e) =>
+                              handleInlineChange(
+                                stu.id,
+                                'orphanStatus',
+                                e.target.checked
+                                  ? stu.orphanStatus === 'mother'
+                                    ? 'both'
+                                    : 'father'
+                                  : stu.orphanStatus === 'both'
+                                  ? 'mother'
+                                  : 'none'
+                              )
+                            }
+                            className="w-4 h-4 rounded text-blue-600 cursor-pointer print:hidden"
+                          />
+                        </div>
                         <span className="hidden print:block text-center font-bold text-[7pt]">
                           {(stu.orphanStatus === 'father' || stu.orphanStatus === 'both') ? '✓' : ''}
                         </span>
@@ -770,24 +795,26 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
 
                       {/* ស្ថានភាពសិស្ស - កំព្រាម្តាយ */}
                       <td className="py-1 px-1 text-center border-r border-slate-200">
-                        <input
-                          type="checkbox"
-                          checked={stu.orphanStatus === 'mother' || stu.orphanStatus === 'both'}
-                          onChange={(e) =>
-                            handleInlineChange(
-                              stu.id,
-                              'orphanStatus',
-                              e.target.checked
-                                ? stu.orphanStatus === 'father'
-                                  ? 'both'
-                                  : 'mother'
-                                : stu.orphanStatus === 'both'
-                                ? 'father'
-                                : 'none'
-                            )
-                          }
-                          className="w-4 h-4 rounded text-blue-600 cursor-pointer print:hidden"
-                        />
+                        <div className="flex items-center justify-center">
+                          <input
+                            type="checkbox"
+                            checked={stu.orphanStatus === 'mother' || stu.orphanStatus === 'both'}
+                            onChange={(e) =>
+                              handleInlineChange(
+                                stu.id,
+                                'orphanStatus',
+                                e.target.checked
+                                  ? stu.orphanStatus === 'father'
+                                    ? 'both'
+                                    : 'mother'
+                                  : stu.orphanStatus === 'both'
+                                  ? 'father'
+                                  : 'none'
+                              )
+                            }
+                            className="w-4 h-4 rounded text-blue-600 cursor-pointer print:hidden"
+                          />
+                        </div>
                         <span className="hidden print:block text-center font-bold text-[7pt]">
                           {(stu.orphanStatus === 'mother' || stu.orphanStatus === 'both') ? '✓' : ''}
                         </span>
@@ -795,14 +822,16 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
 
                       {/* ស្ថានភាពសិស្ស - កំព្រាទាំងឪពុកម្តាយ */}
                       <td className="py-1 px-1 text-center border-r border-slate-200">
-                        <input
-                          type="checkbox"
-                          checked={stu.orphanStatus === 'both'}
-                          onChange={(e) =>
-                            handleInlineChange(stu.id, 'orphanStatus', e.target.checked ? 'both' : 'none')
-                          }
-                          className="w-4 h-4 rounded text-rose-600 cursor-pointer print:hidden"
-                        />
+                        <div className="flex items-center justify-center">
+                          <input
+                            type="checkbox"
+                            checked={stu.orphanStatus === 'both'}
+                            onChange={(e) =>
+                              handleInlineChange(stu.id, 'orphanStatus', e.target.checked ? 'both' : 'none')
+                            }
+                            className="w-4 h-4 rounded text-rose-600 cursor-pointer print:hidden"
+                          />
+                        </div>
                         <span className="hidden print:block text-center font-bold text-[7pt]">
                           {stu.orphanStatus === 'both' ? '✓' : ''}
                         </span>
@@ -810,12 +839,14 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
 
                       {/* ស្ថានភាពសិស្ស - ពិការ */}
                       <td className="py-1 px-1 text-center border-r border-slate-200">
-                        <input
-                          type="checkbox"
-                          checked={!!stu.isDisabled}
-                          onChange={(e) => handleInlineChange(stu.id, 'isDisabled', e.target.checked)}
-                          className="w-4 h-4 rounded text-amber-600 cursor-pointer print:hidden"
-                        />
+                        <div className="flex items-center justify-center">
+                          <input
+                            type="checkbox"
+                            checked={!!stu.isDisabled}
+                            onChange={(e) => handleInlineChange(stu.id, 'isDisabled', e.target.checked)}
+                            className="w-4 h-4 rounded text-amber-600 cursor-pointer print:hidden"
+                          />
+                        </div>
                         <span className="hidden print:block text-center font-bold text-[7pt]">
                           {stu.isDisabled ? '✓' : ''}
                         </span>
@@ -823,12 +854,14 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
 
                       {/* ស្ថានភាពសិស្ស - ក្រីក្រ */}
                       <td className="py-1 px-1 text-center border-r border-slate-200">
-                        <input
-                          type="checkbox"
-                          checked={!!stu.isPoor}
-                          onChange={(e) => handleInlineChange(stu.id, 'isPoor', e.target.checked)}
-                          className="w-4 h-4 rounded text-amber-600 cursor-pointer print:hidden"
-                        />
+                        <div className="flex items-center justify-center">
+                          <input
+                            type="checkbox"
+                            checked={!!stu.isPoor}
+                            onChange={(e) => handleInlineChange(stu.id, 'isPoor', e.target.checked)}
+                            className="w-4 h-4 rounded text-amber-600 cursor-pointer print:hidden"
+                          />
+                        </div>
                         <span className="hidden print:block text-center font-bold text-[7pt]">
                           {stu.isPoor ? '✓' : ''}
                         </span>
@@ -836,12 +869,14 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
 
                       {/* ស្ថានភាពសិស្ស - អាហារូបករណ៍ */}
                       <td className="py-1 px-1 text-center border-r border-slate-200">
-                        <input
-                          type="checkbox"
-                          checked={!!stu.hasScholarship}
-                          onChange={(e) => handleInlineChange(stu.id, 'hasScholarship', e.target.checked)}
-                          className="w-4 h-4 rounded text-emerald-600 cursor-pointer print:hidden"
-                        />
+                        <div className="flex items-center justify-center">
+                          <input
+                            type="checkbox"
+                            checked={!!stu.hasScholarship}
+                            onChange={(e) => handleInlineChange(stu.id, 'hasScholarship', e.target.checked)}
+                            className="w-4 h-4 rounded text-emerald-600 cursor-pointer print:hidden"
+                          />
+                        </div>
                         <span className="hidden print:block text-center font-bold text-[7pt]">
                           {stu.hasScholarship ? '✓' : ''}
                         </span>
@@ -849,12 +884,14 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
 
                       {/* ស្ថានភាពសិស្ស - ស្នាក់នៅវត្ត */}
                       <td className="py-1 px-1 text-center border-r border-slate-200">
-                        <input
-                          type="checkbox"
-                          checked={!!stu.stayInPagoda}
-                          onChange={(e) => handleInlineChange(stu.id, 'stayInPagoda', e.target.checked)}
-                          className="w-4 h-4 rounded text-indigo-600 cursor-pointer print:hidden"
-                        />
+                        <div className="flex items-center justify-center">
+                          <input
+                            type="checkbox"
+                            checked={!!stu.stayInPagoda}
+                            onChange={(e) => handleInlineChange(stu.id, 'stayInPagoda', e.target.checked)}
+                            className="w-4 h-4 rounded text-indigo-600 cursor-pointer print:hidden"
+                          />
+                        </div>
                         <span className="hidden print:block text-center font-bold text-[7pt]">
                           {stu.stayInPagoda ? '✓' : ''}
                         </span>
@@ -865,9 +902,10 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                         <input
                           type="text"
                           value={stu.fatherName || stu.guardianName || ''}
+                          title={stu.fatherName || stu.guardianName || ''}
                           placeholder="ឈ្មោះឪពុក..."
                           onChange={(e) => handleInlineChange(stu.id, 'fatherName', e.target.value)}
-                          className="w-full text-xs sm:text-[13px] font-semibold text-slate-800 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
+                          className="w-full text-xs sm:text-[12.5px] font-semibold text-slate-850 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
                         />
                         <span className="hidden print:block truncate text-[5.5pt]">
                           {stu.fatherName || stu.guardianName || ''}
@@ -879,9 +917,10 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                         <input
                           type="text"
                           value={stu.fatherOccupation || stu.guardianOccupation || ''}
+                          title={stu.fatherOccupation || stu.guardianOccupation || ''}
                           placeholder="មុខរបរ..."
                           onChange={(e) => handleInlineChange(stu.id, 'fatherOccupation', e.target.value)}
-                          className="w-full text-xs sm:text-[13px] text-slate-700 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
+                          className="w-full text-xs sm:text-[12.5px] text-slate-800 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
                         />
                         <span className="hidden print:block truncate text-[5.2pt]">
                           {stu.fatherOccupation || stu.guardianOccupation || ''}
@@ -893,9 +932,10 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                         <input
                           type="text"
                           value={stu.fatherPhone || stu.guardianPhone || ''}
+                          title={stu.fatherPhone || stu.guardianPhone || ''}
                           placeholder="ទូរស័ព្ទ..."
                           onChange={(e) => handleInlineChange(stu.id, 'fatherPhone', e.target.value)}
-                          className="w-full text-xs sm:text-[13px] font-mono text-slate-700 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
+                          className="w-full text-xs sm:text-[12.5px] font-mono text-slate-800 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
                         />
                         <span className="hidden print:block font-mono text-center text-[5.2pt] truncate">
                           {stu.fatherPhone || stu.guardianPhone || ''}
@@ -907,9 +947,10 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                         <input
                           type="text"
                           value={stu.motherName || ''}
+                          title={stu.motherName || ''}
                           placeholder="ឈ្មោះម្តាយ..."
                           onChange={(e) => handleInlineChange(stu.id, 'motherName', e.target.value)}
-                          className="w-full text-xs sm:text-[13px] font-semibold text-slate-800 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
+                          className="w-full text-xs sm:text-[12.5px] font-semibold text-slate-850 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
                         />
                         <span className="hidden print:block truncate text-[5.5pt]">
                           {stu.motherName || ''}
@@ -921,9 +962,10 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                         <input
                           type="text"
                           value={stu.motherOccupation || ''}
+                          title={stu.motherOccupation || ''}
                           placeholder="មុខរបរ..."
                           onChange={(e) => handleInlineChange(stu.id, 'motherOccupation', e.target.value)}
-                          className="w-full text-xs sm:text-[13px] text-slate-700 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
+                          className="w-full text-xs sm:text-[12.5px] text-slate-800 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
                         />
                         <span className="hidden print:block truncate text-[5.2pt]">
                           {stu.motherOccupation || ''}
@@ -935,9 +977,10 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                         <input
                           type="text"
                           value={stu.motherPhone || ''}
+                          title={stu.motherPhone || ''}
                           placeholder="ទូរស័ព្ទ..."
                           onChange={(e) => handleInlineChange(stu.id, 'motherPhone', e.target.value)}
-                          className="w-full text-xs sm:text-[13px] font-mono text-slate-700 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
+                          className="w-full text-xs sm:text-[12.5px] font-mono text-slate-800 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
                         />
                         <span className="hidden print:block font-mono text-center text-[5.2pt] truncate">
                           {stu.motherPhone || ''}
@@ -949,17 +992,18 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                         <input
                           type="text"
                           value={stu.otherNotes || stu.notes || ''}
+                          title={stu.otherNotes || stu.notes || ''}
                           placeholder="ចំណាំ..."
                           onChange={(e) => handleInlineChange(stu.id, 'otherNotes', e.target.value)}
-                          className="w-full text-xs sm:text-[13px] text-slate-600 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white print:hidden"
+                          className="w-full text-xs sm:text-[12.5px] text-slate-700 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
                         />
                         <span className="hidden print:block truncate text-[5.2pt]">
                           {stu.otherNotes || stu.notes || ''}
                         </span>
                       </td>
 
-                      {/* សកម្មភាព */}
-                      <td className="py-1 px-1 text-center no-print bg-slate-50/50 print:hidden">
+                      {/* សកម្មភាព (Sticky right on horizontal scroll) */}
+                      <td className="py-1 px-1 text-center no-print bg-slate-50/95 sticky right-0 z-10 border-l border-slate-200 shadow-xs print:hidden">
                         <div className="flex items-center justify-center space-x-1">
                           {/* ចម្លងសិស្ស */}
                           <button
