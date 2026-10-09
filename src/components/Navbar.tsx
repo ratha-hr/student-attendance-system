@@ -71,7 +71,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-6 py-3 no-print">
+    <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-6 2xl:px-8 py-3 no-print">
       <div className="flex items-center justify-between gap-4">
         {/* Left side: Hamburger button + School Name */}
         <div className="flex items-center space-x-3">
@@ -167,8 +167,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             title="ចុចដើម្បីផ្ទុកកំណែចុងក្រោយ (Hard Reload / Clear Cache)"
           >
             <RefreshCw className="w-3.5 h-3.5 text-indigo-600 animate-spin-hover" />
-            <span className="hidden sm:inline">កំណែថ្មី v2.0 (រូប១-៥)</span>
-            <span className="sm:hidden">v2.0</span>
+            <span className="hidden sm:inline">កំណែថ្មី v2.6 (ពេញអេក្រង់)</span>
+            <span className="sm:hidden">v2.6</span>
           </button>
 
           {/* Quick Action: Share Link to Students / Class Monitor */}

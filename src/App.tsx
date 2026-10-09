@@ -117,7 +117,7 @@ export function App() {
       />
 
       {/* Main Content Area */}
-      <div className="flex-1 lg:pl-56 flex flex-col min-h-screen">
+      <div className="flex-1 lg:pl-64 flex flex-col min-h-screen w-full">
         {/* Top Navbar (Class selector & teacher profile) */}
         <Navbar
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -129,8 +129,8 @@ export function App() {
           onOpenManageClasses={() => setIsManageClassesOpen(true)}
         />
 
-        {/* Content Body */}
-        <main className="flex-1 p-3 sm:p-5 lg:p-6 max-w-6xl w-full mx-auto pb-20 lg:pb-6">
+        {/* Content Body - Full Width Screen Layout */}
+        <main className="flex-1 p-3 sm:p-5 lg:p-6 2xl:px-8 w-full pb-20 lg:pb-8">
           {/* Quick Load 200 Students Banner if database has fewer than 50 students */}
           {students.length < 50 && (
             <div className="mb-4 bg-linear-to-r from-blue-600 to-indigo-600 text-white p-3.5 rounded-2xl shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in no-print">
