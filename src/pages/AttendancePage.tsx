@@ -64,7 +64,6 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
 }) => {
   const [selectedDate, setSelectedDate] = useState(getTodayDateString());
   const [selectedSession, setSelectedSession] = useState<'morning' | 'afternoon'>('morning');
-  const [selectedSlot, setSelectedSlot] = useState<'check_in' | 'check_out'>('check_in');
   const [checkInTime, setCheckInTime] = useState<string>('7:00');
   const [checkOutTime, setCheckOutTime] = useState<string>('11:00');
   const [isTelegramOpen, setIsTelegramOpen] = useState(false);
@@ -117,21 +116,20 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
       .sort((a, b) => a.rollNo - b.rollNo);
   }, [students, activeClassId]);
 
-  // Today's attendance records map: studentId -> AttendanceRecord
+  // Today's attendance records map: studentId -> AttendanceRecord (វត្តមានកត់តែម្តងគត់សម្រាប់ម៉ោងចេញចូល)
   const dailyRecordMap = useMemo(() => {
     const map = new Map<string, AttendanceRecord>();
     attendanceRecords.forEach((r) => {
       if (
         r.classId === activeClassId &&
         r.date === selectedDate &&
-        r.session === selectedSession &&
-        (!r.timeSlot || r.timeSlot.includes(selectedSlot))
+        r.session === selectedSession
       ) {
         map.set(r.studentId, r);
       }
     });
     return map;
-  }, [attendanceRecords, activeClassId, selectedDate, selectedSession, selectedSlot]);
+  }, [attendanceRecords, activeClassId, selectedDate, selectedSession]);
 
   // Filtered students for display based on quick status chip
   const displayedStudents = useMemo(() => {
@@ -147,8 +145,7 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
   const handleSetStatus = async (studentId: string, status: AttendanceStatus, reason = '') => {
     if (soundOn) soundEffects.playClick();
     const existing = dailyRecordMap.get(studentId);
-    const currentTimeStr = selectedSlot === 'check_in' ? checkInTime : checkOutTime;
-    const timeSlotStr = `${selectedSlot}-${currentTimeStr}`;
+    const timeSlotStr = `${checkInTime} - ${checkOutTime}`;
     if (existing) {
       await db.attendance.update(existing.id, {
         status,
@@ -184,8 +181,7 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
   // Mark all students present with 1 click
   const handleMarkAllPresent = async () => {
     if (soundOn) soundEffects.playSuccess();
-    const currentTimeStr = selectedSlot === 'check_in' ? checkInTime : checkOutTime;
-    const timeSlotStr = `${selectedSlot}-${currentTimeStr}`;
+    const timeSlotStr = `${checkInTime} - ${checkOutTime}`;
     const recordsToPut: AttendanceRecord[] = classStudents.map((s) => {
       const existing = dailyRecordMap.get(s.id);
       return {
@@ -317,29 +313,17 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
 
           {/* Right: In/Out Selector with Quick Options + Holiday Checkbox */}
           <div className="flex flex-wrap items-center gap-2.5">
-            {/* ម៉ោងចេញចូលសម្រាប់មុខវិជ្ជា */}
-            <div className="inline-flex items-center bg-slate-100 p-1 rounded-xl text-xs sm:text-sm font-bold gap-1">
+            {/* ម៉ោងចេញចូលសម្រាប់មុខវិជ្ជា (កត់វត្តមានតែម្តងគត់) */}
+            <div className="flex items-center space-x-2 bg-slate-100 p-1.5 rounded-xl text-xs sm:text-sm font-bold border border-slate-200/80 shadow-2xs">
               {/* ម៉ោងចូល */}
-              <div className="flex items-center space-x-1 pl-1 pr-1.5 py-0.5 rounded-lg bg-white/80 border border-slate-200/80 shadow-2xs">
-                <button
-                  type="button"
-                  onClick={() => setSelectedSlot('check_in')}
-                  className={`px-2.5 py-1 rounded-md text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center space-x-1 ${
-                    selectedSlot === 'check_in'
-                      ? 'bg-emerald-600 text-white shadow-xs font-black'
-                      : 'text-slate-700 hover:text-emerald-700 hover:bg-emerald-50'
-                  }`}
-                  title="កត់វត្តមានសម្រាប់ម៉ោងចូល"
-                >
-                  <span>🚪 ម៉ោងចូល</span>
-                </button>
+              <div className="flex items-center space-x-1.5 pl-2 pr-2 py-1 rounded-lg bg-white border border-slate-200 shadow-2xs">
+                <span className="text-emerald-700 font-bold whitespace-nowrap flex items-center">
+                  🚪 ម៉ោងចូល៖
+                </span>
                 <select
                   value={checkInTime}
-                  onChange={(e) => {
-                    setCheckInTime(e.target.value);
-                    setSelectedSlot('check_in');
-                  }}
-                  className="bg-white border border-slate-300 rounded-md px-2 py-0.5 text-xs sm:text-sm font-black text-slate-800 cursor-pointer shadow-2xs hover:border-emerald-500 focus:ring-2 focus:ring-emerald-500"
+                  onChange={(e) => setCheckInTime(e.target.value)}
+                  className="bg-slate-50 border border-slate-300 rounded-md px-2.5 py-1 text-xs sm:text-sm font-black text-slate-800 cursor-pointer shadow-2xs hover:border-emerald-500 focus:ring-2 focus:ring-emerald-500"
                 >
                   {currentHoursOptions.map((opt) => (
                     <option key={opt.value} value={opt.value}>
@@ -352,26 +336,14 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
               <span className="text-slate-400 font-bold px-0.5">➔</span>
 
               {/* ម៉ោងចេញ */}
-              <div className="flex items-center space-x-1 pl-1 pr-1.5 py-0.5 rounded-lg bg-white/80 border border-slate-200/80 shadow-2xs">
-                <button
-                  type="button"
-                  onClick={() => setSelectedSlot('check_out')}
-                  className={`px-2.5 py-1 rounded-md text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center space-x-1 ${
-                    selectedSlot === 'check_out'
-                      ? 'bg-blue-600 text-white shadow-xs font-black'
-                      : 'text-slate-700 hover:text-blue-700 hover:bg-blue-50'
-                  }`}
-                  title="កត់វត្តមានសម្រាប់ម៉ោងចេញ"
-                >
-                  <span>🏁 ម៉ោងចេញ</span>
-                </button>
+              <div className="flex items-center space-x-1.5 pl-2 pr-2 py-1 rounded-lg bg-white border border-slate-200 shadow-2xs">
+                <span className="text-blue-700 font-bold whitespace-nowrap flex items-center">
+                  🏁 ម៉ោងចេញ៖
+                </span>
                 <select
                   value={checkOutTime}
-                  onChange={(e) => {
-                    setCheckOutTime(e.target.value);
-                    setSelectedSlot('check_out');
-                  }}
-                  className="bg-white border border-slate-300 rounded-md px-2 py-0.5 text-xs sm:text-sm font-black text-slate-800 cursor-pointer shadow-2xs hover:border-blue-500 focus:ring-2 focus:ring-blue-500"
+                  onChange={(e) => setCheckOutTime(e.target.value)}
+                  className="bg-slate-50 border border-slate-300 rounded-md px-2.5 py-1 text-xs sm:text-sm font-black text-slate-800 cursor-pointer shadow-2xs hover:border-blue-500 focus:ring-2 focus:ring-blue-500"
                 >
                   {currentHoursOptions.map((opt) => (
                     <option key={opt.value} value={opt.value}>
