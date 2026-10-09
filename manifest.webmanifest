@@ -1,0 +1,19 @@
+{
+  "name": "ប្រព័ន្ធគ្រប់គ្រងវត្តមាន និងសិស្ស - វិទ្យាល័យ ហ៊ុន សែន កំពង់ត្រឡាច",
+  "short_name": "គ្រប់គ្រងវត្តមាន",
+  "description": "ប្រព័ន្ធគ្រប់គ្រងសិស្ស វត្តមាន ពិន្ទុ និងកាលវិភាគ សម្រាប់លោកគ្រូ-អ្នកគ្រូ",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#2563eb",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "./favicon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
