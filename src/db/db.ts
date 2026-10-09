@@ -17,6 +17,7 @@ import {
   initialExtracts,
   initialYearlyPlan,
   initialSettings,
+  initialTimetable,
 } from './seedData';
 
 export class TeacherDatabase extends Dexie {
@@ -62,7 +63,14 @@ export class TeacherDatabase extends Dexie {
       if ((await this.yearlyPlans.count()) === 0) {
         await this.yearlyPlans.bulkAdd(initialYearlyPlan);
       }
+      if ((await this.timetable.count()) === 0) {
+        await this.timetable.bulkAdd(initialTimetable);
+      }
       await this.settings.put({ ...initialSettings, id: 'current_settings' });
+    } else {
+      if ((await this.timetable.count()) === 0) {
+        await this.timetable.bulkAdd(initialTimetable);
+      }
     }
   }
 
@@ -70,9 +78,11 @@ export class TeacherDatabase extends Dexie {
     await this.classes.clear();
     await this.students.clear();
     await this.attendance.clear();
+    await this.timetable.clear();
     await this.classes.bulkAdd(initialClasses);
     await this.students.bulkAdd(initialStudents);
     await this.attendance.bulkAdd(initialAttendance);
+    await this.timetable.bulkAdd(initialTimetable);
     if ((await this.extracts.count()) === 0) {
       await this.extracts.bulkAdd(initialExtracts);
     }
@@ -114,6 +124,7 @@ export class TeacherDatabase extends Dexie {
     await this.attendance.bulkAdd(initialAttendance);
     await this.extracts.bulkAdd(initialExtracts);
     await this.yearlyPlans.bulkAdd(initialYearlyPlan);
+    await this.timetable.bulkAdd(initialTimetable);
     await this.settings.put({ ...initialSettings, id: 'current_settings' });
   }
 

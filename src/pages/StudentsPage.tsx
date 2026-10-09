@@ -1,25 +1,20 @@
 import React, { useState, useRef } from 'react';
 import {
-  Users,
-  Plus,
-  Search,
-  Filter,
   FileSpreadsheet,
   Download,
   Upload,
   Printer,
-  Edit2,
+  Plus,
   Trash2,
-  Phone,
-  Eye,
-  AlertTriangle,
-  UserCheck,
-  Calendar,
-  MapPin,
-  Heart,
-  ChevronDown,
   Copy,
+  Save,
+  Search,
+  Eye,
   Check,
+  Users,
+  Phone,
+  Sparkles,
+  Edit3,
 } from 'lucide-react';
 import type { Student, ClassRoom, AttendanceRecord, Gender, TeacherSettings } from '../types';
 import { db } from '../db/db';
@@ -37,7 +32,6 @@ interface StudentsPageProps {
   attendanceRecords: AttendanceRecord[];
   settings: TeacherSettings | null;
   selectedClassId: string;
-  onSelectClass: (id: string) => void;
   onRefresh: () => void;
 }
 
@@ -47,143 +41,55 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
   attendanceRecords,
   settings,
   selectedClassId,
-  onSelectClass,
   onRefresh,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [genderFilter, setGenderFilter] = useState<'all' | 'ប្រុស' | 'ស្រី'>('all');
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [viewingStudent, setViewingStudent] = useState<Student | null>(null);
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [isFullModalOpen, setIsFullModalOpen] = useState(false);
+  const [lastSavedId, setLastSavedId] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Form Fields
-  const [classId, setClassId] = useState(classes[0]?.id || '');
-  const [rollNo, setRollNo] = useState(1);
-  const [studentCode, setStudentCode] = useState('');
-  const [nameKh, setNameKh] = useState('');
-  const [nameEn, setNameEn] = useState('');
-  const [gender, setGender] = useState<Gender>('ប្រុស');
-  const [dob, setDob] = useState('2011-01-01');
-  const [pob, setPob] = useState('');
-  const [currentAddress, setCurrentAddress] = useState('');
-  const [guardianName, setGuardianName] = useState('');
-  const [guardianRelationship, setGuardianRelationship] = useState('ឪពុក');
-  const [guardianPhone, setGuardianPhone] = useState('');
-  const [guardianOccupation, setGuardianOccupation] = useState('');
-  const [notes, setNotes] = useState('');
+  // Active Class identifier (no inner dropdown - controlled cleanly from top Navbar)
+  const activeClassId = selectedClassId === 'ALL' ? (classes[0]?.id || '') : selectedClassId;
+  const currentClass = classes.find((c) => c.id === activeClassId);
+  const currentClassName = selectedClassId === 'ALL' ? 'ថ្នាក់ទាំងអស់' : currentClass?.name || 'ថ្នាក់រៀន';
 
-  // Filter students
-  const filteredStudents = students.filter((s) => {
-    const matchesClass = selectedClassId === 'ALL' || s.classId === selectedClassId;
-    const matchesGender = genderFilter === 'all' || s.gender === genderFilter;
-    const matchesSearch =
-      s.nameKh.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.nameEn.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.studentCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.guardianPhone.includes(searchTerm);
-    return matchesClass && matchesGender && matchesSearch;
-  });
+  // Filter students based on active class, gender, and search query
+  const filteredStudents = students
+    .filter((s) => {
+      const matchesClass = selectedClassId === 'ALL' || s.classId === activeClassId;
+      const matchesGender = genderFilter === 'all' || s.gender === genderFilter;
+      const matchesSearch =
+        s.nameKh.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        s.studentCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (s.pob && s.pob.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (s.currentAddress && s.currentAddress.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (s.guardianPhone && s.guardianPhone.includes(searchTerm));
+      return matchesClass && matchesGender && matchesSearch;
+    })
+    .sort((a, b) => a.rollNo - b.rollNo);
 
-  const openAddModal = () => {
-    setEditingStudent(null);
-    const targetClassId = selectedClassId === 'ALL' ? (classes[0]?.id || '') : selectedClassId;
-    const classStudents = students.filter((s) => s.classId === targetClassId);
-    const nextRoll = classStudents.length + 1;
+  const totalFiltered = filteredStudents.length;
+  const femaleFiltered = filteredStudents.filter((s) => s.gender === 'ស្រី').length;
+  const maleFiltered = filteredStudents.filter((s) => s.gender === 'ប្រុស').length;
 
-    setClassId(targetClassId);
-    setRollNo(nextRoll);
-    setStudentCode(`STU-${String(nextRoll).padStart(3, '0')}`);
-    setNameKh('');
-    setNameEn('');
-    setGender('ប្រុស');
-    setDob('2011-01-01');
-    setPob('');
-    setCurrentAddress('');
-    setGuardianName('');
-    setGuardianRelationship('ឪពុក');
-    setGuardianPhone('');
-    setGuardianOccupation('');
-    setNotes('');
-    setIsModalOpen(true);
-  };
-
-  const openEditModal = (s: Student) => {
-    setEditingStudent(s);
-    setClassId(s.classId);
-    setRollNo(s.rollNo);
-    setStudentCode(s.studentCode);
-    setNameKh(s.nameKh);
-    setNameEn(s.nameEn);
-    setGender(s.gender);
-    setDob(s.dob);
-    setPob(s.pob);
-    setCurrentAddress(s.currentAddress);
-    setGuardianName(s.guardianName);
-    setGuardianRelationship(s.guardianRelationship);
-    setGuardianPhone(s.guardianPhone);
-    setGuardianOccupation(s.guardianOccupation || '');
-    setNotes(s.notes || '');
-    setIsModalOpen(true);
-  };
-
-  const handleSaveStudent = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!nameKh.trim()) return;
-
-    if (editingStudent) {
-      await db.students.update(editingStudent.id, {
-        classId,
-        rollNo: Number(rollNo),
-        studentCode: studentCode.trim(),
-        nameKh: nameKh.trim(),
-        nameEn: nameEn.trim(),
-        gender,
-        dob,
-        pob: pob.trim(),
-        currentAddress: currentAddress.trim(),
-        guardianName: guardianName.trim(),
-        guardianRelationship,
-        guardianPhone: guardianPhone.trim(),
-        guardianOccupation: guardianOccupation.trim(),
-        notes: notes.trim(),
-      });
-    } else {
-      const newStudent: Student = {
-        id: 'stu-' + Date.now(),
-        classId,
-        rollNo: Number(rollNo),
-        studentCode: studentCode.trim(),
-        nameKh: nameKh.trim(),
-        nameEn: nameEn.trim(),
-        gender,
-        dob,
-        pob: pob.trim(),
-        currentAddress: currentAddress.trim(),
-        guardianName: guardianName.trim(),
-        guardianRelationship,
-        guardianPhone: guardianPhone.trim(),
-        guardianOccupation: guardianOccupation.trim(),
-        notes: notes.trim(),
-        status: 'active',
-        createdAt: new Date().toISOString(),
-      };
-      await db.students.add(newStudent);
-    }
-
-    setIsModalOpen(false);
-    onRefresh();
-  };
-
-  const handleDeleteStudent = async (s: Student) => {
-    if (window.confirm(`តើអ្នកពិតជាចង់លុបសិស្សឈ្មោះ "${s.nameKh}" មែនទេ?`)) {
-      await db.students.delete(s.id);
+  // Direct Inline Cell Edit Handler (Auto-Save on blur or change)
+  const handleInlineChange = async (studentId: string, field: keyof Student, value: any) => {
+    try {
+      await db.students.update(studentId, { [field]: value });
+      setLastSavedId(studentId);
+      setTimeout(() => setLastSavedId(null), 2000);
       onRefresh();
+    } catch (err) {
+      console.error('Error auto-saving cell:', err);
     }
   };
 
-  const handleDuplicateStudent = async (s: Student) => {
+  // Direct Duplicate Row Handler (ចម្លងសិស្សដោយផ្ទាល់)
+  const handleDirectDuplicate = async (s: Student) => {
     const classStudents = students.filter((stu) => stu.classId === s.classId);
     const nextRoll = classStudents.length + 1;
     const duplicated: Student = {
@@ -195,24 +101,56 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
       createdAt: new Date().toISOString(),
     };
     await db.students.add(duplicated);
-    alert(`បានចម្លងសិស្ស "${s.nameKh}" ទៅជាសិស្សថ្មីលេខរៀង ${toKhmerNum(nextRoll)} ដោយជោគជ័យ!`);
+    setLastSavedId(duplicated.id);
     onRefresh();
   };
 
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-  const handleCopyStudentInfo = (s: Student) => {
-    const text = `ឈ្មោះ៖ ${s.nameKh} (${s.nameEn}) | ភេទ៖ ${s.gender} | អត្តលេខ៖ ${s.studentCode} | ថ្នាក់៖ ${classes.find(c => c.id === s.classId)?.name || ''} | ទូរស័ព្ទអាណាព្យាបាល៖ ${s.guardianPhone}`;
-    navigator.clipboard.writeText(text);
-    setCopiedId(s.id);
-    setTimeout(() => setCopiedId(null), 2000);
+  // Direct Delete Row Handler (លុបសិស្សដោយផ្ទាល់)
+  const handleDirectDelete = async (s: Student) => {
+    if (window.confirm(`តើអ្នកពិតជាចង់លុបសិស្ស "${s.nameKh}" (អត្តលេខ ${s.studentCode}) មែនទេ?`)) {
+      await db.students.delete(s.id);
+      onRefresh();
+    }
   };
 
+  // Direct Add New Blank Row (បន្ថែមជួរដេក Excel ថ្មីដោយផ្ទាល់)
+  const handleAddNewBlankRow = async () => {
+    const targetClassId = selectedClassId === 'ALL' ? (classes[0]?.id || '') : selectedClassId;
+    const classStudents = students.filter((s) => s.classId === targetClassId);
+    const nextRoll = classStudents.length + 1;
+    const codeNumber = String(nextRoll).padStart(3, '0');
+
+    const newStudent: Student = {
+      id: 'stu-' + Date.now(),
+      classId: targetClassId,
+      rollNo: nextRoll,
+      studentCode: `STU-${codeNumber}`,
+      nameKh: `សិស្សថ្មី ${toKhmerNum(nextRoll)}`,
+      nameEn: `New Student ${nextRoll}`,
+      gender: 'ប្រុស',
+      dob: '2011-01-01',
+      pob: 'ខេត្តកំពង់ឆ្នាំង',
+      currentAddress: 'កំពង់ត្រឡាច',
+      guardianName: '',
+      guardianRelationship: 'ឪពុក',
+      guardianPhone: '',
+      guardianOccupation: '',
+      notes: '',
+      status: 'active',
+      createdAt: new Date().toISOString(),
+    };
+
+    await db.students.add(newStudent);
+    setLastSavedId(newStudent.id);
+    onRefresh();
+  };
+
+  // Export to Excel / XLSM compatible format
   const handleExportExcel = () => {
-    const targetClass = classes.find((c) => c.id === selectedClassId);
-    const className = targetClass ? targetClass.name : 'ទាំងអស់';
-    exportStudentsToExcel(filteredStudents, className);
+    exportStudentsToExcel(filteredStudents, currentClassName);
   };
 
+  // Import from Excel file
   const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -230,7 +168,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
         return;
       }
       await db.students.bulkAdd(parsed as Student[]);
-      alert(`នាំចូលសិស្សចំនួន ${toKhmerNum(parsed.length)} នាក់បានជោគជ័យ!`);
+      alert(`បាននាំចូលទិន្នន័យសិស្សចំនួន ${toKhmerNum(parsed.length)} នាក់ដោយជោគជ័យ!`);
       onRefresh();
     } catch (err) {
       console.error(err);
@@ -240,51 +178,42 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
     }
   };
 
-  const getAbsenceCount = (stuId: string) => {
-    const records = attendanceRecords.filter((r) => r.studentId === stuId);
-    const unexcused = records.filter((r) => r.status === 'absent').length;
-    const excused = records.filter((r) => r.status === 'permission').length;
-    return { unexcused, excused, total: unexcused + excused };
-  };
-
-  const currentClassName = selectedClassId === 'ALL'
-    ? 'ថ្នាក់ទាំងអស់'
-    : classes.find((c) => c.id === selectedClassId)?.name || 'ថ្នាក់រៀន';
-
-  const totalFiltered = filteredStudents.length;
-  const femaleFiltered = filteredStudents.filter((s) => s.gender === 'ស្រី').length;
-  const maleFiltered = filteredStudents.filter((s) => s.gender === 'ប្រុស').length;
-
   return (
-    <div className="space-y-5">
-      {/* Top Banner and Quick Excel Actions */}
+    <div className="space-y-4">
+      {/* Top Banner (Clean - NO duplicate class selector!) */}
       <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4 no-print">
         <div className="space-y-1">
           <div className="flex items-center space-x-3">
             <h2 className="text-xl font-black text-slate-800 flex items-center">
-              <Users className="w-6 h-6 text-blue-600 mr-2" />
-              ព័ត៌មានសិស្ស ({currentClassName})
+              <FileSpreadsheet className="w-6 h-6 text-emerald-600 mr-2" />
+              ព័ត៌មានសិស្សទម្រង់ XLSM ({currentClassName})
             </h2>
-            {/* Quick Class Selector Dropdown */}
-            <select
-              value={selectedClassId}
-              onChange={(e) => onSelectClass(e.target.value)}
-              className="bg-slate-50 border border-slate-300 font-bold text-xs sm:text-sm rounded-xl px-2.5 py-1.5 text-slate-800 cursor-pointer shadow-2xs"
-            >
-              <option value="ALL">🌟 ថ្នាក់ទាំងអស់ ({students.length})</option>
-              {classes.map((c) => (
-                <option key={c.id} value={c.id}>
-                  📚 {c.name}
-                </option>
-              ))}
-            </select>
+            <span className="inline-flex items-center px-2.5 py-1 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-lg border border-emerald-200">
+              📊 ទម្រង់ Excel/XLSM កែ លុប ចម្លងផ្ទាល់
+            </span>
+            {lastSavedId && (
+              <span className="inline-flex items-center text-xs text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full animate-pulse border border-emerald-300">
+                <Check className="w-3.5 h-3.5 mr-1" /> បានរក្សាទុកស្វ័យប្រវត្តិ
+              </span>
+            )}
           </div>
           <p className="text-xs sm:text-sm text-slate-500">
-            គ្រប់គ្រងប្រវត្តិរូបសិស្ស ទម្រង់ Excel កែប្រែ លុប និងចម្លងសិស្សបានងាយស្រួល
+            តារាងប្រវត្តិរូបសង្ខេបសិស្ស៖ អាចវាយបញ្ចូល កែប្រែ លុប និងចម្លងជួរដេកបានដោយផ្ទាល់ក្នុងក្រឡាតារាង (Auto-Save)
           </p>
         </div>
 
+        {/* Action Buttons: Add Row, Download Template, Import/Export, Print */}
         <div className="flex flex-wrap items-center gap-2">
+          {/* Add Row Button */}
+          <button
+            onClick={handleAddNewBlankRow}
+            className="inline-flex items-center px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
+            title="បន្ថែមជួរដេកសិស្សថ្មីមួយទៀតនៅខាងក្រោមតារាង Excel"
+          >
+            <Plus className="w-4 h-4 mr-1" />
+            + បន្ថែមជួរដេកថ្មី
+          </button>
+
           {/* Download Template */}
           <button
             onClick={downloadStudentTemplate}
@@ -296,13 +225,13 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
           </button>
 
           {/* Import Excel */}
-          <label className="inline-flex items-center px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold rounded-xl border border-emerald-200 transition-colors cursor-pointer">
+          <label className="inline-flex items-center px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold rounded-xl border border-emerald-300 transition-colors cursor-pointer">
             <Upload className="w-3.5 h-3.5 mr-1 text-emerald-600" />
             នាំចូល Excel
             <input
               ref={fileInputRef}
               type="file"
-              accept=".xlsx, .xls"
+              accept=".xlsx, .xls, .xlsm"
               className="hidden"
               onChange={handleImportFile}
             />
@@ -312,12 +241,13 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
           <button
             onClick={handleExportExcel}
             className="inline-flex items-center px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded-xl border border-blue-200 transition-colors cursor-pointer"
+            title="ទាញចេញជាឯកសារ Excel .xlsx / .xlsm"
           >
             <FileSpreadsheet className="w-3.5 h-3.5 mr-1 text-blue-600" />
-            ទាញចេញ Excel
+            នាំចេញ Excel (.xlsm)
           </button>
 
-          {/* Print List */}
+          {/* Print */}
           <button
             onClick={() => window.print()}
             className="inline-flex items-center px-3 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
@@ -325,19 +255,10 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
             <Printer className="w-3.5 h-3.5 mr-1" />
             បោះពុម្ព
           </button>
-
-          {/* Add Student */}
-          <button
-            onClick={openAddModal}
-            className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md shadow-blue-500/20 transition-all cursor-pointer"
-          >
-            <Plus className="w-4 h-4 mr-1" />
-            បន្ថែមសិស្ស
-          </button>
         </div>
       </div>
 
-      {/* Stats Badges: Total, Female, Male */}
+      {/* Spreadsheet Status & Summary KPI Bar */}
       <div className="grid grid-cols-3 gap-3 no-print">
         <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs text-center">
           <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">សិស្សសរុប ({currentClassName})</p>
@@ -354,22 +275,21 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3 no-print">
+      <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3 no-print">
         {/* Search Input */}
-        <div className="relative w-full sm:w-80">
+        <div className="relative w-full sm:w-96">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="ស្វែងរកតាមឈ្មោះ, អត្តលេខ, ទូរស័ព្ទ..."
-            className="w-full pl-9 pr-4 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            placeholder="ស្វែងរកតាមឈ្មោះ, អត្តលេខ, ទីកន្លែងកំណើត, ទូរស័ព្ទ..."
+            className="w-full pl-9 pr-4 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
           />
         </div>
 
-        {/* Filters */}
+        {/* Gender Filter Buttons */}
         <div className="flex items-center space-x-2 w-full sm:w-auto justify-end">
-          {/* Gender Filter */}
           <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-medium">
             <button
               onClick={() => setGenderFilter('all')}
@@ -377,7 +297,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                 genderFilter === 'all' ? 'bg-white font-bold text-slate-800 shadow-2xs' : 'text-slate-600'
               }`}
             >
-              ទាំងអស់
+              ទាំងអស់ ({toKhmerNum(students.filter(s => selectedClassId === 'ALL' || s.classId === activeClassId).length)})
             </button>
             <button
               onClick={() => setGenderFilter('ប្រុស')}
@@ -399,39 +319,61 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
         </div>
       </div>
 
-      {/* Printable Official Header (Shown Only when Printing) */}
+      {/* Official Header (Print Mode Only) */}
       <div className="hidden print:block text-center mb-6">
         <h3 className="font-moul text-base">ព្រះរាជាណាចក្រកម្ពុជា</h3>
         <h4 className="font-moul text-sm">ជាតិ សាសនា ព្រះមហាក្សត្រ</h4>
         <div className="w-24 h-0.5 bg-black mx-auto my-2" />
-        <div className="text-left mt-2">
-          <p className="font-bold text-xs">{settings?.schoolName}</p>
-          <p className="text-xs">ឆ្នាំសិក្សា៖ {settings?.academicYear}</p>
+        <div className="flex justify-between items-start text-left mt-2 text-xs">
+          <div>
+            <p className="font-bold">{settings?.schoolName || 'វិទ្យាល័យ ហ៊ុន សែន កំពង់ត្រឡាច'}</p>
+            <p>ឆ្នាំសិក្សា៖ {settings?.academicYear || '២០២៤-២០២៥'}</p>
+          </div>
+          <div className="text-right">
+            <p className="font-bold">គ្រូបន្ទុកថ្នាក់៖ {settings?.teacherName || 'ហ៊ុន រដ្ឋា'}</p>
+            <p>ទូរស័ព្ទ៖ {settings?.phone || '093 486 987'}</p>
+          </div>
         </div>
-        <h2 className="font-moul text-lg mt-4">
-          បញ្ជីរាយនាមសិស្ស {currentClassName}
+        <h2 className="font-moul text-base mt-4">
+          តារាងប្រវត្តិរូបសង្ខេបសិស្ស {currentClassName}
         </h2>
+        <p className="text-xs mt-1">
+          សិស្សសរុប៖ {toKhmerNum(totalFiltered)} នាក់ | ស្រី៖ {toKhmerNum(femaleFiltered)} នាក់ | ប្រុស៖ {toKhmerNum(maleFiltered)} នាក់
+        </p>
       </div>
 
-      {/* Student Table */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+      {/* Excel/XLSM Interactive Editable Spreadsheet Grid */}
+      <div className="bg-white rounded-2xl border-2 border-emerald-700/30 shadow-md overflow-hidden">
+        {/* Spreadsheet Tab Bar */}
+        <div className="bg-emerald-800 text-white px-4 py-2 flex items-center justify-between text-xs font-bold no-print">
+          <div className="flex items-center space-x-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+            <span>សន្លឹកទិន្នន័យ (Sheet1): តារាងប្រវត្តិរូបសង្ខេបសិស្ស.xlsm</span>
+          </div>
+          <div className="flex items-center space-x-3 text-[11px] text-emerald-100 font-normal">
+            <span>💡 ចុចលើក្រឡាដើម្បីវាយបញ្ចូល/កែប្រែផ្ទាល់</span>
+            <span>|</span>
+            <span>⚡ រក្សាទុកស្វ័យប្រវត្តិ (Auto-Saved)</span>
+          </div>
+        </div>
+
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs sm:text-sm">
+          <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 text-[11px] sm:text-xs font-bold uppercase tracking-wider">
-                <th className="py-3 px-3 text-center w-12">ល.រ</th>
-                <th className="py-3 px-3">អត្តលេខ</th>
-                <th className="py-3 px-3">គោត្តនាម-នាម</th>
-                <th className="py-3 px-3 hidden md:table-cell">ឈ្មោះឡាតាំង</th>
-                <th className="py-3 px-3 text-center">ភេទ</th>
-                <th className="py-3 px-3 hidden sm:table-cell">ថ្ងៃកំណើត</th>
-                <th className="py-3 px-3 hidden lg:table-cell">អាណាព្យាបាល</th>
-                <th className="py-3 px-3 hidden xl:table-cell">ទូរស័ព្ទ</th>
-                <th className="py-3 px-3 text-center">អវត្តមាន</th>
-                <th className="py-3 px-3 text-center no-print">សកម្មភាព</th>
+              <tr className="bg-slate-100 border-b border-slate-300 text-slate-700 font-bold uppercase tracking-wider text-[11px]">
+                <th className="py-2.5 px-2 text-center border-r border-slate-200 w-12 bg-slate-200/70">ល.រ</th>
+                <th className="py-2.5 px-3 border-r border-slate-200 w-28">អត្តលេខ</th>
+                <th className="py-2.5 px-3 border-r border-slate-200 min-w-[150px]">គោត្តនាម-នាម</th>
+                <th className="py-2.5 px-2 border-r border-slate-200 text-center w-20">ភេទ</th>
+                <th className="py-2.5 px-3 border-r border-slate-200 w-32">ថ្ងៃខែឆ្នាំកំណើត</th>
+                <th className="py-2.5 px-3 border-r border-slate-200 min-w-[140px]">ទីកន្លែងកំណើត</th>
+                <th className="py-2.5 px-3 border-r border-slate-200 min-w-[160px]">អាសយដ្ឋានបច្ចុប្បន្ន</th>
+                <th className="py-2.5 px-3 border-r border-slate-200 min-w-[140px]">អាណាព្យាបាល</th>
+                <th className="py-2.5 px-3 border-r border-slate-200 w-32">លេខទូរស័ព្ទ</th>
+                <th className="py-2.5 px-2 text-center w-28 bg-slate-200/70 no-print">សកម្មភាព</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700">
+            <tbody className="divide-y divide-slate-200 text-slate-800">
               {filteredStudents.length === 0 ? (
                 <tr>
                   <td colSpan={10} className="py-12 text-center text-slate-400">
@@ -441,113 +383,150 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                 </tr>
               ) : (
                 filteredStudents.map((stu, index) => {
-                  const abs = getAbsenceCount(stu.id);
-                  const isHighAbsence = abs.unexcused >= (settings?.absenceWarningThreshold || 3);
-
                   return (
                     <tr
                       key={stu.id}
-                      className="hover:bg-blue-50/40 transition-colors group"
+                      className="hover:bg-emerald-50/40 transition-colors group border-b border-slate-200"
                     >
-                      <td className="py-3 px-3 text-center font-bold text-slate-500">
-                        {toKhmerNum(index + 1)}
+                      {/* ល.រ (Roll No) */}
+                      <td className="py-2 px-2 text-center font-bold text-slate-600 bg-slate-50/80 border-r border-slate-200">
+                        <input
+                          type="number"
+                          value={stu.rollNo}
+                          onChange={(e) => handleInlineChange(stu.id, 'rollNo', Number(e.target.value))}
+                          className="w-10 text-center font-bold bg-transparent border-0 focus:ring-1 focus:ring-emerald-500 rounded"
+                        />
                       </td>
-                      <td className="py-3 px-3 font-mono text-xs font-bold text-slate-600">
-                        {stu.studentCode}
+
+                      {/* អត្តលេខ (Student Code) */}
+                      <td className="py-1.5 px-2 border-r border-slate-200">
+                        <input
+                          type="text"
+                          value={stu.studentCode}
+                          onChange={(e) => handleInlineChange(stu.id, 'studentCode', e.target.value)}
+                          className="w-full font-mono text-xs font-bold text-slate-700 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-emerald-500 focus:bg-white transition-colors"
+                        />
                       </td>
-                      <td className="py-3 px-3">
-                        <span className="font-bold text-slate-900 group-hover:text-blue-700">
-                          {stu.nameKh}
-                        </span>
-                        {stu.notes && (
-                          <span className="ml-1.5 text-[10px] text-amber-600 bg-amber-50 px-1 py-0.5 rounded border border-amber-200">
-                            {stu.notes}
-                          </span>
-                        )}
+
+                      {/* គោត្តនាម-នាម (Khmer Name) */}
+                      <td className="py-1.5 px-2 border-r border-slate-200">
+                        <input
+                          type="text"
+                          value={stu.nameKh}
+                          onChange={(e) => handleInlineChange(stu.id, 'nameKh', e.target.value)}
+                          className="w-full font-bold text-slate-900 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-emerald-500 focus:bg-white transition-colors"
+                        />
                       </td>
-                      <td className="py-3 px-3 hidden md:table-cell text-slate-500 font-medium">
-                        {stu.nameEn}
-                      </td>
-                      <td className="py-3 px-3 text-center">
-                        <span
-                          className={`inline-block px-2 py-0.5 rounded-md text-[11px] font-bold ${
+
+                      {/* ភេទ (Gender: ប្រុស / ស្រី) */}
+                      <td className="py-1.5 px-2 text-center border-r border-slate-200">
+                        <select
+                          value={stu.gender}
+                          onChange={(e) => handleInlineChange(stu.id, 'gender', e.target.value as Gender)}
+                          className={`text-xs font-bold rounded-lg px-2 py-1 cursor-pointer transition-colors border-0 ${
                             stu.gender === 'ស្រី'
-                              ? 'bg-pink-100 text-pink-700'
-                              : 'bg-blue-100 text-blue-700'
+                              ? 'bg-pink-100 text-pink-700 hover:bg-pink-200'
+                              : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
                           }`}
                         >
-                          {stu.gender}
-                        </span>
+                          <option value="ប្រុស">ប្រុស</option>
+                          <option value="ស្រី">ស្រី</option>
+                        </select>
                       </td>
-                      <td className="py-3 px-3 hidden sm:table-cell text-slate-500 whitespace-nowrap">
-                        {stu.dob ? formatKhmerDate(stu.dob) : '-'}
+
+                      {/* ថ្ងៃខែឆ្នាំកំណើត (DOB) */}
+                      <td className="py-1.5 px-2 border-r border-slate-200">
+                        <input
+                          type="date"
+                          value={stu.dob || ''}
+                          onChange={(e) => handleInlineChange(stu.id, 'dob', e.target.value)}
+                          className="w-full text-xs text-slate-700 bg-transparent px-1 py-1 rounded border border-transparent hover:border-slate-300 focus:border-emerald-500 focus:bg-white transition-colors"
+                        />
                       </td>
-                      <td className="py-3 px-3 hidden lg:table-cell">
-                        <span className="font-semibold text-slate-800">{stu.guardianName}</span>{' '}
-                        <span className="text-slate-400 text-xs">({stu.guardianRelationship})</span>
+
+                      {/* ទីកន្លែងកំណើត (Place of Birth) */}
+                      <td className="py-1.5 px-2 border-r border-slate-200">
+                        <input
+                          type="text"
+                          value={stu.pob || ''}
+                          placeholder="ទីកន្លែងកំណើត..."
+                          onChange={(e) => handleInlineChange(stu.id, 'pob', e.target.value)}
+                          className="w-full text-xs text-slate-700 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-emerald-500 focus:bg-white transition-colors"
+                        />
                       </td>
-                      <td className="py-3 px-3 hidden xl:table-cell whitespace-nowrap">
-                        {stu.guardianPhone ? (
-                          <a
-                            href={`tel:${stu.guardianPhone}`}
-                            className="inline-flex items-center text-blue-600 font-semibold hover:underline"
-                          >
-                            <Phone className="w-3 h-3 mr-1 text-blue-500" />
-                            {stu.guardianPhone}
-                          </a>
-                        ) : (
-                          '-'
-                        )}
+
+                      {/* អាសយដ្ឋានបច្ចុប្បន្ន (Current Address) */}
+                      <td className="py-1.5 px-2 border-r border-slate-200">
+                        <input
+                          type="text"
+                          value={stu.currentAddress || ''}
+                          placeholder="អាសយដ្ឋានបច្ចុប្បន្ន..."
+                          onChange={(e) => handleInlineChange(stu.id, 'currentAddress', e.target.value)}
+                          className="w-full text-xs text-slate-700 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-emerald-500 focus:bg-white transition-colors"
+                        />
                       </td>
-                      <td className="py-3 px-3 text-center">
-                        {abs.total > 0 ? (
-                          <span
-                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${
-                              isHighAbsence
-                                ? 'bg-rose-100 text-rose-700 border border-rose-300'
-                                : 'bg-slate-100 text-slate-700'
-                            }`}
-                          >
-                            {isHighAbsence && <AlertTriangle className="w-3 h-3 mr-1 text-rose-600" />}
-                            {toKhmerNum(abs.unexcused)} ឥតច្បាប់
-                          </span>
-                        ) : (
-                          <span className="text-emerald-600 text-xs font-medium">ពេញ</span>
-                        )}
+
+                      {/* អាណាព្យាបាល (Guardian) */}
+                      <td className="py-1.5 px-2 border-r border-slate-200">
+                        <input
+                          type="text"
+                          value={stu.guardianName || ''}
+                          placeholder="ឈ្មោះអាណាព្យាបាល..."
+                          onChange={(e) => handleInlineChange(stu.id, 'guardianName', e.target.value)}
+                          className="w-full text-xs font-semibold text-slate-800 bg-transparent px-1.5 py-1 rounded border border-transparent hover:border-slate-300 focus:border-emerald-500 focus:bg-white transition-colors"
+                        />
                       </td>
-                      <td className="py-3 px-3 text-center no-print">
+
+                      {/* លេខទូរស័ព្ទ (Phone) */}
+                      <td className="py-1.5 px-2 border-r border-slate-200">
+                        <div className="flex items-center space-x-1">
+                          <input
+                            type="text"
+                            value={stu.guardianPhone || ''}
+                            placeholder="012 345 678"
+                            onChange={(e) => handleInlineChange(stu.id, 'guardianPhone', e.target.value)}
+                            className="w-full text-xs font-mono text-blue-700 bg-transparent px-1 py-1 rounded border border-transparent hover:border-slate-300 focus:border-emerald-500 focus:bg-white transition-colors"
+                          />
+                          {stu.guardianPhone && (
+                            <a
+                              href={`tel:${stu.guardianPhone}`}
+                              className="p-1 text-blue-600 hover:text-blue-800 rounded no-print"
+                              title="ចុចដើម្បីហៅទូរស័ព្ទ"
+                            >
+                              <Phone className="w-3 h-3" />
+                            </a>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* សកម្មភាព (Actions: ចម្លង, លុប, មើលកាត) */}
+                      <td className="py-1.5 px-2 text-center no-print bg-slate-50/50">
                         <div className="flex items-center justify-center space-x-1">
-                          {/* View Profile */}
+                          {/* ចម្លងសិស្ស (Duplicate) */}
                           <button
-                            onClick={() => setViewingStudent(stu)}
-                            className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-                            title="មើលប្រវត្តិរូបសិស្ស"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          {/* Duplicate Student */}
-                          <button
-                            onClick={() => handleDuplicateStudent(stu)}
-                            className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
+                            onClick={() => handleDirectDuplicate(stu)}
+                            className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
                             title="ចម្លងសិស្ស (បង្កើតសិស្សស្ទួន)"
                           >
-                            <Copy className="w-4 h-4" />
+                            <Copy className="w-3.5 h-3.5" />
                           </button>
-                          {/* Edit Student */}
+
+                          {/* មើលប្រវត្តិរូបសង្ខេប (View Bio Card) */}
                           <button
-                            onClick={() => openEditModal(stu)}
-                            className="p-1.5 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors cursor-pointer"
-                            title="កែប្រែ"
+                            onClick={() => setViewingStudent(stu)}
+                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                            title="មើលប្រវត្តិរូបលម្អិត"
                           >
-                            <Edit2 className="w-4 h-4" />
+                            <Eye className="w-3.5 h-3.5" />
                           </button>
-                          {/* Delete Student */}
+
+                          {/* លុប (Delete) */}
                           <button
-                            onClick={() => handleDeleteStudent(stu)}
-                            className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                            title="លុប"
+                            onClick={() => handleDirectDelete(stu)}
+                            className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                            title="លុបសិស្សនេះចេញ"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </td>
@@ -558,31 +537,74 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
             </tbody>
           </table>
         </div>
+
+        {/* Bottom Status Row of Excel Sheet */}
+        <div className="bg-slate-50 border-t border-slate-200 px-4 py-2.5 flex items-center justify-between text-xs text-slate-500 no-print">
+          <div className="flex items-center space-x-3">
+            <span>ចំនួនសិស្សក្នុងតារាង៖ <strong className="text-slate-800">{toKhmerNum(filteredStudents.length)}</strong> នាក់</span>
+            <span>|</span>
+            <span>សិស្សស្រី៖ <strong className="text-pink-600">{toKhmerNum(femaleFiltered)}</strong> នាក់</span>
+            <span>|</span>
+            <span>សិស្សប្រុស៖ <strong className="text-blue-600">{toKhmerNum(maleFiltered)}</strong> នាក់</span>
+          </div>
+          <button
+            onClick={handleAddNewBlankRow}
+            className="inline-flex items-center text-emerald-700 hover:text-emerald-900 font-bold hover:underline cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5 mr-1" />
+            ចុចទីនេះដើម្បីបន្ថែមសិស្សថ្មីមួយជួរដេកទៀត
+          </button>
+        </div>
       </div>
 
-      {/* Modal: View Full Student Profile */}
+      {/* Official Signatures on Print */}
+      <div className="hidden print:block mt-8 text-xs">
+        <div className="flex justify-between items-start">
+          <div className="text-center w-52">
+            <p className="font-bold">បានឃើញ និងពិនិត្យត្រឹមត្រូវ</p>
+            <p className="text-[11px] text-slate-500">នាយកសាលា</p>
+            <div className="h-20" />
+            <p className="font-bold">{settings?.principalName || 'នាយកសាលា'}</p>
+          </div>
+
+          <div className="text-center w-52">
+            <p className="italic text-[11px]">
+              {settings?.provinceCity || 'ខេត្តកំពង់ឆ្នាំង'}, ថ្ងៃទី....... ខែ....... ឆ្នាំ២០២...
+            </p>
+            <p className="font-bold">គ្រូបន្ទុកថ្នាក់</p>
+            <div className="h-20" />
+            <p className="font-bold">{settings?.teacherName || 'ហ៊ុន រដ្ឋា'}</p>
+            <p className="text-[10px] text-slate-500">{settings?.phone}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Modal: View Full Student Profile Card */}
       <Modal
         isOpen={!!viewingStudent}
         onClose={() => setViewingStudent(null)}
-        title="ព័ត៌មានលម្អិតសិស្ស"
+        title="ប្រវត្តិរូបសង្ខេបសិស្ស"
         subtitle={viewingStudent?.nameKh}
         maxWidth="lg"
       >
         {viewingStudent && (
           <div className="space-y-4">
             <div className="flex items-center space-x-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-              <div className="w-16 h-16 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-xl font-bold shadow-md">
+              <div className="w-16 h-16 rounded-2xl bg-emerald-600 text-white flex items-center justify-center text-2xl font-black shadow-md">
                 {viewingStudent.nameKh.charAt(0)}
               </div>
               <div>
                 <h4 className="text-lg font-bold text-slate-900">{viewingStudent.nameKh}</h4>
-                <p className="text-xs text-slate-500 font-medium">{viewingStudent.nameEn}</p>
+                <p className="text-xs text-slate-500 font-medium">{viewingStudent.nameEn || '-'}</p>
                 <div className="mt-1 flex items-center gap-2">
-                  <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-md font-bold">
+                  <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-xs rounded-md font-bold font-mono">
                     {viewingStudent.studentCode}
                   </span>
+                  <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-md font-bold">
+                    {classes.find((c) => c.id === viewingStudent.classId)?.name || 'ថ្នាក់រៀន'}
+                  </span>
                   <span className="px-2 py-0.5 bg-slate-200 text-slate-700 text-xs rounded-md font-bold">
-                    {classes.find((c) => c.id === viewingStudent.classId)?.name}
+                    លេខរៀង៖ {toKhmerNum(viewingStudent.rollNo)}
                   </span>
                 </div>
               </div>
@@ -595,7 +617,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
               </div>
               <div className="p-3 bg-white border border-slate-200 rounded-xl">
                 <span className="text-slate-400 block mb-0.5">ថ្ងៃខែឆ្នាំកំណើត</span>
-                <span className="font-bold text-slate-800">{formatKhmerDate(viewingStudent.dob)}</span>
+                <span className="font-bold text-slate-800">{viewingStudent.dob ? formatKhmerDate(viewingStudent.dob) : '-'}</span>
               </div>
             </div>
 
@@ -612,36 +634,29 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
             <div className="p-4 bg-blue-50/50 border border-blue-100 rounded-2xl text-xs space-y-2">
               <h5 className="font-bold text-blue-900">ព័ត៌មានអាណាព្យាបាល៖</h5>
               <div className="grid grid-cols-2 gap-2">
-                <p><span className="text-slate-500">ឈ្មោះ៖</span> <span className="font-bold">{viewingStudent.guardianName}</span></p>
-                <p><span className="text-slate-500">ត្រូវជា៖</span> <span className="font-bold">{viewingStudent.guardianRelationship}</span></p>
-                <p><span className="text-slate-500">លេខទូរស័ព្ទ៖</span> <a href={`tel:${viewingStudent.guardianPhone}`} className="text-blue-700 font-bold hover:underline">{viewingStudent.guardianPhone}</a></p>
+                <p><span className="text-slate-500">ឈ្មោះ៖</span> <span className="font-bold">{viewingStudent.guardianName || '-'}</span></p>
+                <p><span className="text-slate-500">ត្រូវជា៖</span> <span className="font-bold">{viewingStudent.guardianRelationship || '-'}</span></p>
+                <p>
+                  <span className="text-slate-500">ទូរស័ព្ទ៖</span>{' '}
+                  {viewingStudent.guardianPhone ? (
+                    <a href={`tel:${viewingStudent.guardianPhone}`} className="text-blue-700 font-bold hover:underline">
+                      {viewingStudent.guardianPhone}
+                    </a>
+                  ) : '-'}
+                </p>
                 <p><span className="text-slate-500">មុខរបរ៖</span> <span className="font-bold">{viewingStudent.guardianOccupation || '-'}</span></p>
               </div>
             </div>
 
             <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-              <div className="flex items-center space-x-2">
-                <button
-                  type="button"
-                  onClick={() => handleCopyStudentInfo(viewingStudent)}
-                  className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl border border-indigo-200 transition-colors cursor-pointer"
-                >
-                  <Copy className="w-3.5 h-3.5 mr-1 inline-block" />
-                  {copiedId === viewingStudent.id ? 'បានចម្លង!' : 'ចម្លងព័ត៌មាន'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const s = viewingStudent;
-                    setViewingStudent(null);
-                    openEditModal(s);
-                  }}
-                  className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-bold rounded-xl border border-amber-200 transition-colors cursor-pointer"
-                >
-                  <Edit2 className="w-3.5 h-3.5 mr-1 inline-block" />
-                  កែប្រែ
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => handleDirectDuplicate(viewingStudent)}
+                className="px-3.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl border border-indigo-200 transition-colors cursor-pointer"
+              >
+                <Copy className="w-3.5 h-3.5 mr-1 inline-block" />
+                ចម្លងសិស្សនេះ
+              </button>
 
               <button
                 type="button"
@@ -653,224 +668,6 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
             </div>
           </div>
         )}
-      </Modal>
-
-      {/* Modal: Add / Edit Student */}
-      <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title={editingStudent ? 'កែប្រែព័ត៌មានសិស្ស' : 'បន្ថែមសិស្សថ្មី'}
-        subtitle="សូមបំពេញព័ត៌មានផ្ទាល់ខ្លួន និងអាណាព្យាបាល"
-        maxWidth="2xl"
-      >
-        <form onSubmit={handleSaveStudent} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                ថ្នាក់រៀន <span className="text-rose-500">*</span>
-              </label>
-              <select
-                value={classId}
-                onChange={(e) => setClassId(e.target.value)}
-                className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500"
-              >
-                {classes.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                លេខរៀងក្នុងថ្នាក់
-              </label>
-              <input
-                type="number"
-                min="1"
-                value={rollNo}
-                onChange={(e) => setRollNo(Number(e.target.value))}
-                className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                អត្តលេខសិស្ស <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                value={studentCode}
-                onChange={(e) => setStudentCode(e.target.value)}
-                placeholder="STU-001"
-                className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                គោត្តនាម-នាម (ខ្មែរ) <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                value={nameKh}
-                onChange={(e) => setNameKh(e.target.value)}
-                placeholder="ឧ. ចាន់ សុខា"
-                className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                ឈ្មោះជាអក្សរឡាតាំង
-              </label>
-              <input
-                type="text"
-                value={nameEn}
-                onChange={(e) => setNameEn(e.target.value)}
-                placeholder="ឧ. Chan Sokha"
-                className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                ភេទ <span className="text-rose-500">*</span>
-              </label>
-              <select
-                value={gender}
-                onChange={(e) => setGender(e.target.value as Gender)}
-                className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="ប្រុស">ប្រុស</option>
-                <option value="ស្រី">ស្រី</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                ថ្ងៃខែឆ្នាំកំណើត
-              </label>
-              <input
-                type="date"
-                value={dob}
-                onChange={(e) => setDob(e.target.value)}
-                className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                ទីកន្លែងកំណើត
-              </label>
-              <input
-                type="text"
-                value={pob}
-                onChange={(e) => setPob(e.target.value)}
-                placeholder="ស្រុក/ខេត្ត កំណើត"
-                className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
-              អាសយដ្ឋានបច្ចុប្បន្ន
-            </label>
-            <input
-              type="text"
-              value={currentAddress}
-              onChange={(e) => setCurrentAddress(e.target.value)}
-              placeholder="ផ្ទះលេខ, ផ្លូវ, ភូមិ, ឃុំ/សង្កាត់..."
-              className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          {/* Guardian Info Header */}
-          <div className="pt-2 border-t border-slate-100">
-            <h4 className="text-xs font-bold text-blue-800 uppercase tracking-wider mb-2">
-              ព័ត៌មានអាណាព្យាបាល
-            </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  ឈ្មោះអាណាព្យាបាល
-                </label>
-                <input
-                  type="text"
-                  value={guardianName}
-                  onChange={(e) => setGuardianName(e.target.value)}
-                  placeholder="ឈ្មោះឪពុក ឬម្តាយ..."
-                  className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  ត្រូវជា
-                </label>
-                <select
-                  value={guardianRelationship}
-                  onChange={(e) => setGuardianRelationship(e.target.value)}
-                  className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="ឪពុក">ឪពុក</option>
-                  <option value="ម្តាយ">ម្តាយ</option>
-                  <option value="អាណាព្យាបាល">អាណាព្យាបាល</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  លេខទូរស័ព្ទ
-                </label>
-                <input
-                  type="tel"
-                  value={guardianPhone}
-                  onChange={(e) => setGuardianPhone(e.target.value)}
-                  placeholder="012 345 678"
-                  className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
-              កំណត់ចំណាំពិសេស (អាកប្បកិរិយា, សុខភាព...)
-            </label>
-            <input
-              type="text"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="ឧ. ប្រធានថ្នាក់, ឧស្សាហ៍ឈឺ..."
-              className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div className="flex items-center justify-end space-x-2 pt-4 border-t border-slate-100">
-            <button
-              type="button"
-              onClick={() => setIsModalOpen(false)}
-              className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
-            >
-              បោះបង់
-            </button>
-            <button
-              type="submit"
-              className="px-5 py-2 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md transition-all cursor-pointer"
-            >
-              {editingStudent ? 'រក្សាទុកការកែប្រែ' : 'បន្ថែមសិស្ស'}
-            </button>
-          </div>
-        </form>
       </Modal>
     </div>
   );

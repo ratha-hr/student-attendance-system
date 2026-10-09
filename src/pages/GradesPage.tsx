@@ -256,20 +256,10 @@ export const GradesPage: React.FC<GradesPageProps> = ({
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-2">
           {/* Class Switcher */}
-          <div className="flex items-center space-x-1.5">
-            <label className="text-xs font-bold text-slate-600">ថ្នាក់៖</label>
-            <select
-              value={activeClassId}
-              onChange={(e) => onSelectClass(e.target.value)}
-              className="bg-slate-50 border border-slate-300 font-bold text-xs sm:text-sm rounded-xl px-2.5 py-1.5 text-slate-800 cursor-pointer shadow-2xs"
-            >
-              {classes.map((c) => (
-                <option key={c.id} value={c.id}>
-                  📚 {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Active Class Badge (Controlled by top Navbar) */}
+          <span className="inline-flex items-center px-2.5 py-1.5 bg-blue-50 text-blue-700 text-xs font-bold rounded-xl border border-blue-200">
+            📚 {currentClass?.name || 'ថ្នាក់រៀន'}
+          </span>
 
           {/* Month Switcher */}
           <div className="flex items-center space-x-1.5">

@@ -107,8 +107,11 @@ export interface TimetableSlot {
   id: string;
   dayOfWeek: number; // 1 = ច័ន្ទ, 2 = អង្គារ, ..., 6 = សៅរ៍
   timeSlot: string; // 07:00 - 07:50
+  periodNumber?: number; // 1, 2, 3, 4, 5
+  session?: 'morning' | 'afternoon';
   classId: string;
   subject: string;
+  teacherName?: string;
   room?: string;
 }
 

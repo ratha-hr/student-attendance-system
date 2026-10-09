@@ -6,6 +6,9 @@ import {
   CalendarDays,
   GraduationCap,
   BookOpenCheck,
+  FileSpreadsheet,
+  Calendar,
+  Clock,
 } from 'lucide-react';
 import type { ClassRoom } from '../types';
 
@@ -14,6 +17,8 @@ export type NavTab =
   | 'monthly-attendance'
   | 'students'
   | 'grades'
+  | 'timetable-class'
+  | 'timetable-teacher'
   | 'letters';
 
 interface SidebarProps {
@@ -48,8 +53,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: 'students' as NavTab,
-      label: '៣. ព័ត៌មានសិស្ស',
-      icon: Users,
+      label: '៣. ព័ត៌មានសិស្ស (xlsm)',
+      icon: FileSpreadsheet,
     },
     {
       id: 'grades' as NavTab,
@@ -57,8 +62,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: GraduationCap,
     },
     {
+      id: 'timetable-class' as NavTab,
+      label: '៥. កាលវិភាគតាមថ្នាក់',
+      icon: Calendar,
+    },
+    {
+      id: 'timetable-teacher' as NavTab,
+      label: '៦. កាលវិភាគគ្រូ (ហ៊ុន រដ្ឋា)',
+      icon: Clock,
+    },
+    {
       id: 'letters' as NavTab,
-      label: '៥. លិខិតព្រមាន (A4)',
+      label: '៧. លិខិតព្រមាន (A4)',
       icon: MailWarning,
     },
   ];

@@ -198,17 +198,9 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
               <CalendarCheck2 className="w-6 h-6 text-blue-600 mr-2" />
               វត្តមានសិស្ស ({currentClass?.name || 'សូមជ្រើសរើសថ្នាក់'})
             </h2>
-            <select
-              value={activeClassId}
-              onChange={(e) => onSelectClass(e.target.value)}
-              className="bg-slate-50 border border-slate-300 font-bold text-xs sm:text-sm rounded-xl px-2.5 py-1.5 text-slate-800 cursor-pointer shadow-2xs"
-            >
-              {classes.map((c) => (
-                <option key={c.id} value={c.id}>
-                  📚 {c.name}
-                </option>
-              ))}
-            </select>
+            <span className="inline-flex items-center px-2.5 py-1 bg-blue-50 text-blue-700 text-xs font-bold rounded-xl border border-blue-200">
+              📚 {currentClass?.name || 'សូមជ្រើសរើសថ្នាក់'}
+            </span>
           </div>
           <p className="text-xs sm:text-sm text-slate-500">
             កត់ត្រាវត្តមានប្រចាំថ្ងៃ និងតាមដានរបាយការណ៍វត្តមាន
