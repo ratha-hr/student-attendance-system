@@ -24,6 +24,8 @@ import type { Student, ClassRoom, AttendanceRecord, Gender, TeacherSettings } fr
 import { db } from '../db/db';
 import { Modal } from '../components/common/Modal';
 import { StudentIDCardsModal } from '../components/StudentIDCardsModal';
+import { AddStudentModal } from '../components/AddStudentModal';
+import { useUndoRedo } from '../context/UndoRedoContext';
 import { PrintButton } from '../components/common/PrintButton';
 import { toKhmerNum, formatKhmerDate, formatToDMY, parseDMYToISO } from '../utils/dateUtils';
 import {
@@ -57,79 +59,12 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
   const [lastSavedId, setLastSavedId] = useState<string | null>(null);
   const [isIDCardsOpen, setIsIDCardsOpen] = useState(false);
 
-  // Undo / Redo history stacks
-  const [undoStack, setUndoStack] = useState<Student[][]>([]);
-  const [redoStack, setRedoStack] = useState<Student[][]>([]);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const { canUndo, canRedo, undo, redo, pushSnapshot, showToast } = useUndoRedo();
   const [scrollPercent, setScrollPercent] = useState<number>(0);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const tableScrollRef = useRef<HTMLDivElement>(null);
-
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3500);
-  };
-
-  // Capture current state snapshot before performing modifications
-  const pushUndo = useCallback(() => {
-    setUndoStack((prev) => [...prev.slice(-20), JSON.parse(JSON.stringify(students))]);
-    setRedoStack([]); // Clear redo on new action
-  }, [students]);
-
-  // Handle Undo
-  const handleUndo = async () => {
-    if (undoStack.length === 0) return;
-    const previous = undoStack[undoStack.length - 1];
-    const newUndo = undoStack.slice(0, undoStack.length - 1);
-
-    // Save current to redo
-    setRedoStack((prev) => [...prev, JSON.parse(JSON.stringify(students))]);
-    setUndoStack(newUndo);
-
-    // Replace students in DB
-    await db.students.clear();
-    await db.students.bulkAdd(previous);
-    onRefresh();
-    showToast('↶ បានត្រឡប់ក្រោយ (Undo) រួចរាល់!');
-  };
-
-  // Handle Redo
-  const handleRedo = async () => {
-    if (redoStack.length === 0) return;
-    const next = redoStack[redoStack.length - 1];
-    const newRedo = redoStack.slice(0, redoStack.length - 1);
-
-    // Save current to undo
-    setUndoStack((prev) => [...prev, JSON.parse(JSON.stringify(students))]);
-    setRedoStack(newRedo);
-
-    // Replace students in DB
-    await db.students.clear();
-    await db.students.bulkAdd(next);
-    onRefresh();
-    showToast('↷ បានធ្វើឡើងវិញ (Redo) រួចរាល់!');
-  };
-
-  // Keyboard shortcut Ctrl+Z / Ctrl+Y
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
-        if (e.shiftKey) {
-          e.preventDefault();
-          handleRedo();
-        } else {
-          e.preventDefault();
-          handleUndo();
-        }
-      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
-        e.preventDefault();
-        handleRedo();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undoStack, redoStack, students]);
 
   // Sync scroll percent on table scroll
   useEffect(() => {
@@ -180,9 +115,18 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
   const femaleFiltered = filteredStudents.filter((s) => s.gender === 'ស្រី').length;
   const maleFiltered = filteredStudents.filter((s) => s.gender === 'ប្រុស').length;
 
+  // Total counts for active class (used for unified interactive filter badges)
+  const currentClassStudents = students.filter(
+    (s) => selectedClassId === 'ALL' || s.classId === activeClassId
+  );
+  const classStudentsTotal = currentClassStudents.length;
+  const classStudentsFemale = currentClassStudents.filter((s) => s.gender === 'ស្រី').length;
+  const classStudentsMale = currentClassStudents.filter((s) => s.gender === 'ប្រុស').length;
+
   // Direct Inline Cell Edit Handler (Auto-Save on blur or change)
   const handleInlineChange = async (studentId: string, field: keyof Student, value: any) => {
     try {
+      await pushSnapshot('កែប្រែទិន្នន័យសិស្ស');
       const updateData: Partial<Student> = { [field]: value };
       // If dob is updated, also update age
       if (field === 'dob') {
@@ -199,7 +143,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
 
   // Direct Duplicate Row Handler (ចម្លងសិស្សដោយផ្ទាល់)
   const handleDirectDuplicate = async (s: Student) => {
-    pushUndo();
+    await pushSnapshot(`ចម្លងសិស្ស "${s.nameKh}"`);
     const classStudents = students.filter((stu) => stu.classId === s.classId);
     const nextRoll = classStudents.length + 1;
     const duplicated: Student = {
@@ -218,7 +162,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
 
   // Direct Delete Row Handler (លុបសិស្សដោយផ្ទាល់ មិនបាច់សួរច្រើន អាចចុច Undo បាន)
   const handleDirectDelete = async (s: Student) => {
-    pushUndo();
+    await pushSnapshot(`លុបសិស្ស "${s.nameKh}"`);
     await db.students.delete(s.id);
     onRefresh();
     showToast(`🗑️ បានលុបសិស្ស "${s.nameKh}" (អាចចុច ↶ Undo ដើម្បីយកមកវិញ)`);
@@ -226,7 +170,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
 
   // Delete all students in active class or all (មិនបាច់ផ្ទៀងផ្ទាត់ អាចចុច Undo បាន)
   const handleDeleteAllStudents = async () => {
-    pushUndo();
+    await pushSnapshot(selectedClassId === 'ALL' ? 'លុបសិស្សទាំងអស់' : `លុបសិស្សក្នុងថ្នាក់ ${currentClassName}`);
     if (selectedClassId === 'ALL') {
       await db.students.clear();
       showToast('🗑️ បានលុបសិស្សទាំងអស់រួចរាល់! (អាចចុច ↶ Undo ដើម្បីយកមកវិញ)');
@@ -238,10 +182,10 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
     onRefresh();
   };
 
-  // Direct Add New Blank Row (បន្ថែមជួរដេក Excel ថ្មីនៅជួរទី១ តែម្តង ដើម្បីឃើញភ្លាមៗ)
-  const handleAddNewBlankRow = async () => {
-    pushUndo();
-    const targetClassId = selectedClassId === 'ALL' ? (classes[0]?.id || '') : selectedClassId;
+  // Save New Student from Dedicated Form Modal (បញ្ចូលតាមក្បាលតារាង & ភូមិសាស្ត្ររដ្ឋបាលកម្ពុជា)
+  const handleSaveNewStudent = async (newStudent: Student) => {
+    await pushSnapshot(`បន្ថែមសិស្សថ្មី "${newStudent.nameKh}"`);
+    const targetClassId = newStudent.classId;
     const classStudents = students.filter((s) => s.classId === targetClassId);
 
     // Shift existing students in this class by +1 so new student is at row 1
@@ -251,46 +195,6 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
     }));
     await db.students.bulkPut(updatedClassStudents);
 
-    const newStudent: Student = {
-      id: 'stu-' + Date.now(),
-      classId: targetClassId,
-      rollNo: 1,
-      studentCode: `STU-001`,
-      nameKh: `សិស្សថ្មី`,
-      nameEn: `New Student`,
-      gender: 'ប្រុស',
-      dob: '2011-01-01',
-      age: 14,
-      originSchool: 'វិទ្យាល័យ ហ៊ុន សែន កំពង់ត្រឡាច',
-      pobVillage: 'ត្រពាំងព្រីង',
-      pobCommune: 'កំពង់ត្រឡាច',
-      pobDistrict: 'កំពង់ត្រឡាច',
-      pobProvince: 'កំពង់ឆ្នាំង',
-      addrVillage: 'ត្រពាំងព្រីង',
-      addrCommune: 'កំពង់ត្រឡាច',
-      addrDistrict: 'កំពង់ត្រឡាច',
-      addrProvince: 'កំពង់ឆ្នាំង',
-      studentPhone: '',
-      orphanStatus: 'none',
-      isDisabled: false,
-      isPoor: false,
-      hasScholarship: false,
-      stayInPagoda: false,
-      fatherName: '',
-      fatherOccupation: '',
-      fatherPhone: '',
-      motherName: '',
-      motherOccupation: '',
-      motherPhone: '',
-      guardianName: '',
-      guardianRelationship: 'ឪពុក',
-      guardianPhone: '',
-      guardianOccupation: '',
-      otherNotes: '',
-      status: 'active',
-      createdAt: new Date().toISOString(),
-    };
-
     await db.students.add(newStudent);
     setLastSavedId(newStudent.id);
     onRefresh();
@@ -299,7 +203,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
     if (tableScrollRef.current) {
       tableScrollRef.current.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
     }
-    showToast('✨ បានបន្ថែមសិស្សថ្មីនៅជួរដេកទី ១ ដោយជោគជ័យ!');
+    showToast(`✨ បានបន្ថែមសិស្សថ្មី "${newStudent.nameKh}" នៅជួរដេកទី ១ ដោយជោគជ័យ!`);
   };
 
   // Export to Excel
@@ -339,44 +243,32 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
     <div className="space-y-3">
       {/* Clean, Modern, Elegant Header & Action Bar (Replacing messy cluttered panel) */}
       <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3 no-print">
-        {/* Row 1: Title + Quick KPI Badges + Primary Action Buttons */}
+        {/* Row 1: Title + Live Save Indicator + Primary Action Buttons */}
         <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
-          {/* Left: Title & Inline KPI Pills */}
+          {/* Left: Title & Live Save Indicator */}
           <div className="flex flex-wrap items-center gap-2.5">
             <h2 className="text-lg font-black text-slate-800 flex items-center">
               <FileSpreadsheet className="w-5 h-5 text-emerald-600 mr-2" />
               បញ្ជីស្ថិតិ និងប្រវត្តិរូបសង្ខេបសិស្ស ({currentClassName})
             </h2>
-
-            {/* Compact Inline KPI Badges (No messy big cards) */}
-            <div className="flex items-center gap-1.5 text-xs">
-              <span className="px-2.5 py-1 bg-slate-100 text-slate-700 font-bold rounded-lg border border-slate-200" title="សិស្សសរុប">
-                👥 សរុប៖ <strong>{toKhmerNum(totalFiltered)}</strong> នាក់
+            {lastSavedId && (
+              <span className="px-2 py-0.5 text-emerald-600 font-bold text-xs bg-emerald-50 rounded-full border border-emerald-300 animate-pulse">
+                ✓ រក្សាទុក
               </span>
-              <span className="px-2.5 py-1 bg-pink-50 text-pink-700 font-bold rounded-lg border border-pink-200" title="សិស្សស្រី">
-                👩 ស្រី៖ <strong>{toKhmerNum(femaleFiltered)}</strong>
-              </span>
-              <span className="px-2.5 py-1 bg-blue-50 text-blue-700 font-bold rounded-lg border border-blue-200" title="សិស្សប្រុស">
-                👨 ប្រុស៖ <strong>{toKhmerNum(maleFiltered)}</strong>
-              </span>
-              {lastSavedId && (
-                <span className="px-2 py-0.5 text-emerald-600 font-bold text-xs bg-emerald-50 rounded-full border border-emerald-300 animate-pulse">
-                  ✓ រក្សាទុក
-                </span>
-              )}
-            </div>
+            )}
           </div>
 
           {/* Right: Clean, Grouped Action Buttons (Guaranteed strictly SINGLE row - no wrapping) */}
           <div className="flex items-center flex-nowrap overflow-x-auto no-scrollbar gap-1.5 shrink-0 py-0.5">
-            {/* Primary Action: Add Student */}
+            {/* Primary Action: Add Student with Dedicated Form Modal */}
             <button
-              onClick={handleAddNewBlankRow}
-              className="inline-flex items-center px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer shrink-0"
-              title="បន្ថែមជួរដេកសិស្សថ្មីនៅជួរទី១"
+              type="button"
+              onClick={() => setIsAddModalOpen(true)}
+              className="inline-flex items-center px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer shrink-0"
+              title="បើកផ្ទាំង Form ដើម្បីបញ្ចូលសិស្សថ្មី"
             >
               <Plus className="w-3.5 h-3.5 mr-1" />
-              + បន្ថែមសិស្ស
+              បន្ថែមសិស្សថ្មី
             </button>
 
             {/* Excel Group */}
@@ -397,6 +289,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
               </label>
 
               <button
+                type="button"
                 onClick={handleExportExcel}
                 className="inline-flex items-center px-2 py-1 rounded-lg text-slate-700 hover:bg-white hover:text-blue-700 transition-colors cursor-pointer"
                 title="ទាញយកជា Excel .xlsm"
@@ -406,6 +299,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
               </button>
 
               <button
+                type="button"
                 onClick={downloadStudentTemplate}
                 className="inline-flex items-center px-1.5 py-1 rounded-lg text-slate-500 hover:bg-white hover:text-slate-800 transition-colors cursor-pointer"
                 title="ទាញយកគំរូ Excel"
@@ -418,8 +312,8 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
             <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs font-bold shrink-0">
               <button
                 type="button"
-                onClick={handleUndo}
-                disabled={undoStack.length === 0}
+                onClick={undo}
+                disabled={!canUndo}
                 className="inline-flex items-center px-2 py-1 rounded-lg text-slate-700 hover:bg-white hover:text-indigo-600 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-700 transition-colors cursor-pointer"
                 title="ត្រឡប់ក្រោយ (Ctrl+Z)"
               >
@@ -428,8 +322,8 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
               </button>
               <button
                 type="button"
-                onClick={handleRedo}
-                disabled={redoStack.length === 0}
+                onClick={redo}
+                disabled={!canRedo}
                 className="inline-flex items-center px-2 py-1 rounded-lg text-slate-700 hover:bg-white hover:text-indigo-600 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-700 transition-colors cursor-pointer"
                 title="ធ្វើឡើងវិញ (Ctrl+Y)"
               >
@@ -451,6 +345,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
 
             {/* ID Cards */}
             <button
+              type="button"
               onClick={() => setIsIDCardsOpen(true)}
               className="inline-flex items-center px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-bold rounded-xl border border-purple-200 transition-colors cursor-pointer shrink-0"
               title="បោះពុម្ពកាតសិស្សភ្ជាប់ QR"
@@ -464,7 +359,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
           </div>
         </div>
 
-        {/* Row 2: Search + Gender Filters (Unified cleanly) */}
+        {/* Row 2: Search + Merged Interactive KPI & Gender Filter Group (បញ្ចូលគ្នាទាំងពីរ មិនជាន់គ្នា) */}
         <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-2.5">
           {/* Search Box */}
           <div className="relative w-full sm:w-80">
@@ -478,32 +373,58 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
             />
           </div>
 
-          {/* Gender Filter Chips */}
+          {/* Unified Interactive KPI & Gender Filter Group (បញ្ចូលគ្នាទាំងពីរ មិនជាន់គ្នា) */}
           <div className="flex items-center space-x-1.5 w-full sm:w-auto justify-end">
-            <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-xl text-xs font-bold">
+            <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-xl text-xs font-bold border border-slate-200 shadow-2xs">
               <button
+                type="button"
                 onClick={() => setGenderFilter('all')}
-                className={`px-3 py-1 rounded-lg transition-colors cursor-pointer ${
-                  genderFilter === 'all' ? 'bg-white font-black text-slate-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                  genderFilter === 'all'
+                    ? 'bg-white font-black text-slate-900 shadow-xs border border-slate-200/80 ring-1 ring-slate-300'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
                 }`}
+                title="បង្ហាញសិស្សទាំងអស់"
               >
-                ទាំងអស់ ({toKhmerNum(students.filter((s) => selectedClassId === 'ALL' || s.classId === activeClassId).length)})
+                <span>👥</span>
+                <span>ទាំងអស់៖</span>
+                <strong className="text-slate-900 font-black">
+                  {toKhmerNum(classStudentsTotal)}
+                </strong>
               </button>
+
               <button
-                onClick={() => setGenderFilter('ប្រុស')}
-                className={`px-3 py-1 rounded-lg transition-colors cursor-pointer ${
-                  genderFilter === 'ប្រុស' ? 'bg-white font-black text-blue-700 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                👨 ប្រុស
-              </button>
-              <button
+                type="button"
                 onClick={() => setGenderFilter('ស្រី')}
-                className={`px-3 py-1 rounded-lg transition-colors cursor-pointer ${
-                  genderFilter === 'ស្រី' ? 'bg-white font-black text-pink-700 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                  genderFilter === 'ស្រី'
+                    ? 'bg-pink-600 text-white font-black shadow-xs ring-1 ring-pink-700'
+                    : 'text-pink-700 hover:text-pink-900 hover:bg-pink-50'
                 }`}
+                title="ត្រងយកតែសិស្សស្រី"
               >
-                👩 ស្រី
+                <span>👩</span>
+                <span>ស្រី៖</span>
+                <strong className={genderFilter === 'ស្រី' ? 'text-white' : 'text-pink-700 font-black'}>
+                  {toKhmerNum(classStudentsFemale)}
+                </strong>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setGenderFilter('ប្រុស')}
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                  genderFilter === 'ប្រុស'
+                    ? 'bg-blue-600 text-white font-black shadow-xs ring-1 ring-blue-700'
+                    : 'text-blue-700 hover:text-blue-900 hover:bg-blue-50'
+                }`}
+                title="ត្រងយកតែសិស្សប្រុស"
+              >
+                <span>👨</span>
+                <span>ប្រុស៖</span>
+                <strong className={genderFilter === 'ប្រុស' ? 'text-white' : 'text-blue-700 font-black'}>
+                  {toKhmerNum(classStudentsMale)}
+                </strong>
               </button>
             </div>
           </div>
@@ -1300,11 +1221,12 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
             <span>សិស្សប្រុស៖ <strong className="text-blue-600">{toKhmerNum(maleFiltered)}</strong> នាក់</span>
           </div>
           <button
-            onClick={handleAddNewBlankRow}
+            type="button"
+            onClick={() => setIsAddModalOpen(true)}
             className="inline-flex items-center text-emerald-700 hover:text-emerald-900 font-bold hover:underline cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5 mr-1" />
-            + បន្ថែមសិស្សថ្មីនៅជួរដេកទី ១
+            បន្ថែមសិស្សថ្មី
           </button>
         </div>
       </div>
@@ -1448,13 +1370,15 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
         settings={settings}
       />
 
-      {/* Instant Toast Notification */}
-      {toastMessage && (
-        <div className="fixed bottom-14 right-6 z-50 bg-slate-900/95 text-white px-4 py-2.5 rounded-2xl shadow-2xl flex items-center space-x-2 text-xs font-bold border border-slate-700 animate-in fade-in slide-in-from-bottom duration-200">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span>{toastMessage}</span>
-        </div>
-      )}
+      {/* Dedicated Add Student Form Modal (តាមក្បាលតារាង & ភូមិសាស្ត្ររដ្ឋបាលកម្ពុជា) */}
+      <AddStudentModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        classes={classes}
+        defaultClassId={activeClassId}
+        onSave={handleSaveNewStudent}
+        nextRollNo={1}
+      />
     </div>
   );
 };

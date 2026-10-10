@@ -54,6 +54,158 @@ const AFTERNOON_PERIODS = [
   { period: 4, time: '4h-5h', label: '4h-5h', session: 'afternoon' as const },
 ];
 
+export interface SubjectTheme {
+  bg: string;
+  badgeBg: string;
+  badgeText: string;
+  textColor: string;
+  borderColor: string;
+}
+
+export function getSubjectTheme(subjectName: string): SubjectTheme {
+  const s = (subjectName || '').trim().toLowerCase();
+
+  if (s.includes('គណិត') || s.includes('math')) {
+    // គណិតវិទ្យា: Soft Blue
+    return {
+      bg: 'bg-blue-50/80 hover:bg-blue-100/70',
+      badgeBg: 'bg-blue-100',
+      badgeText: 'text-blue-800',
+      textColor: 'text-blue-900',
+      borderColor: 'border-blue-200',
+    };
+  }
+  if (s.includes('ខ្មែរ') || s.includes('khmer') || s.includes('តែងសេចក្តី')) {
+    // ភាសាខ្មែរ: Soft Emerald
+    return {
+      bg: 'bg-emerald-50/80 hover:bg-emerald-100/70',
+      badgeBg: 'bg-emerald-100',
+      badgeText: 'text-emerald-800',
+      textColor: 'text-emerald-900',
+      borderColor: 'border-emerald-200',
+    };
+  }
+  if (s.includes('រូប') || s.includes('physic')) {
+    // រូបវិទ្យា: Soft Cyan / Sky
+    return {
+      bg: 'bg-cyan-50/80 hover:bg-cyan-100/70',
+      badgeBg: 'bg-cyan-100',
+      badgeText: 'text-cyan-800',
+      textColor: 'text-cyan-900',
+      borderColor: 'border-cyan-200',
+    };
+  }
+  if (s.includes('គីមី') || s.includes('chem')) {
+    // គីមីវិទ្យា: Soft Amber / Orange
+    return {
+      bg: 'bg-amber-50/80 hover:bg-amber-100/70',
+      badgeBg: 'bg-amber-100',
+      badgeText: 'text-amber-800',
+      textColor: 'text-amber-900',
+      borderColor: 'border-amber-200',
+    };
+  }
+  if (s.includes('ជីវ') || s.includes('bio')) {
+    // ជីវវិទ្យា: Soft Teal
+    return {
+      bg: 'bg-teal-50/80 hover:bg-teal-100/70',
+      badgeBg: 'bg-teal-100',
+      badgeText: 'text-teal-800',
+      textColor: 'text-teal-900',
+      borderColor: 'border-teal-200',
+    };
+  }
+  if (s.includes('ប្រវត្តិ') || s.includes('hist')) {
+    // ប្រវត្តិវិទ្យា: Soft Rose
+    return {
+      bg: 'bg-rose-50/80 hover:bg-rose-100/70',
+      badgeBg: 'bg-rose-100',
+      badgeText: 'text-rose-800',
+      textColor: 'text-rose-900',
+      borderColor: 'border-rose-200',
+    };
+  }
+  if (s.includes('ភូមិ') || s.includes('geo')) {
+    // ភូមិវិទ្យា: Soft Purple
+    return {
+      bg: 'bg-purple-50/80 hover:bg-purple-100/70',
+      badgeBg: 'bg-purple-100',
+      badgeText: 'text-purple-800',
+      textColor: 'text-purple-900',
+      borderColor: 'border-purple-200',
+    };
+  }
+  if (s.includes('ផែនដី') || s.includes('earth')) {
+    // ផែនដីវិទ្យា: Soft Lime
+    return {
+      bg: 'bg-lime-50/80 hover:bg-lime-100/70',
+      badgeBg: 'bg-lime-100',
+      badgeText: 'text-lime-800',
+      textColor: 'text-lime-900',
+      borderColor: 'border-lime-200',
+    };
+  }
+  if (s.includes('ពលរដ្ឋ') || s.includes('civic') || s.includes('សីលធម៌')) {
+    // ពលរដ្ឋវិទ្យា: Soft Indigo
+    return {
+      bg: 'bg-indigo-50/80 hover:bg-indigo-100/70',
+      badgeBg: 'bg-indigo-100',
+      badgeText: 'text-indigo-800',
+      textColor: 'text-indigo-900',
+      borderColor: 'border-indigo-200',
+    };
+  }
+  if (s.includes('អង់គ្លេស') || s.includes('បារាំង') || s.includes('បរទេស') || s.includes('eng') || s.includes('fr')) {
+    // ភាសាបរទេស: Soft Pink / Fuchsia
+    return {
+      bg: 'bg-pink-50/80 hover:bg-pink-100/70',
+      badgeBg: 'bg-pink-100',
+      badgeText: 'text-pink-800',
+      textColor: 'text-pink-900',
+      borderColor: 'border-pink-200',
+    };
+  }
+  if (s.includes('កីឡា') || s.includes('អប់រំកាយ') || s.includes('sport')) {
+    // កីឡា: Soft Sky
+    return {
+      bg: 'bg-sky-50/80 hover:bg-sky-100/70',
+      badgeBg: 'bg-sky-100',
+      badgeText: 'text-sky-800',
+      textColor: 'text-sky-900',
+      borderColor: 'border-sky-200',
+    };
+  }
+  if (s.includes('គេហវិទ្យា') || s.includes('សិល្បៈ')) {
+    // គេហវិទ្យា / សិល្បៈ: Soft Orange
+    return {
+      bg: 'bg-orange-50/80 hover:bg-orange-100/70',
+      badgeBg: 'bg-orange-100',
+      badgeText: 'text-orange-800',
+      textColor: 'text-orange-900',
+      borderColor: 'border-orange-200',
+    };
+  }
+  if (s.includes('ព័ត៌មានវិទ្យា') || s.includes('កុំព្យូទ័រ') || s.includes('ict') || s.includes('tech')) {
+    // ព័ត៌មានវិទ្យា: Soft Violet
+    return {
+      bg: 'bg-violet-50/80 hover:bg-violet-100/70',
+      badgeBg: 'bg-violet-100',
+      badgeText: 'text-violet-800',
+      textColor: 'text-violet-900',
+      borderColor: 'border-violet-200',
+    };
+  }
+
+  // Default neutral theme
+  return {
+    bg: 'bg-slate-50/80 hover:bg-slate-100/70',
+    badgeBg: 'bg-slate-100',
+    badgeText: 'text-slate-800',
+    textColor: 'text-slate-800',
+    borderColor: 'border-slate-200',
+  };
+}
+
 export const TimetablePage: React.FC<TimetablePageProps> = ({
   classes,
   timetableSlots,
@@ -111,6 +263,19 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
     });
     return map;
   }, [teacherSlots]);
+
+  // Check if a slot is taught by this teacher or is teacher's specialty subject (សម្រាប់កំណត់អក្សរដិត)
+  const isTeacherSlot = (slot: TimetableSlot) => {
+    const currentTeacher = (teacherName || '').trim().toLowerCase();
+    const currentSpecialty = (settings?.specialtySubject || '').trim().toLowerCase();
+    const slotTeacher = (slot.teacherName || '').trim().toLowerCase();
+    const slotSubject = (slot.subject || '').trim().toLowerCase();
+
+    const teacherMatches = slotTeacher && (slotTeacher.includes(currentTeacher) || currentTeacher.includes(slotTeacher));
+    const subjectMatches = currentSpecialty && (slotSubject.includes(currentSpecialty) || currentSpecialty.includes(slotSubject));
+
+    return Boolean(teacherMatches || subjectMatches);
+  };
 
   // Open slot editor for existing slot
   const handleOpenEdit = (slot: TimetableSlot) => {
@@ -329,31 +494,55 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
                     {DAYS.map((d) => {
                       const key = `morning-${d.day}-${period.period}`;
                       const slot = activeTab === 'class' ? classSlotsMap.get(key) : teacherSlotsMap.get(key);
+                      const isMySubject = slot ? isTeacherSlot(slot) : false;
+                      const theme = slot && slot.subject ? getSubjectTheme(slot.subject) : null;
 
                       return (
                         <td
                           key={d.day}
                           onClick={() => !slot && handleOpenEmptyCell('morning', d.day, period.period, period.time)}
                           className={`py-2 px-2 border-r-2 border-slate-900 last:border-r-0 relative group transition-colors print:border-black ${
-                            slot
-                              ? 'bg-white hover:bg-blue-50/50 cursor-pointer'
+                            slot && theme
+                              ? `${theme.bg} ${
+                                  isMySubject
+                                    ? 'ring-2 ring-inset ring-blue-600 shadow-xs print:ring-0'
+                                    : ''
+                                } cursor-pointer`
                               : 'bg-white/50 hover:bg-slate-100/60 cursor-pointer'
                           }`}
                         >
-                          {slot && slot.subject ? (
+                          {slot && slot.subject && theme ? (
                             <div className="space-y-0.5">
-                              {/* មុខវិជ្ជា */}
-                              <div className="font-moul text-xs sm:text-[13px] text-slate-950 leading-tight">
-                                {slot.subject}
+                              {/* មុខវិជ្ជា (អក្សរធម្មតាមិនបាច់ដិត ចែកពណ៌តាមមុខវិជ្ជា ដោយឡែកមុខវិជ្ជាខ្ញុំបង្រៀនសូមដាក់ដិត) */}
+                              <div
+                                className={`leading-tight transition-all ${
+                                  isMySubject
+                                    ? 'font-black text-xs sm:text-[13px] text-slate-950 flex items-center justify-center gap-1 drop-shadow-2xs'
+                                    : `font-medium text-xs sm:text-[12.5px] ${theme.textColor}`
+                                }`}
+                                title={isMySubject ? 'មុខវិជ្ជាដែលខ្ញុំបង្រៀន (ដិត)' : slot.subject}
+                              >
+                                {isMySubject && <span className="text-amber-500 text-xs no-print">⭐</span>}
+                                <span>{slot.subject}</span>
                               </div>
+
                               {/* ឈ្មោះគ្រូបង្រៀន */}
                               <div className="text-[11px] font-bold text-slate-700 leading-tight">
                                 {slot.teacherName || teacherName}
                               </div>
+
                               {/* លេខទូរស័ព្ទគ្រូ */}
                               <div className="text-[10px] font-mono font-bold text-blue-700 print:text-black">
                                 ☎️ {slot.teacherPhone || teacherPhone}
                               </div>
+
+                              {/* My Subject Tag Indicator */}
+                              {isMySubject && (
+                                <div className="text-[9px] font-black text-blue-700 bg-blue-100/90 px-1.5 py-0.2 rounded-md inline-block border border-blue-300 no-print">
+                                  ★ ម៉ោងបង្រៀន
+                                </div>
+                              )}
+
                               {/* Edit Action Button on Hover */}
                               <button
                                 onClick={(e) => {
@@ -405,31 +594,55 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
                     {DAYS.map((d) => {
                       const key = `afternoon-${d.day}-${period.period}`;
                       const slot = activeTab === 'class' ? classSlotsMap.get(key) : teacherSlotsMap.get(key);
+                      const isMySubject = slot ? isTeacherSlot(slot) : false;
+                      const theme = slot && slot.subject ? getSubjectTheme(slot.subject) : null;
 
                       return (
                         <td
                           key={d.day}
                           onClick={() => !slot && handleOpenEmptyCell('afternoon', d.day, period.period, period.time)}
                           className={`py-2 px-2 border-r-2 border-slate-900 last:border-r-0 relative group transition-colors print:border-black ${
-                            slot
-                              ? 'bg-white hover:bg-blue-50/50 cursor-pointer'
+                            slot && theme
+                              ? `${theme.bg} ${
+                                  isMySubject
+                                    ? 'ring-2 ring-inset ring-blue-600 shadow-xs print:ring-0'
+                                    : ''
+                                } cursor-pointer`
                               : 'bg-white/50 hover:bg-slate-100/60 cursor-pointer'
                           }`}
                         >
-                          {slot && slot.subject ? (
+                          {slot && slot.subject && theme ? (
                             <div className="space-y-0.5">
-                              {/* មុខវិជ្ជា */}
-                              <div className="font-moul text-xs sm:text-[13px] text-slate-950 leading-tight">
-                                {slot.subject}
+                              {/* មុខវិជ្ជា (អក្សរធម្មតាមិនបាច់ដិត ចែកពណ៌តាមមុខវិជ្ជា ដោយឡែកមុខវិជ្ជាខ្ញុំបង្រៀនសូមដាក់ដិត) */}
+                              <div
+                                className={`leading-tight transition-all ${
+                                  isMySubject
+                                    ? 'font-black text-xs sm:text-[13px] text-slate-950 flex items-center justify-center gap-1 drop-shadow-2xs'
+                                    : `font-medium text-xs sm:text-[12.5px] ${theme.textColor}`
+                                }`}
+                                title={isMySubject ? 'មុខវិជ្ជាដែលខ្ញុំបង្រៀន (ដិត)' : slot.subject}
+                              >
+                                {isMySubject && <span className="text-amber-500 text-xs no-print">⭐</span>}
+                                <span>{slot.subject}</span>
                               </div>
+
                               {/* ឈ្មោះគ្រូបង្រៀន */}
                               <div className="text-[11px] font-bold text-slate-700 leading-tight">
                                 {slot.teacherName || teacherName}
                               </div>
+
                               {/* លេខទូរស័ព្ទគ្រូ */}
                               <div className="text-[10px] font-mono font-bold text-blue-700 print:text-black">
                                 ☎️ {slot.teacherPhone || teacherPhone}
                               </div>
+
+                              {/* My Subject Tag Indicator */}
+                              {isMySubject && (
+                                <div className="text-[9px] font-black text-blue-700 bg-blue-100/90 px-1.5 py-0.2 rounded-md inline-block border border-blue-300 no-print">
+                                  ★ ម៉ោងបង្រៀន
+                                </div>
+                              )}
+
                               {/* Edit Action Button on Hover */}
                               <button
                                 onClick={(e) => {

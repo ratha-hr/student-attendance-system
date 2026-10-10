@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Menu, School, User, Plus, Settings, Clock, Sparkles } from 'lucide-react';
+import { Menu, School, User, Plus, Settings, Clock, Sparkles, Undo2, Redo2 } from 'lucide-react';
 import type { ClassRoom, TeacherSettings } from '../types';
+import { useUndoRedo } from '../context/UndoRedoContext';
 import {
   toKhmerNum,
   getKhmerLunarDate,
@@ -30,6 +31,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenSettings,
   onOpenManageClasses,
 }) => {
+  const { canUndo, canRedo, undo, redo } = useUndoRedo();
+
   // Live Universal International Time (ម៉ោងសកល - 00:00:00)
   const [universalTime, setUniversalTime] = useState<{
     time24: string;
@@ -174,8 +177,32 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
 
-        {/* Right side: Settings Profile */}
+        {/* Right side: Global Undo / Redo & Settings Profile */}
         <div className="flex items-center space-x-2 sm:space-x-3">
+          {/* Global Undo / Redo Controls - Present on EVERY menu */}
+          <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs font-bold shadow-2xs">
+            <button
+              type="button"
+              onClick={undo}
+              disabled={!canUndo}
+              className="inline-flex items-center px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg text-slate-700 hover:bg-white hover:text-indigo-600 disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-slate-400 transition-colors cursor-pointer"
+              title="ត្រឡប់ក្រោយ (Ctrl+Z)"
+            >
+              <Undo2 className="w-3.5 h-3.5 sm:mr-1 text-slate-600" />
+              <span className="hidden sm:inline">Undo</span>
+            </button>
+            <button
+              type="button"
+              onClick={redo}
+              disabled={!canRedo}
+              className="inline-flex items-center px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg text-slate-700 hover:bg-white hover:text-indigo-600 disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-slate-400 transition-colors cursor-pointer"
+              title="ធ្វើឡើងវិញ (Ctrl+Y)"
+            >
+              <Redo2 className="w-3.5 h-3.5 sm:mr-1 text-slate-600" />
+              <span className="hidden sm:inline">Redo</span>
+            </button>
+          </div>
+
           {/* Settings button & Teacher Profile */}
           <button
             onClick={onOpenSettings}

@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import type { Student, ClassRoom, AttendanceRecord, AttendanceStatus, TeacherSettings } from '../types';
 import { db } from '../db/db';
+import { useUndoRedo } from '../context/UndoRedoContext';
 import { toKhmerNum, formatKhmerDate, getTodayDateString, checkIfHolidayDate } from '../utils/dateUtils';
 import { TelegramShareModal } from '../components/TelegramShareModal';
 import { soundEffects } from '../utils/soundEffects';
@@ -88,6 +89,8 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
     }
   }, [selectedDate]);
 
+  const { pushSnapshot } = useUndoRedo();
+
   // Active class from top navbar
   const activeClassId = selectedClassId === 'ALL' ? (classes[0]?.id || '') : selectedClassId;
   const currentClass = classes.find((c) => c.id === activeClassId);
@@ -143,6 +146,7 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
 
   // Set status for student
   const handleSetStatus = async (studentId: string, status: AttendanceStatus, reason = '') => {
+    await pushSnapshot('កត់វត្តមានសិស្ស');
     if (soundOn) soundEffects.playClick();
     const existing = dailyRecordMap.get(studentId);
     const timeSlotStr = `${checkInTime} - ${checkOutTime}`;
@@ -180,6 +184,7 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
 
   // Mark all students present with 1 click
   const handleMarkAllPresent = async () => {
+    await pushSnapshot(`កត់វត្តមានទាំងអស់ ថ្នាក់ ${currentClass?.name || ''}`);
     if (soundOn) soundEffects.playSuccess();
     const timeSlotStr = `${checkInTime} - ${checkOutTime}`;
     const recordsToPut: AttendanceRecord[] = classStudents.map((s) => {

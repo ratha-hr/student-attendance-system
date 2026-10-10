@@ -6,6 +6,7 @@ import { Sidebar } from './components/Sidebar';
 import { Navbar } from './components/Navbar';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { Modal } from './components/common/Modal';
+import { UndoRedoProvider } from './context/UndoRedoContext';
 
 // Core Pages requested by user
 import { AttendancePage } from './pages/AttendancePage';
@@ -67,7 +68,8 @@ export function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <UndoRedoProvider onRefresh={handleRefresh}>
+      <div className="min-h-screen bg-slate-50 flex">
       {/* Sidebar Navigation */}
       <Sidebar
         currentTab={currentTab}
@@ -254,6 +256,7 @@ export function App() {
         academicYear={settings?.academicYear || '២០២៤-២០២៥'}
       />
     </div>
+    </UndoRedoProvider>
   );
 }
 
