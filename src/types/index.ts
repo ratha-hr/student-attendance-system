@@ -144,6 +144,7 @@ export interface TimetableSlot {
   classId: string;
   subject: string;
   teacherName?: string;
+  teacherPhone?: string;
   room?: string;
 }
 

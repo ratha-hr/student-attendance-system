@@ -367,22 +367,22 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
             </div>
           </div>
 
-          {/* Right: Clean, Grouped Action Buttons */}
-          <div className="flex flex-wrap items-center gap-2">
+          {/* Right: Clean, Grouped Action Buttons (Guaranteed strictly SINGLE row - no wrapping) */}
+          <div className="flex items-center flex-nowrap overflow-x-auto no-scrollbar gap-1.5 shrink-0 py-0.5">
             {/* Primary Action: Add Student */}
             <button
               onClick={handleAddNewBlankRow}
-              className="inline-flex items-center px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
-              title="បន្ថែមជួរដេកសិស្សថ្មី"
+              className="inline-flex items-center px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer shrink-0"
+              title="បន្ថែមជួរដេកសិស្សថ្មីនៅជួរទី១"
             >
-              <Plus className="w-4 h-4 mr-1" />
+              <Plus className="w-3.5 h-3.5 mr-1" />
               + បន្ថែមសិស្ស
             </button>
 
             {/* Excel Group */}
-            <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs font-bold">
+            <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs font-bold shrink-0">
               <label
-                className="inline-flex items-center px-2.5 py-1 rounded-lg text-slate-700 hover:bg-white hover:text-emerald-700 transition-colors cursor-pointer"
+                className="inline-flex items-center px-2 py-1 rounded-lg text-slate-700 hover:bg-white hover:text-emerald-700 transition-colors cursor-pointer"
                 title="នាំចូលទិន្នន័យពី Excel"
               >
                 <Upload className="w-3.5 h-3.5 mr-1 text-emerald-600" />
@@ -398,7 +398,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
 
               <button
                 onClick={handleExportExcel}
-                className="inline-flex items-center px-2.5 py-1 rounded-lg text-slate-700 hover:bg-white hover:text-blue-700 transition-colors cursor-pointer"
+                className="inline-flex items-center px-2 py-1 rounded-lg text-slate-700 hover:bg-white hover:text-blue-700 transition-colors cursor-pointer"
                 title="ទាញយកជា Excel .xlsm"
               >
                 <Download className="w-3.5 h-3.5 mr-1 text-blue-600" />
@@ -407,7 +407,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
 
               <button
                 onClick={downloadStudentTemplate}
-                className="inline-flex items-center px-2 py-1 rounded-lg text-slate-500 hover:bg-white hover:text-slate-800 transition-colors cursor-pointer"
+                className="inline-flex items-center px-1.5 py-1 rounded-lg text-slate-500 hover:bg-white hover:text-slate-800 transition-colors cursor-pointer"
                 title="ទាញយកគំរូ Excel"
               >
                 គំរូ
@@ -415,7 +415,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
             </div>
 
             {/* Undo / Redo Controls */}
-            <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs font-bold">
+            <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs font-bold shrink-0">
               <button
                 type="button"
                 onClick={handleUndo}
@@ -423,7 +423,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                 className="inline-flex items-center px-2 py-1 rounded-lg text-slate-700 hover:bg-white hover:text-indigo-600 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-700 transition-colors cursor-pointer"
                 title="ត្រឡប់ក្រោយ (Ctrl+Z)"
               >
-                <Undo2 className="w-3.5 h-3.5 mr-1" />
+                <Undo2 className="w-3.5 h-3.5 mr-0.5" />
                 Undo
               </button>
               <button
@@ -433,7 +433,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                 className="inline-flex items-center px-2 py-1 rounded-lg text-slate-700 hover:bg-white hover:text-indigo-600 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-700 transition-colors cursor-pointer"
                 title="ធ្វើឡើងវិញ (Ctrl+Y)"
               >
-                <Redo2 className="w-3.5 h-3.5 mr-1" />
+                <Redo2 className="w-3.5 h-3.5 mr-0.5" />
                 Redo
               </button>
             </div>
@@ -442,7 +442,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
             <button
               type="button"
               onClick={handleDeleteAllStudents}
-              className="inline-flex items-center px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold rounded-xl border border-rose-200 transition-colors cursor-pointer"
+              className="inline-flex items-center px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold rounded-xl border border-rose-200 transition-colors cursor-pointer shrink-0"
               title="លុបសិស្សទាំងអស់ (អាចចុច Undo ដើម្បីយកមកវិញបាន)"
             >
               <Trash2 className="w-3.5 h-3.5 mr-1 text-rose-600" />
@@ -452,7 +452,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
             {/* ID Cards */}
             <button
               onClick={() => setIsIDCardsOpen(true)}
-              className="inline-flex items-center px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-bold rounded-xl border border-purple-200 transition-colors cursor-pointer"
+              className="inline-flex items-center px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-bold rounded-xl border border-purple-200 transition-colors cursor-pointer shrink-0"
               title="បោះពុម្ពកាតសិស្សភ្ជាប់ QR"
             >
               <QrCode className="w-3.5 h-3.5 mr-1 text-purple-600" />
@@ -460,7 +460,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
             </button>
 
             {/* Print with Orientation Selector */}
-            <PrintButton defaultOrientation="landscape" label="បោះពុម្ព" />
+            <PrintButton defaultOrientation="landscape" label="បោះពុម្ព" className="shrink-0" />
           </div>
         </div>
 
