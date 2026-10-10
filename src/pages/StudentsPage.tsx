@@ -251,6 +251,11 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
               <FileSpreadsheet className="w-5 h-5 text-emerald-600 mr-2" />
               បញ្ជីស្ថិតិ និងប្រវត្តិរូបសង្ខេបសិស្ស ({currentClassName})
             </h2>
+            {currentClass?.homeroomTeacher && (
+              <span className="inline-flex items-center px-2.5 py-0.5 bg-indigo-50 text-indigo-800 text-xs font-bold rounded-lg border border-indigo-200">
+                👨‍🏫 គ្រូទទួលបន្ទុក៖ {currentClass.homeroomTeacher}
+              </span>
+            )}
             {lastSavedId && (
               <span className="px-2 py-0.5 text-emerald-600 font-bold text-xs bg-emerald-50 rounded-full border border-emerald-300 animate-pulse">
                 ✓ រក្សាទុក

@@ -47,22 +47,45 @@ export const STANDARD_CLASS_CONFIGS: StandardGradeConfig[] = [
   },
 ];
 
+const DEFAULT_HOMEROOM_TEACHERS = [
+  'ហ៊ុន រដ្ឋា',
+  'ស៊ឹម វីរៈ',
+  'ចាន់ សុផល',
+  'កែវ សារ៉ាត់',
+  'ហេង វិបុល',
+  'សុខ សារឿន',
+  'អ៊ុំ វ៉ាន់ដា',
+  'ម៉ៅ ចំរើន',
+  'លឹម គឹមហៀង',
+  'ទិត្យ ស្រីមុំ',
+  'ជា ស្រីពៅ',
+  'អ៊ិន សោភា',
+];
+
 /**
  * Generate standard 49 classes:
  * 7A-E (5), 8A-E (5), 9A-D (4), 10A-L (12), 11A-J (10), 12A-M (13)
- * Completely free of room (បន្ទប់) and building (អគារ).
+ * With assigned homeroom teachers (គ្រូទទួលបន្ទុក) and completely free of room (បន្ទប់) and building (អគារ).
  */
 export function generateStandardClasses(academicYear = '២០២៤-២០២៥'): ClassRoom[] {
   const result: ClassRoom[] = [];
+  let teacherCounter = 0;
 
   STANDARD_CLASS_CONFIGS.forEach((cfg) => {
     cfg.letters.forEach((letter, idx) => {
       const id = idx === 0 ? cfg.mainId : `class-${cfg.grade}-${letter.toLowerCase()}`;
+      // Grade 7A is primary class of teacher Hun Ratha
+      const homeroomTeacher = (cfg.grade === '7' && letter === 'A')
+        ? 'ហ៊ុន រដ្ឋា'
+        : DEFAULT_HOMEROOM_TEACHERS[teacherCounter % DEFAULT_HOMEROOM_TEACHERS.length];
+      teacherCounter++;
+
       result.push({
         id,
         name: `ថ្នាក់ទី ${cfg.grade}${letter}`,
         grade: cfg.grade,
         academicYear,
+        homeroomTeacher,
         description: `ថ្នាក់ ${cfg.grade}${letter} (${cfg.levelLabel})`,
         createdAt: '2024-10-01T08:00:00Z',
       });

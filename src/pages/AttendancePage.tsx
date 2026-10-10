@@ -246,6 +246,11 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
             <span className="inline-flex items-center px-3 py-1 bg-blue-50 text-blue-700 text-xs sm:text-sm font-bold rounded-xl border border-blue-200">
               📚 {currentClass?.name || 'ថ្នាក់រៀន'}
             </span>
+            {currentClass?.homeroomTeacher && (
+              <span className="inline-flex items-center px-3 py-1 bg-indigo-50 text-indigo-800 text-xs sm:text-sm font-bold rounded-xl border border-indigo-200">
+                👨‍🏫 គ្រូទទួលបន្ទុក៖ {currentClass.homeroomTeacher}
+              </span>
+            )}
             {isSavedFeedback && (
               <span className="inline-flex items-center text-xs sm:text-sm text-emerald-600 font-bold bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-300 animate-pulse">
                 ✨ បានកត់វត្តមានគ្រប់គ្នា!

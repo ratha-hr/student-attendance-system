@@ -182,6 +182,16 @@ export class TeacherDatabase extends Dexie {
     if (toAdd.length > 0) {
       await this.classes.bulkAdd(toAdd);
     }
+
+    // 3. Ensure all classes have a homeroom teacher (គ្រូទទួលបន្ទុក)
+    const allClasses = await this.classes.toArray();
+    const standardMap = new Map(standard.map((s) => [s.name, s.homeroomTeacher]));
+    for (const c of allClasses) {
+      if (!c.homeroomTeacher) {
+        const defaultTeacher = standardMap.get(c.name) || (c.id === 'class-7' || c.name.includes('7A') ? 'ហ៊ុន រដ្ឋា' : 'គ្រូទទួលបន្ទុក');
+        await this.classes.update(c.id, { homeroomTeacher: defaultTeacher });
+      }
+    }
   }
 
   async resetToStandardClasses() {

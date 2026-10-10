@@ -5,6 +5,7 @@ export interface ClassRoom {
   name: string; // ឧ. ថ្នាក់ទី ៧ ក, ថ្នាក់ទី ៨ ខ
   grade: string; // ឧ. ៧, ៨, ៩, ១០, ១១, ១២
   academicYear: string; // ឧ. ២០២៤-២០២៥
+  homeroomTeacher?: string; // គ្រូទទួលបន្ទុកថ្នាក់ (Homeroom Teacher)
   room?: string; // ឧ. បន្ទប់ ១០២
   description?: string;
   createdAt: string;

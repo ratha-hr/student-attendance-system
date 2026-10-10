@@ -147,11 +147,12 @@ export const StudentAttendanceShareModal: React.FC<StudentAttendanceShareModalPr
   ]);
 
   // Shareable direct link
-  const shareUrl = useMemo(() => {
+  // Shareable direct link for students/monitor to record daily attendance
+  const studentShareUrl = useMemo(() => {
     const origin = window.location.origin;
     const path = window.location.pathname;
     const classParam = currentClass ? encodeURIComponent(currentClass.id) : 'ALL';
-    return `${origin}${path}?tab=attendance&class=${classParam}&date=${selectedDate}&session=${selectedSession}`;
+    return `${origin}${path}?mode=student&class=${classParam}&date=${selectedDate}&session=${selectedSession}`;
   }, [currentClass, selectedDate, selectedSession]);
 
   const handleCopyText = async () => {
@@ -174,7 +175,7 @@ export const StudentAttendanceShareModal: React.FC<StudentAttendanceShareModalPr
 
   const handleCopyLink = async () => {
     try {
-      await navigator.clipboard.writeText(shareUrl);
+      await navigator.clipboard.writeText(studentShareUrl);
       setCopiedLink(true);
       setTimeout(() => setCopiedLink(false), 2000);
     } catch {
@@ -184,9 +185,15 @@ export const StudentAttendanceShareModal: React.FC<StudentAttendanceShareModalPr
   };
 
   const handleOpenTelegram = () => {
-    const encodedText = encodeURIComponent(studentAttendanceText);
-    const tgUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodedText}`;
+    // Keep message short and clean to strictly avoid Nginx 400 Bad Request URL limit
+    const homeroom = currentClass?.homeroomTeacher || settings?.teacherName || 'លោកគ្រូ-អ្នកគ្រូ';
+    const shortSummary = `📋 តារាងស្រង់វត្តមានប្រចាំថ្ងៃ ${currentClass?.name || 'ថ្នាក់រៀន'} (${sessionLabel})\n📅 ${formatKhmerDate(selectedDate, true)}\n👨‍🏫 គ្រូទទួលបន្ទុក៖ ${homeroom}\n📊 ស្ថិតិ៖ សរុប ${total} នាក់ | មក ${presentCount} | ច្បាប់ ${permissionCount} | អវត្តមាន ${absentCount}\n\n👉 សូមចុចតំណភ្ជាប់ខាងក្រោមដើម្បីស្រង់វត្តមានប្រចាំថ្ងៃ៖`;
+    const tgUrl = `https://t.me/share/url?url=${encodeURIComponent(studentShareUrl)}&text=${encodeURIComponent(shortSummary)}`;
     window.open(tgUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleOpenStudentView = () => {
+    window.open(studentShareUrl, '_blank', 'noopener,noreferrer');
   };
 
   const handlePrintDailySheet = () => {
@@ -216,18 +223,28 @@ export const StudentAttendanceShareModal: React.FC<StudentAttendanceShareModalPr
               <p className="text-xs text-indigo-200 mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
                 <span>📅 {formatKhmerDate(selectedDate, true)}</span>
                 <span>⏰ {checkInTime} - {checkOutTime}</span>
-                <span>👨‍🏫 {settings?.teacherName || 'លោកគ្រូ/អ្នកគ្រូ'}</span>
+                <span>👨‍🏫 គ្រូទទួលបន្ទុក៖ <strong className="text-white">{currentClass?.homeroomTeacher || settings?.teacherName || 'លោកគ្រូ/អ្នកគ្រូ'}</strong></span>
               </p>
             </div>
 
-            {/* Quick Telegram Share CTA */}
-            <button
-              onClick={handleOpenTelegram}
-              className="inline-flex items-center px-4 py-2.5 bg-sky-500 hover:bg-sky-400 active:scale-95 text-white font-bold text-xs sm:text-sm rounded-xl shadow-lg transition-all cursor-pointer"
-            >
-              <Send className="w-4 h-4 mr-2" />
-              <span>ផ្ញើទៅ Telegram សិស្ស</span>
-            </button>
+            {/* Quick Actions CTA */}
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={handleOpenStudentView}
+                className="inline-flex items-center px-3.5 py-2.5 bg-white/15 hover:bg-white/25 active:scale-95 text-white font-bold text-xs sm:text-sm rounded-xl border border-white/20 transition-all cursor-pointer"
+                title="បើកមើលទំព័រសិស្សស្រង់វត្តមានដោយផ្ទាល់"
+              >
+                <span>🌐 បើកទំព័រសិស្ស</span>
+              </button>
+
+              <button
+                onClick={handleOpenTelegram}
+                className="inline-flex items-center px-4 py-2.5 bg-sky-500 hover:bg-sky-400 active:scale-95 text-white font-bold text-xs sm:text-sm rounded-xl shadow-lg transition-all cursor-pointer"
+              >
+                <Send className="w-4 h-4 mr-2" />
+                <span>ផ្ញើទៅ Telegram សិស្ស</span>
+              </button>
+            </div>
           </div>
 
           {/* Daily Quick Counts (Latin/Normal Numbers) */}
@@ -432,7 +449,7 @@ export const StudentAttendanceShareModal: React.FC<StudentAttendanceShareModalPr
             <div className="bg-white p-4 rounded-2xl shadow-md border border-slate-200 inline-block">
               <div
                 dangerouslySetInnerHTML={{
-                  __html: generateStudentQRCodeSVG(shareUrl, 200),
+                  __html: generateStudentQRCodeSVG(studentShareUrl, 200),
                 }}
                 className="w-48 h-48 mx-auto"
               />
@@ -453,7 +470,7 @@ export const StudentAttendanceShareModal: React.FC<StudentAttendanceShareModalPr
           <div className="flex items-center space-x-2 truncate min-w-0">
             <Link className="w-4 h-4 text-slate-500 shrink-0" />
             <span className="text-slate-500 shrink-0 font-medium">តំណភ្ជាប់ស្រង់វត្តមាន៖</span>
-            <span className="font-mono text-indigo-700 truncate select-all">{shareUrl}</span>
+            <span className="font-mono text-indigo-700 truncate select-all">{studentShareUrl}</span>
           </div>
           <button
             type="button"

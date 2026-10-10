@@ -154,10 +154,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <option value="ALL">🌟 ថ្នាក់ទាំងអស់ ({toKhmerNum(classes.length)})</option>
               {gradeGroups.map((group) => (
-                <optgroup key={group.grade} label={`── ${group.label} (${toKhmerNum(group.classes.length)}) ──`}>
+                <optgroup key={group.grade} label={`── ${group.label} (${group.classes.length}) ──`}>
                   {group.classes.map((c) => (
                     <option key={c.id} value={c.id}>
-                      📚 {c.name}
+                      📚 {c.name} {c.homeroomTeacher ? `• គ្រូ៖ ${c.homeroomTeacher}` : ''}
                     </option>
                   ))}
                 </optgroup>

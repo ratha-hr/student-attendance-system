@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from './db/db';
 import type { NavTab } from './components/Sidebar';
@@ -19,9 +19,31 @@ import { SettingsPage } from './pages/SettingsPage';
 import { GradeCoefficientsConfigPage } from './pages/GradeCoefficientsConfigPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ManageClassesModal } from './components/ManageClassesModal';
+import { StudentDailyAttendanceView } from './components/StudentDailyAttendanceView';
 import type { TeacherSettings } from './types';
 
 export function App() {
+  // Check if link was shared for student daily attendance
+  const [isStudentMode, setIsStudentMode] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('mode') === 'student' || params.get('student') === '1';
+    }
+    return false;
+  });
+
+  const studentModeParams = useMemo(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      return {
+        classId: params.get('class') || undefined,
+        date: params.get('date') || undefined,
+        session: (params.get('session') as 'morning' | 'afternoon') || undefined,
+      };
+    }
+    return {};
+  }, []);
+
   // Starts directly on Attendance for rapid usage by teacher & class monitor (or from URL share link)
   const [currentTab, setCurrentTab] = useState<NavTab>(() => {
     if (typeof window !== 'undefined') {
@@ -82,6 +104,30 @@ export function App() {
     setCurrentTab('letters');
   };
 
+  if (isStudentMode) {
+    return (
+      <StudentDailyAttendanceView
+        classes={classes}
+        students={students}
+        attendanceRecords={attendanceRecords}
+        settings={settings}
+        initialClassId={studentModeParams.classId || (selectedClassId !== 'ALL' ? selectedClassId : undefined)}
+        initialDate={studentModeParams.date}
+        initialSession={studentModeParams.session}
+        onExitStudentMode={() => {
+          setIsStudentMode(false);
+          if (typeof window !== 'undefined' && window.history) {
+            const url = new URL(window.location.href);
+            url.searchParams.delete('mode');
+            url.searchParams.delete('student');
+            window.history.replaceState({}, '', url.toString());
+          }
+        }}
+        onRefresh={handleRefresh}
+      />
+    );
+  }
+
   return (
     <UndoRedoProvider onRefresh={handleRefresh}>
       <div className="min-h-screen bg-slate-50 flex">
@@ -95,6 +141,7 @@ export function App() {
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenStudentMode={() => setIsStudentMode(true)}
       />
 
       {/* Main Content Area */}

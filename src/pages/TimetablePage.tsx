@@ -352,7 +352,7 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
             </span>
           </div>
           <p className="text-xs sm:text-sm text-slate-500">
-            ទម្រង់កាលវិភាគផ្លូវការក្រសួងអប់រំ (រូបទី៤)៖ រក្សាពេញលេញនូវ <strong>មុខវិជ្ជា, ឈ្មោះគ្រូ, និងលេខទូរស័ព្ទ</strong>
+            ទម្រង់កាលវិភាគផ្លូវការក្រសួងអប់រំ (រូបទី៤)៖ រក្សាពេញលេញនូវ <strong>មុខវិជ្ជា និងឈ្មោះគ្រូបង្រៀន</strong>
           </p>
         </div>
 
@@ -531,11 +531,6 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
                                 {slot.teacherName || teacherName}
                               </div>
 
-                              {/* លេខទូរស័ព្ទគ្រូ */}
-                              <div className="text-[10px] font-mono font-bold text-blue-700 print:text-black">
-                                ☎️ {slot.teacherPhone || teacherPhone}
-                              </div>
-
                               {/* My Subject Tag Indicator */}
                               {isMySubject && (
                                 <div className="text-[9px] font-black text-blue-700 bg-blue-100/90 px-1.5 py-0.2 rounded-md inline-block border border-blue-300 no-print">
@@ -629,11 +624,6 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
                               {/* ឈ្មោះគ្រូបង្រៀន */}
                               <div className="text-[11px] font-bold text-slate-700 leading-tight">
                                 {slot.teacherName || teacherName}
-                              </div>
-
-                              {/* លេខទូរស័ព្ទគ្រូ */}
-                              <div className="text-[10px] font-mono font-bold text-blue-700 print:text-black">
-                                ☎️ {slot.teacherPhone || teacherPhone}
                               </div>
 
                               {/* My Subject Tag Indicator */}

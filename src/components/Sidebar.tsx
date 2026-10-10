@@ -34,6 +34,7 @@ interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
   onOpenSettings?: () => void;
+  onOpenStudentMode?: () => void;
 }
 
 interface MenuItem {
@@ -54,6 +55,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isOpen,
   onClose,
   onOpenSettings,
+  onOpenStudentMode,
 }) => {
   const menuSections: MenuSection[] = [
     {
@@ -190,6 +192,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           ))}
         </nav>
+
+        {/* Student Mode Quick Access */}
+        {onOpenStudentMode && (
+          <div className="px-3 pt-3">
+            <button
+              onClick={() => {
+                onOpenStudentMode();
+                onClose();
+              }}
+              className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs text-indigo-300 bg-indigo-950/60 hover:bg-indigo-900/80 border border-indigo-700/50 transition-colors cursor-pointer font-bold shadow-2xs"
+            >
+              <span className="text-sm">📱</span>
+              <span>របៀបសិស្សស្រង់វត្តមាន</span>
+            </button>
+          </div>
+        )}
 
         {/* Settings & Backup Footer */}
         {onOpenSettings && (
