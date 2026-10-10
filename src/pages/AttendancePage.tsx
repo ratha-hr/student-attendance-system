@@ -15,6 +15,7 @@ import {
   Search,
   Filter,
   Send,
+  Share2,
   BookOpen,
   Volume2,
   VolumeX,
@@ -22,8 +23,9 @@ import {
 import type { Student, ClassRoom, AttendanceRecord, AttendanceStatus, TeacherSettings } from '../types';
 import { db } from '../db/db';
 import { useUndoRedo } from '../context/UndoRedoContext';
-import { toKhmerNum, formatKhmerDate, getTodayDateString, checkIfHolidayDate } from '../utils/dateUtils';
+import { toKhmerNum, fromKhmerNum, formatKhmerDate, getTodayDateString, checkIfHolidayDate } from '../utils/dateUtils';
 import { TelegramShareModal } from '../components/TelegramShareModal';
+import { StudentAttendanceShareModal } from '../components/StudentAttendanceShareModal';
 import { soundEffects } from '../utils/soundEffects';
 import { PrintButton } from '../components/common/PrintButton';
 
@@ -68,6 +70,7 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
   const [checkInTime, setCheckInTime] = useState<string>('7:00');
   const [checkOutTime, setCheckOutTime] = useState<string>('11:00');
   const [isTelegramOpen, setIsTelegramOpen] = useState(false);
+  const [isStudentShareOpen, setIsStudentShareOpen] = useState(false);
   const [isSavedFeedback, setIsSavedFeedback] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'all' | 'present' | 'permission' | 'absent' | 'late' | 'notRecorded'>('all');
   const [soundOn, setSoundOn] = useState(true);
@@ -261,6 +264,15 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
               កត់វត្តមានទាំងអស់ (មក)
             </button>
             <button
+              type="button"
+              onClick={() => setIsStudentShareOpen(true)}
+              className="inline-flex items-center px-4 py-2 bg-linear-to-r from-violet-600 via-purple-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 active:scale-95 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md transition-all cursor-pointer"
+              title="ចែករំលែកតារាងស្រង់វត្តមានប្រចាំថ្ងៃទៅសិស្ស ឬប្រធានថ្នាក់"
+            >
+              <Share2 className="w-4 h-4 mr-1.5 text-yellow-300" />
+              <span>ចែករំលែកទៅសិស្ស (ស្រង់វត្តមាន)</span>
+            </button>
+            <button
               onClick={() => setIsTelegramOpen(true)}
               className="inline-flex items-center px-3.5 py-2 bg-sky-500 hover:bg-sky-600 text-white text-xs sm:text-sm font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
             >
@@ -391,31 +403,31 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
         {/* Card 1: សិស្សសរុប */}
         <div className="bg-white p-3.5 rounded-2xl border border-slate-200 text-center shadow-2xs">
           <p className="text-xs sm:text-sm font-bold text-slate-500 truncate whitespace-nowrap">សិស្សសរុប</p>
-          <p className="text-2xl sm:text-3xl font-black text-slate-800 mt-1">{toKhmerNum(dailyStats.total)}</p>
+          <p className="text-2xl sm:text-3xl font-black text-slate-800 mt-1 font-mono">{dailyStats.total}</p>
         </div>
 
         {/* Card 2: មក (Present) */}
         <div className="bg-emerald-50/70 p-3.5 rounded-2xl border border-emerald-200 text-center shadow-2xs">
           <p className="text-xs sm:text-sm font-bold text-emerald-700 truncate whitespace-nowrap">មក (Present)</p>
-          <p className="text-2xl sm:text-3xl font-black text-emerald-700 mt-1">{toKhmerNum(dailyStats.present)}</p>
+          <p className="text-2xl sm:text-3xl font-black text-emerald-700 mt-1 font-mono">{dailyStats.present}</p>
         </div>
 
         {/* Card 3: ច្បាប់ (Excused) */}
         <div className="bg-amber-50/70 p-3.5 rounded-2xl border border-amber-200 text-center shadow-2xs">
           <p className="text-xs sm:text-sm font-bold text-amber-700 truncate whitespace-nowrap">ច្បាប់ (Excused)</p>
-          <p className="text-2xl sm:text-3xl font-black text-amber-700 mt-1">{toKhmerNum(dailyStats.permission)}</p>
+          <p className="text-2xl sm:text-3xl font-black text-amber-700 mt-1 font-mono">{dailyStats.permission}</p>
         </div>
 
         {/* Card 4: ឥតច្បាប់ (Absent) */}
         <div className="bg-rose-50/70 p-3.5 rounded-2xl border border-rose-200 text-center shadow-2xs">
           <p className="text-xs sm:text-sm font-bold text-rose-700 truncate whitespace-nowrap">ឥតច្បាប់ (Absent)</p>
-          <p className="text-2xl sm:text-3xl font-black text-rose-700 mt-1">{toKhmerNum(dailyStats.absent)}</p>
+          <p className="text-2xl sm:text-3xl font-black text-rose-700 mt-1 font-mono">{dailyStats.absent}</p>
         </div>
 
         {/* Card 5: យឺត (Late) */}
         <div className="bg-blue-50/70 p-3.5 rounded-2xl border border-blue-200 text-center shadow-2xs col-span-2 sm:col-span-1">
           <p className="text-xs sm:text-sm font-bold text-blue-700 truncate whitespace-nowrap">យឺត (Late)</p>
-          <p className="text-2xl sm:text-3xl font-black text-blue-700 mt-1">{toKhmerNum(dailyStats.late)}</p>
+          <p className="text-2xl sm:text-3xl font-black text-blue-700 mt-1 font-mono">{dailyStats.late}</p>
         </div>
       </div>
 
@@ -431,7 +443,7 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
                 : 'text-slate-600 hover:bg-white/60'
             }`}
           >
-            ទាំងអស់ ({toKhmerNum(dailyStats.total)})
+            ទាំងអស់ ({dailyStats.total})
           </button>
           <button
             onClick={() => setStatusFilter('present')}
@@ -441,7 +453,7 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
                 : 'text-emerald-700 hover:bg-emerald-50'
             }`}
           >
-            🟢 មក ({toKhmerNum(dailyStats.present)})
+            🟢 មក ({dailyStats.present})
           </button>
           <button
             onClick={() => setStatusFilter('permission')}
@@ -451,7 +463,7 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
                 : 'text-amber-700 hover:bg-amber-50'
             }`}
           >
-            🟡 ច្បាប់ ({toKhmerNum(dailyStats.permission)})
+            🟡 ច្បាប់ ({dailyStats.permission})
           </button>
           <button
             onClick={() => setStatusFilter('absent')}
@@ -461,7 +473,7 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
                 : 'text-rose-700 hover:bg-rose-50'
             }`}
           >
-            🔴 ឥតច្បាប់ ({toKhmerNum(dailyStats.absent)})
+            🔴 ឥតច្បាប់ ({dailyStats.absent})
           </button>
           <button
             onClick={() => setStatusFilter('late')}
@@ -471,7 +483,7 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
                 : 'text-blue-700 hover:bg-blue-50'
             }`}
           >
-            🔵 យឺត ({toKhmerNum(dailyStats.late)})
+            🔵 យឺត ({dailyStats.late})
           </button>
           {dailyStats.notRecorded > 0 && (
             <button
@@ -482,7 +494,7 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
                   : 'text-slate-600 hover:bg-slate-200'
               }`}
             >
-              ⚪ មិនទាន់កត់ ({toKhmerNum(dailyStats.notRecorded)})
+              ⚪ មិនទាន់កត់ ({dailyStats.notRecorded})
             </button>
           )}
         </div>
@@ -590,13 +602,13 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
                       className="hover:bg-slate-50/80 transition-colors group"
                     >
                       {/* ល.រ */}
-                      <td className="py-3 px-3 text-center font-bold text-slate-600 text-xs sm:text-sm">
-                        {toKhmerNum(index + 1)}
+                      <td className="py-3 px-3 text-center font-bold text-slate-600 text-xs sm:text-sm font-mono">
+                        {index + 1}
                       </td>
 
                       {/* អត្តលេខ */}
                       <td className="py-3 px-3 font-mono text-xs sm:text-sm font-bold text-slate-700">
-                        {stu.studentCode}
+                        {fromKhmerNum(stu.studentCode)}
                       </td>
 
                       {/* ឈ្មោះខ្មែរ */}
@@ -703,13 +715,27 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
         </div>
       </div>
 
-      {/* Telegram Share Modal */}
+      {/* Telegram Share Modal (Teacher/Management general report) */}
       <TelegramShareModal
         isOpen={isTelegramOpen}
         onClose={() => setIsTelegramOpen(false)}
         currentClass={currentClass || null}
         students={classStudents}
         attendanceRecords={attendanceRecords}
+        settings={settings}
+      />
+
+      {/* Student Attendance Share Modal (Strictly Daily Attendance for Students/Monitor) */}
+      <StudentAttendanceShareModal
+        isOpen={isStudentShareOpen}
+        onClose={() => setIsStudentShareOpen(false)}
+        currentClass={currentClass || null}
+        students={classStudents}
+        attendanceRecords={attendanceRecords}
+        selectedDate={selectedDate}
+        selectedSession={selectedSession}
+        checkInTime={checkInTime}
+        checkOutTime={checkOutTime}
         settings={settings}
       />
     </div>

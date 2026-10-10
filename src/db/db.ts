@@ -22,6 +22,7 @@ import {
 
 import { enrichStudentWithMoEYSFields } from '../utils/studentEnricher';
 import { generateStandardClasses } from '../utils/classUtils';
+import { fromKhmerNum } from '../utils/dateUtils';
 
 export class TeacherDatabase extends Dexie {
   classes!: Table<ClassRoom, string>;
@@ -84,6 +85,18 @@ export class TeacherDatabase extends Dexie {
       if ((await this.timetable.count()) === 0) {
         await this.timetable.bulkAdd(initialTimetable);
       }
+    }
+
+    // Auto-migrate any student codes with Khmer digits (e.g. STU-0៧-001 -> STU-07-001)
+    const existingStudents = await this.students.toArray();
+    const hasKhmerCodes = existingStudents.some((s) => /[០-៩]/.test(s.studentCode));
+    if (hasKhmerCodes) {
+      console.log('Migrating student codes from Khmer digits to normal numbers...');
+      const updatedStudents = existingStudents.map((s) => ({
+        ...s,
+        studentCode: fromKhmerNum(s.studentCode),
+      }));
+      await this.students.bulkPut(updatedStudents);
     }
 
     // Always ensure all 49 standard classes exist and room/building are removed

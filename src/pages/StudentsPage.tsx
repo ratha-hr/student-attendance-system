@@ -27,7 +27,7 @@ import { StudentIDCardsModal } from '../components/StudentIDCardsModal';
 import { AddStudentModal } from '../components/AddStudentModal';
 import { useUndoRedo } from '../context/UndoRedoContext';
 import { PrintButton } from '../components/common/PrintButton';
-import { toKhmerNum, formatKhmerDate, formatToDMY, parseDMYToISO } from '../utils/dateUtils';
+import { toKhmerNum, fromKhmerNum, formatKhmerDate, formatToDMY, parseDMYToISO } from '../utils/dateUtils';
 import {
   exportStudentsToExcel,
   downloadStudentTemplate,
@@ -389,7 +389,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                 <span>👥</span>
                 <span>ទាំងអស់៖</span>
                 <strong className="text-slate-900 font-black">
-                  {toKhmerNum(classStudentsTotal)}
+                  {classStudentsTotal}
                 </strong>
               </button>
 
@@ -406,7 +406,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                 <span>👩</span>
                 <span>ស្រី៖</span>
                 <strong className={genderFilter === 'ស្រី' ? 'text-white' : 'text-pink-700 font-black'}>
-                  {toKhmerNum(classStudentsFemale)}
+                  {classStudentsFemale}
                 </strong>
               </button>
 
@@ -423,7 +423,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                 <span>👨</span>
                 <span>ប្រុស៖</span>
                 <strong className={genderFilter === 'ប្រុស' ? 'text-white' : 'text-blue-700 font-black'}>
-                  {toKhmerNum(classStudentsMale)}
+                  {classStudentsMale}
                 </strong>
               </button>
             </div>
@@ -450,7 +450,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
           បញ្ជីស្រង់ស្ថិតិ និងប្រវត្តិរូបសង្ខេបសិស្ស {currentClassName}
         </h2>
         <p className="text-xs mt-1">
-          សិស្សសរុប៖ {toKhmerNum(totalFiltered)} នាក់ | ស្រី៖ {toKhmerNum(femaleFiltered)} នាក់ | ប្រុស៖ {toKhmerNum(maleFiltered)} នាក់
+          សិស្សសរុប៖ {totalFiltered} នាក់ | ស្រី៖ {femaleFiltered} នាក់ | ប្រុស៖ {maleFiltered} នាក់
         </p>
       </div>
 
@@ -591,13 +591,13 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                       key={stu.id}
                       className="hover:bg-blue-50/40 transition-colors group border-b border-slate-200 print:break-inside-avoid"
                     >
-                      {/* ល.រ (រត់តាមលំដាប់លំដោយ ១, ២, ៣... Sticky on horizontal scroll) */}
+                      {/* ល.រ (រត់តាមលំដាប់លំដោយ 1, 2, 3... Sticky on horizontal scroll) */}
                       <td className="py-1 px-1 text-center font-bold text-slate-700 bg-slate-50/95 border-r border-slate-300 select-none sticky left-0 z-10 shadow-xs">
-                        <span className="inline-block px-2 py-0.5 rounded bg-slate-200/90 text-slate-800 text-xs sm:text-[13px] font-black print:hidden">
-                          {toKhmerNum(index + 1)}
+                        <span className="inline-block px-2 py-0.5 rounded bg-slate-200/90 text-slate-800 text-xs sm:text-[13px] font-black font-mono print:hidden">
+                          {index + 1}
                         </span>
-                        <span className="hidden print:inline-block font-bold text-[5.8pt]">
-                          {toKhmerNum(index + 1)}
+                        <span className="hidden print:inline-block font-mono font-bold text-[5.8pt]">
+                          {index + 1}
                         </span>
                       </td>
 
@@ -605,14 +605,14 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                       <td className="py-1 px-1 border-r border-slate-200">
                         <input
                           type="text"
-                          value={stu.studentCode}
-                          title={stu.studentCode}
+                          value={fromKhmerNum(stu.studentCode)}
+                          title={fromKhmerNum(stu.studentCode)}
                           placeholder="STU-001"
-                          onChange={(e) => handleInlineChange(stu.id, 'studentCode', e.target.value)}
+                          onChange={(e) => handleInlineChange(stu.id, 'studentCode', fromKhmerNum(e.target.value))}
                           className="w-full font-mono text-xs sm:text-[12.5px] font-bold text-slate-800 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
                         />
                         <span className="hidden print:block font-mono font-bold truncate text-[5.5pt]">
-                          {stu.studentCode}
+                          {fromKhmerNum(stu.studentCode)}
                         </span>
                       </td>
 
@@ -684,9 +684,9 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
 
                       {/* អាយុ */}
                       <td className="py-1 px-1 text-center font-bold text-xs sm:text-[13px] text-slate-700 bg-slate-50/50 border-r border-slate-200">
-                        <span className="print:hidden font-mono font-bold">{toKhmerNum(age)}</span>
-                        <span className="hidden print:block text-center font-bold text-[5.5pt]">
-                          {toKhmerNum(age)}
+                        <span className="print:hidden font-mono font-bold">{age}</span>
+                        <span className="hidden print:block text-center font-mono font-bold text-[5.5pt]">
+                          {age}
                         </span>
                       </td>
 
@@ -1214,11 +1214,11 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
         {/* Bottom Status Row */}
         <div className="bg-slate-50 border-t border-slate-200 px-4 py-2.5 flex items-center justify-between text-xs text-slate-500 no-print">
           <div className="flex items-center space-x-3">
-            <span>ចំនួនសិស្សក្នុងតារាង៖ <strong className="text-slate-800">{toKhmerNum(filteredStudents.length)}</strong> នាក់</span>
+            <span>ចំនួនសិស្សក្នុងតារាង៖ <strong className="text-slate-800">{filteredStudents.length}</strong> នាក់</span>
             <span>|</span>
-            <span>សិស្សស្រី៖ <strong className="text-pink-600">{toKhmerNum(femaleFiltered)}</strong> នាក់</span>
+            <span>សិស្សស្រី៖ <strong className="text-pink-600">{femaleFiltered}</strong> នាក់</span>
             <span>|</span>
-            <span>សិស្សប្រុស៖ <strong className="text-blue-600">{toKhmerNum(maleFiltered)}</strong> នាក់</span>
+            <span>សិស្សប្រុស៖ <strong className="text-blue-600">{maleFiltered}</strong> នាក់</span>
           </div>
           <button
             type="button"
@@ -1272,13 +1272,13 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                 <p className="text-xs text-slate-500 font-medium">{viewingStudent.nameEn || '-'}</p>
                 <div className="mt-1 flex items-center gap-2">
                   <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-md font-bold font-mono">
-                    {viewingStudent.studentCode}
+                    {fromKhmerNum(viewingStudent.studentCode)}
                   </span>
                   <span className="px-2 py-0.5 bg-slate-200 text-slate-800 text-xs rounded-md font-bold">
                     {classes.find((c) => c.id === viewingStudent.classId)?.name || 'ថ្នាក់រៀន'}
                   </span>
                   <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-xs rounded-md font-bold">
-                    លេខរៀង៖ {toKhmerNum(viewingStudent.rollNo)}
+                    លេខរៀង៖ {viewingStudent.rollNo}
                   </span>
                 </div>
               </div>
@@ -1297,7 +1297,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
               </div>
               <div className="p-2.5 bg-white border border-slate-200 rounded-xl">
                 <span className="text-slate-400 block mb-0.5">អាយុ</span>
-                <span className="font-bold text-slate-800">{toKhmerNum(viewingStudent.age || calculateAge(viewingStudent.dob))} ឆ្នាំ</span>
+                <span className="font-bold text-slate-800">{viewingStudent.age || calculateAge(viewingStudent.dob)} ឆ្នាំ</span>
               </div>
               <div className="p-2.5 bg-white border border-slate-200 rounded-xl">
                 <span className="text-slate-400 block mb-0.5">ទូរស័ព្ទសិស្ស</span>

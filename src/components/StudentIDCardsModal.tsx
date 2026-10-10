@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Printer, Download, X, QrCode, User, CheckSquare, Square } from 'lucide-react';
 import type { Student, ClassRoom, TeacherSettings } from '../types';
 import { generateStudentQRCodeSVG } from '../utils/qrCode';
-import { toKhmerNum, formatKhmerDate } from '../utils/dateUtils';
+import { toKhmerNum, fromKhmerNum, formatKhmerDate } from '../utils/dateUtils';
 import { PrintButton } from './common/PrintButton';
 
 interface StudentIDCardsModalProps {
@@ -158,7 +158,7 @@ export const StudentIDCardsModal: React.FC<StudentIDCardsModalProps> = ({
                       <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-slate-700">
                         <p>
                           <span className="text-slate-400">អត្តលេខ៖ </span>
-                          <span className="font-bold text-blue-900 font-mono">{s.studentCode}</span>
+                          <span className="font-bold text-blue-900 font-mono">{fromKhmerNum(s.studentCode)}</span>
                         </p>
                         <p>
                           <span className="text-slate-400">ភេទ៖ </span>

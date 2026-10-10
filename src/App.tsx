@@ -22,9 +22,24 @@ import { ManageClassesModal } from './components/ManageClassesModal';
 import type { TeacherSettings } from './types';
 
 export function App() {
-  // Starts directly on Attendance for rapid usage by teacher & class monitor
-  const [currentTab, setCurrentTab] = useState<NavTab>('attendance');
-  const [selectedClassId, setSelectedClassId] = useState<string>('ALL');
+  // Starts directly on Attendance for rapid usage by teacher & class monitor (or from URL share link)
+  const [currentTab, setCurrentTab] = useState<NavTab>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab') as NavTab;
+      if (tab) return tab;
+    }
+    return 'attendance';
+  });
+
+  const [selectedClassId, setSelectedClassId] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const cls = params.get('class');
+      if (cls) return cls;
+    }
+    return 'ALL';
+  });
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedStudentForLetter, setSelectedStudentForLetter] = useState<string>('');
   const [refreshKey, setRefreshKey] = useState(0);
