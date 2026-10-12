@@ -21,7 +21,6 @@ import {
   parseGradeNumber,
   generateStandardClasses,
   STANDARD_CLASS_CONFIGS,
-  HIGH_SCHOOL_STREAM_CONFIGS,
   getStreamForClass,
   getStreamBadge,
 } from '../utils/classUtils';
@@ -147,7 +146,7 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
     }
 
     const gNum = parseGradeNumber(quickGrade);
-    const stream = getStreamForClass(quickGrade, `${quickGrade}${quickLetter}`);
+    const stream = (gNum === 11 || gNum === 12) ? formStream : 'general';
     const streamInfo = getStreamBadge(stream);
 
     const newClass: ClassRoom = {
@@ -165,6 +164,20 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
     onSelectClass(newClass.id);
     onRefresh();
     showFeedback('success', `បានបង្កើត "${fullName}" ${stream !== 'general' ? `(${streamInfo.badgeKh})` : ''} ដោយជោគជ័យ!`);
+  };
+
+  // 1-Click Toggle Stream for Grade 11 & 12 (Teacher decides Science vs Social Science directly)
+  const handleToggleClassStream = async (c: ClassRoom) => {
+    const currentStream = getStreamForClass(c.grade, c.name, c.stream);
+    const nextStream: ClassStream = currentStream === 'science' ? 'social' : 'science';
+    const nextInfo = getStreamBadge(nextStream);
+
+    await db.classes.update(c.id, {
+      stream: nextStream,
+      description: `ថ្នាក់ ${c.name} (${nextInfo.label})`,
+    });
+    onRefresh();
+    showFeedback('success', `បានកំណត់ "${c.name}" ជា ${nextInfo.label} (${nextInfo.badgeKh}) ដោយជោគជ័យ!`);
   };
 
   // Start inline edit
@@ -273,47 +286,6 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
     showFeedback('success', `បានបន្ថែមថ្នាក់ទី ${grade} (${toAdd.length} ថ្នាក់) ដោយជោគជ័យ!`);
   };
 
-  // Quick add standard classes for Grade 11 & 12 streams (វិទ្យាសាស្ត្រ ឬ វិទ្យាសាស្ត្រសង្គម)
-  const handleAddStreamClasses = async (grade: '11' | '12', stream: 'science' | 'social') => {
-    const letters =
-      grade === '11'
-        ? stream === 'science'
-          ? HIGH_SCHOOL_STREAM_CONFIGS.grade11Science
-          : HIGH_SCHOOL_STREAM_CONFIGS.grade11Social
-        : stream === 'science'
-        ? HIGH_SCHOOL_STREAM_CONFIGS.grade12Science
-        : HIGH_SCHOOL_STREAM_CONFIGS.grade12Social;
-
-    const streamInfo = getStreamBadge(stream);
-    const existingNames = new Set(classes.map((c) => c.name.toLowerCase()));
-    const toAdd: ClassRoom[] = [];
-
-    letters.forEach((letter) => {
-      const fullName = `ថ្នាក់ទី ${grade}${letter}`;
-      if (!existingNames.has(fullName.toLowerCase())) {
-        const id = `class-${grade}-${letter.toLowerCase()}-${Date.now()}`;
-        toAdd.push({
-          id,
-          name: fullName,
-          grade,
-          academicYear,
-          stream,
-          homeroomTeacher: 'គ្រូទទួលបន្ទុក',
-          description: `ថ្នាក់ ${grade}${letter} (${streamInfo.label})`,
-          createdAt: new Date().toISOString(),
-        });
-      }
-    });
-
-    if (toAdd.length === 0) {
-      showFeedback('error', `ថ្នាក់ទី ${grade} (${streamInfo.badgeKh}) មានរួចរាល់ទាំងអស់ហើយ!`);
-      return;
-    }
-
-    await db.classes.bulkAdd(toAdd);
-    onRefresh();
-    showFeedback('success', `បានបង្កើតថ្នាក់ទី ${grade} (${streamInfo.badgeKh}) ចំនួន ${toAdd.length} ថ្នាក់ដោយជោគជ័យ!`);
-  };
 
   // Reset or regenerate all 49 standard classes
   const handleRestoreStandardClasses = async () => {
@@ -477,6 +449,19 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
                     <option key={l} value={l}>{l}</option>
                   ))}
                 </select>
+                {/* If Grade 11 or 12: Stream selector */}
+                {(quickGrade === '11' || quickGrade === '12') && (
+                  <select
+                    value={formStream}
+                    onChange={(e) => setFormStream(e.target.value as ClassStream)}
+                    className="bg-white border border-teal-300 rounded-lg px-2 py-0.5 text-xs font-bold text-teal-900 cursor-pointer shadow-2xs"
+                    title="ជ្រើសរើសផ្នែកសម្រាប់ថ្នាក់ទី ១១ ឬ ១២ (វិទ្យាសាស្ត្រ ឬ សង្គម)"
+                  >
+                    <option value="science">🔬 វិទ្យាសាស្ត្រ</option>
+                    <option value="social">📚 វិទ្យាសាស្ត្រសង្គម</option>
+                  </select>
+                )}
+
                 <button
                   type="button"
                   onClick={handleQuickAddClass}
@@ -497,87 +482,56 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
             </div>
           </form>
 
-          {/* Quick Grade Batch Generators (ថ្នាក់ទី ៧, ៨, ៩, ១០, ១១ វិទ្យាសាស្ត្រ/សង្គម, ១២ វិទ្យាសាស្ត្រ/សង្គម) */}
-          <div className="pt-2 border-t border-slate-200/80 flex flex-wrap items-center justify-between gap-2">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[11px] font-bold text-slate-500 mr-1">បន្ថែមតាមកម្រិត៖</span>
-              {[
-                { grade: '7', label: 'ថ្នាក់ទី ៧ (7A-7E)' },
-                { grade: '8', label: 'ថ្នាក់ទី ៨ (8A-8E)' },
-                { grade: '9', label: 'ថ្នាក់ទី ៩ (9A-9D)' },
-                { grade: '10', label: 'ថ្នាក់ទី ១០ (10A-10L)' },
-              ].map((g) => (
+          {/* Quick Grade Batch Generators (ថ្នាក់ទី ៧, ៨, ៩, ១០, ១១, ១២) */}
+          <div className="pt-2 border-t border-slate-200/80 flex flex-col gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px] font-bold text-slate-500 mr-1">បន្ថែមតាមកម្រិត៖</span>
+                {[
+                  { grade: '7', label: 'ថ្នាក់ទី ៧ (7A-7E)' },
+                  { grade: '8', label: 'ថ្នាក់ទី ៨ (8A-8E)' },
+                  { grade: '9', label: 'ថ្នាក់ទី ៩ (9A-9D)' },
+                  { grade: '10', label: 'ថ្នាក់ទី ១០ (10A-10L)' },
+                  { grade: '11', label: 'ថ្នាក់ទី ១១ (11A-11J)' },
+                  { grade: '12', label: 'ថ្នាក់ទី ១២ (12A-12M)' },
+                ].map((g) => (
+                  <button
+                    key={g.grade}
+                    type="button"
+                    onClick={() => handleAddGradeClasses(g.grade)}
+                    className="px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-md text-[11px] font-bold cursor-pointer transition-colors"
+                  >
+                    + {g.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex items-center space-x-2">
                 <button
-                  key={g.grade}
                   type="button"
-                  onClick={() => handleAddGradeClasses(g.grade)}
-                  className="px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-md text-[11px] font-bold cursor-pointer transition-colors"
+                  onClick={handleRestoreStandardClasses}
+                  className="inline-flex items-center px-2.5 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-bold transition-colors cursor-pointer shadow-2xs"
+                  title="បង្កើត ឬស្តារថ្នាក់ស្តង់ដារទាំង ៤៩ ថ្នាក់ឡើងវិញ"
                 >
-                  + {g.label}
+                  <RotateCcw className="w-3 h-3 mr-1" />
+                  ស្តារ ៤៩ ថ្នាក់ស្តង់ដារ
                 </button>
-              ))}
 
-              {/* Grade 11 Science & Social Science */}
-              <button
-                type="button"
-                onClick={() => handleAddStreamClasses('11', 'science')}
-                className="px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-md text-[11px] font-bold cursor-pointer transition-colors flex items-center space-x-1"
-                title="បន្ថែមថ្នាក់ទី ១១ វិទ្យាសាស្ត្រ (11A-11E)"
-              >
-                <span>🔬</span>
-                <span>+ ថ្នាក់ទី ១១ វិទ្យាសាស្ត្រ (11A-11E)</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleAddStreamClasses('11', 'social')}
-                className="px-2 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-md text-[11px] font-bold cursor-pointer transition-colors flex items-center space-x-1"
-                title="បន្ថែមថ្នាក់ទី ១១ វិទ្យាសាស្ត្រសង្គម (11F-11J)"
-              >
-                <span>📚</span>
-                <span>+ ថ្នាក់ទី ១១ សង្គម (11F-11J)</span>
-              </button>
-
-              {/* Grade 12 Science & Social Science */}
-              <button
-                type="button"
-                onClick={() => handleAddStreamClasses('12', 'science')}
-                className="px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-md text-[11px] font-bold cursor-pointer transition-colors flex items-center space-x-1"
-                title="បន្ថែមថ្នាក់ទី ១២ វិទ្យាសាស្ត្រ (12A-12F)"
-              >
-                <span>🔬</span>
-                <span>+ ថ្នាក់ទី ១២ វិទ្យាសាស្ត្រ (12A-12F)</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleAddStreamClasses('12', 'social')}
-                className="px-2 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-md text-[11px] font-bold cursor-pointer transition-colors flex items-center space-x-1"
-                title="បន្ថែមថ្នាក់ទី ១២ វិទ្យាសាស្ត្រសង្គម (12G-12M)"
-              >
-                <span>📚</span>
-                <span>+ ថ្នាក់ទី ១២ សង្គម (12G-12M)</span>
-              </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteAllClasses}
+                  className="inline-flex items-center px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold transition-colors cursor-pointer shadow-2xs"
+                  title="លុបថ្នាក់ទាំងអស់"
+                >
+                  <Trash2 className="w-3 h-3 mr-1 text-rose-600" />
+                  លុបថ្នាក់ទាំងអស់ ({classes.length})
+                </button>
+              </div>
             </div>
 
-            <div className="flex items-center space-x-2">
-              <button
-                type="button"
-                onClick={handleRestoreStandardClasses}
-                className="inline-flex items-center px-2.5 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-bold transition-colors cursor-pointer shadow-2xs"
-                title="បង្កើត ឬស្តារថ្នាក់ស្តង់ដារទាំង ៤៩ ថ្នាក់ឡើងវិញ"
-              >
-                <RotateCcw className="w-3 h-3 mr-1" />
-                ស្តារ ៤៩ ថ្នាក់ស្តង់ដារ
-              </button>
-
-              <button
-                type="button"
-                onClick={handleDeleteAllClasses}
-                className="inline-flex items-center px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold transition-colors cursor-pointer shadow-2xs"
-                title="លុបថ្នាក់ទាំងអស់"
-              >
-                <Trash2 className="w-3 h-3 mr-1 text-rose-600" />
-                លុបថ្នាក់ទាំងអស់ ({classes.length})
-              </button>
+            <div className="text-[11px] text-teal-800 bg-teal-50/80 border border-teal-200/80 px-2.5 py-1 rounded-lg flex items-center gap-1.5">
+              <span>💡</span>
+              <span><strong>កំណត់សម្គាល់៖</strong> ចំពោះថ្នាក់ទី ១១ និង ១២ លោកគ្រូអ្នកគ្រូអាចចុចលើស្លាកសញ្ញា <strong>[🔬 វិទ្យាសាស្ត្រ]</strong> ឬ <strong>[📚 វិទ្យាសាស្ត្រសង្គម]</strong> លើថ្នាក់នីមួយៗក្នុងបញ្ជីខាងក្រោម ដើម្បីប្តូរភ្លាមៗដោយចុចតែម្តង (1-Click Toggle)។</span>
             </div>
           </div>
         </div>
@@ -742,12 +696,16 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
                                 {c.name}
                               </span>
                               {(gNum === 11 || gNum === 12) && (
-                                <span
-                                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border shadow-2xs ${streamInfo.colorClass}`}
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleClassStream(c)}
+                                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border shadow-2xs cursor-pointer hover:scale-105 active:scale-95 transition-all ${streamInfo.colorClass}`}
+                                  title={`ចុចដើម្បីប្តូររវាង វិទ្យាសាស្ត្រ និង វិទ្យាសាស្ត្រសង្គម (បច្ចុប្បន្ន៖ ${streamInfo.label})`}
                                 >
                                   <span className="mr-0.5">{streamInfo.icon}</span>
                                   <span>{streamInfo.badgeKh}</span>
-                                </span>
+                                  <span className="ml-1 text-[9px] opacity-75 font-normal underline">⇄ ប្តូរ</span>
+                                </button>
                               )}
                               <span
                                 className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold ${

@@ -157,7 +157,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <optgroup key={group.grade} label={`── ${group.label} (${group.classes.length}) ──`}>
                   {group.classes.map((c) => (
                     <option key={c.id} value={c.id}>
-                      📚 {c.name} {c.homeroomTeacher ? `• គ្រូ៖ ${c.homeroomTeacher}` : ''}
+                      📚 {c.name} {c.stream && c.stream !== 'general' ? `(${c.stream === 'science' ? 'វិទ្យាសាស្ត្រ' : 'សង្គម'})` : ''} {c.homeroomTeacher ? `• គ្រូ៖ ${c.homeroomTeacher}` : ''}
                     </option>
                   ))}
                 </optgroup>

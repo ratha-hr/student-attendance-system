@@ -1159,7 +1159,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                     >
                       {classes.map((c) => (
                         <option key={c.id} value={c.id}>
-                          {c.name}
+                          {c.name} {c.stream && c.stream !== 'general' ? `(${c.stream === 'science' ? 'វិទ្យាសាស្ត្រ' : 'សង្គម'})` : ''}
                         </option>
                       ))}
                     </select>
