@@ -420,28 +420,29 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
               </span>
             </div>
 
-            {/* Quick Share Links */}
-            <div className="flex items-center space-x-1.5">
-              <button
-                type="button"
-                onClick={handleCopyStudentLink}
-                className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 hover:underline cursor-pointer flex items-center"
-                title="ចម្លងតំណភ្ជាប់ Read-Only"
-              >
-                {copiedLink ? <Check className="w-3 h-3 mr-0.5 text-emerald-600" /> : <Copy className="w-3 h-3 mr-0.5" />}
-                <span>{copiedLink ? 'ចម្លងរួច' : 'Link'}</span>
-              </button>
-              <span className="text-slate-300">•</span>
-              <button
-                type="button"
-                onClick={handleShareToTelegram}
-                className="text-[11px] font-bold text-sky-600 hover:text-sky-800 hover:underline cursor-pointer flex items-center"
-                title="ផ្ញើទៅ Telegram"
-              >
-                <Send className="w-3 h-3 mr-0.5" />
-                <span>Telegram</span>
-              </button>
-            </div>
+            {/* Copy Link Button */}
+            <button
+              type="button"
+              onClick={handleCopyStudentLink}
+              className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold transition-all shadow-2xs border cursor-pointer ${
+                copiedLink
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                  : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200'
+              }`}
+              title="ចម្លងតំណភ្ជាប់វត្តមាន"
+            >
+              {copiedLink ? (
+                <>
+                  <Check className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+                  <span>ចម្លងរួច!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3.5 h-3.5 mr-1 text-indigo-600" />
+                  <span>ចម្លងតំណភ្ជាប់</span>
+                </>
+              )}
+            </button>
           </div>
 
           {/* Row 2: Unified Interactive Stats Chips (Replaces 5 bulky boxes AND filter buttons!) */}
