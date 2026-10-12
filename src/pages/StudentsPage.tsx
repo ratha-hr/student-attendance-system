@@ -19,12 +19,14 @@ import {
   ChevronLeft,
   ChevronRight,
   CheckCircle2,
+  Clipboard,
 } from 'lucide-react';
 import type { Student, ClassRoom, AttendanceRecord, Gender, TeacherSettings } from '../types';
 import { db } from '../db/db';
 import { Modal } from '../components/common/Modal';
 import { StudentIDCardsModal } from '../components/StudentIDCardsModal';
 import { AddStudentModal } from '../components/AddStudentModal';
+import { StudentPasteModal } from '../components/StudentPasteModal';
 import { useUndoRedo } from '../context/UndoRedoContext';
 import { PrintButton } from '../components/common/PrintButton';
 import { toKhmerNum, fromKhmerNum, formatKhmerDate, formatToDMY, parseDMYToISO } from '../utils/dateUtils';
@@ -32,6 +34,7 @@ import {
   exportStudentsToExcel,
   downloadStudentTemplate,
   parseExcelStudents,
+  parsePastedExcelText,
   calculateAge,
 } from '../utils/excelUtils';
 import { enrichStudentWithMoEYSFields } from '../utils/studentEnricher';
@@ -60,6 +63,10 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
   const [isIDCardsOpen, setIsIDCardsOpen] = useState(false);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isPasteModalOpen, setIsPasteModalOpen] = useState(false);
+  const [selectedCell, setSelectedCell] = useState<{ rowIdx: number; colKey: string; colName: string } | null>(null);
+  const [selectedRowIdx, setSelectedRowIdx] = useState<number | null>(null);
+  const [emptyRowCount, setEmptyRowCount] = useState<number>(15);
   const { canUndo, canRedo, undo, redo, pushSnapshot, showToast } = useUndoRedo();
   const [scrollPercent, setScrollPercent] = useState<number>(0);
 
@@ -138,6 +145,92 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
       onRefresh();
     } catch (err) {
       console.error('Error auto-saving cell:', err);
+    }
+  };
+
+  // Handle typing into an empty spreadsheet row cell (creates student automatically)
+  const handleEmptyRowCellChange = async (rowIdx: number, field: keyof Student, value: any) => {
+    if (!value || (typeof value === 'string' && !value.trim())) return;
+    try {
+      const targetClassId = selectedClassId === 'ALL' ? (classes[0]?.id || '') : selectedClassId;
+      const targetRollNo = rowIdx + 1;
+      await pushSnapshot('បញ្ចូលសិស្សពីក្រឡាទទេ');
+      const newStudent: Student = {
+        id: 'stu-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+        classId: targetClassId,
+        rollNo: targetRollNo,
+        studentCode: field === 'studentCode' ? value : `STU-${String(targetRollNo).padStart(3, '0')}`,
+        nameKh: field === 'nameKh' ? value : `សិស្ស ${targetRollNo}`,
+        nameEn: field === 'nameEn' ? value : '',
+        gender: field === 'gender' ? value : 'ប្រុស',
+        dob: field === 'dob' ? value : '2011-01-01',
+        age: field === 'dob' ? calculateAge(value) : 13,
+        status: 'active',
+        createdAt: new Date().toISOString(),
+        [field]: value,
+      };
+      await db.students.add(newStudent);
+      setLastSavedId(newStudent.id);
+      setTimeout(() => setLastSavedId(null), 2000);
+      onRefresh();
+      showToast(`✨ បានបង្កើតសិស្សថ្មី "${newStudent.nameKh}"`);
+    } catch (err) {
+      console.error('Error saving empty row cell:', err);
+    }
+  };
+
+  // Direct Ctrl+V on the spreadsheet table (intercepts TSV from Excel)
+  const handleTablePaste = async (e: React.ClipboardEvent) => {
+    const text = e.clipboardData.getData('text/plain');
+    if (!text || (!text.includes('\t') && !text.includes('\n'))) {
+      return; // Regular single cell inline text paste, let browser handle it
+    }
+    e.preventDefault();
+    const targetClassId = selectedClassId === 'ALL' ? (classes[0]?.id || '') : selectedClassId;
+    if (!targetClassId) {
+      alert('សូមជ្រើសរើសថ្នាក់រៀនជាមុនសិន!');
+      return;
+    }
+
+    const startRoll = selectedCell
+      ? selectedCell.rowIdx + 1
+      : filteredStudents.length + 1;
+
+    const parsed = parsePastedExcelText(text, targetClassId, startRoll);
+    if (parsed.length === 0) return;
+
+    await pushSnapshot(`បិទភ្ជាប់សិស្ស ${parsed.length} នាក់ពី Excel`);
+    await db.students.bulkAdd(parsed as Student[]);
+    onRefresh();
+    showToast(`📋 បានបិទភ្ជាប់សិស្សចំនួន ${parsed.length} នាក់ពី Excel ដោយជោគជ័យ!`);
+  };
+
+  // Keyboard navigation inside table (Enter moves down, Tab moves right)
+  const handleCellKeyDown = (
+    e: React.KeyboardEvent<HTMLInputElement | HTMLSelectElement>,
+    rowIdx: number,
+    colKey: string
+  ) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const nextInput = document.querySelector<HTMLElement>(`[data-cell="${rowIdx + 1}-${colKey}"]`);
+      if (nextInput) {
+        nextInput.focus();
+      }
+    }
+  };
+
+  // Handle Ctrl+C on selected cell
+  const handleTableKeyDown = async (e: React.KeyboardEvent) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectedCell) {
+      const stu = filteredStudents[selectedCell.rowIdx];
+      if (stu) {
+        const val = String((stu as any)[selectedCell.colKey] || '');
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(val);
+          showToast(`📋 បានចម្លង៖ "${val}"`);
+        }
+      }
     }
   };
 
@@ -239,6 +332,401 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
     }
   };
 
+  // Render an Excel-style interactive empty grid row (allows direct typing, selection, or paste)
+  const renderEmptyRow = (rowIdx: number) => {
+    const isRowSelected = selectedRowIdx === rowIdx;
+    const isCellSelected = (key: string) => selectedCell?.rowIdx === rowIdx && selectedCell?.colKey === key;
+    const cellClass = (key: string) =>
+      `w-full text-xs sm:text-[12.5px] bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none ${
+        isCellSelected(key) ? 'ring-2 ring-blue-600 bg-blue-50/80 font-bold' : ''
+      }`;
+
+    return (
+      <tr
+        key={`empty-row-${rowIdx}`}
+        className={`border-b border-slate-200 transition-colors ${
+          isRowSelected ? 'bg-blue-50/50' : 'hover:bg-slate-50/60'
+        }`}
+      >
+        {/* 1. ល.រ (Sticky left) */}
+        <td
+          onClick={() => {
+            setSelectedRowIdx(rowIdx);
+            setSelectedCell(null);
+          }}
+          className="py-1 px-1 text-center font-bold text-slate-400 bg-slate-50/95 border-r border-slate-300 select-none sticky left-0 z-10 shadow-xs cursor-pointer hover:bg-slate-200/80 transition-colors"
+          title={`ជួរដេកទី ${rowIdx + 1} (ចុចដើម្បីជ្រើសជួរដេកទាំងមូល)`}
+        >
+          <span className="inline-block px-2 py-0.5 rounded bg-slate-100 text-slate-500 text-xs sm:text-[13px] font-mono">
+            {rowIdx + 1}
+          </span>
+        </td>
+
+        {/* 2. អត្តលេខ */}
+        <td className="py-1 px-1 border-r border-slate-200">
+          <input
+            type="text"
+            placeholder="STU-..."
+            data-cell={`${rowIdx}-studentCode`}
+            onFocus={() => {
+              setSelectedCell({ rowIdx, colKey: 'studentCode', colName: 'អត្តលេខ' });
+              setSelectedRowIdx(rowIdx);
+            }}
+            onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'studentCode')}
+            onChange={(e) => handleEmptyRowCellChange(rowIdx, 'studentCode', e.target.value)}
+            className={`${cellClass('studentCode')} font-mono`}
+          />
+        </td>
+
+        {/* 3. គោត្តនាម នាម */}
+        <td className="py-1 px-1 border-r border-slate-200">
+          <input
+            type="text"
+            placeholder="បញ្ចូលឈ្មោះសិស្ស..."
+            data-cell={`${rowIdx}-nameKh`}
+            onFocus={() => {
+              setSelectedCell({ rowIdx, colKey: 'nameKh', colName: 'គោត្តនាម នាម' });
+              setSelectedRowIdx(rowIdx);
+            }}
+            onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'nameKh')}
+            onChange={(e) => handleEmptyRowCellChange(rowIdx, 'nameKh', e.target.value)}
+            className={`${cellClass('nameKh')} font-bold text-slate-800 placeholder:text-slate-300`}
+          />
+        </td>
+
+        {/* 4. ភេទ */}
+        <td className="py-1 px-1 text-center border-r border-slate-200">
+          <select
+            defaultValue=""
+            data-cell={`${rowIdx}-gender`}
+            onFocus={() => {
+              setSelectedCell({ rowIdx, colKey: 'gender', colName: 'ភេទ' });
+              setSelectedRowIdx(rowIdx);
+            }}
+            onChange={(e) => handleEmptyRowCellChange(rowIdx, 'gender', e.target.value as Gender)}
+            className="w-full text-xs sm:text-[12px] font-bold rounded px-1.5 py-1 cursor-pointer border border-transparent hover:border-slate-300 bg-slate-50 text-slate-600 text-center outline-none"
+          >
+            <option value="" disabled>-</option>
+            <option value="ប្រុស">ប្រុស</option>
+            <option value="ស្រី">ស្រី</option>
+          </select>
+        </td>
+
+        {/* 5. ថ្ងៃខែឆ្នាំកំណើត */}
+        <td className="py-1 px-1 border-r border-slate-200">
+          <div className="relative flex items-center justify-between">
+            <input
+              type="text"
+              placeholder="dd/mm/yyyy"
+              data-cell={`${rowIdx}-dob`}
+              onFocus={() => {
+                setSelectedCell({ rowIdx, colKey: 'dob', colName: 'ថ្ងៃខែឆ្នាំកំណើត' });
+                setSelectedRowIdx(rowIdx);
+              }}
+              onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'dob')}
+              onChange={(e) => {
+                const val = e.target.value;
+                const iso = parseDMYToISO(val);
+                if (iso) handleEmptyRowCellChange(rowIdx, 'dob', iso);
+              }}
+              className={`${cellClass('dob')} font-mono text-center`}
+            />
+            <input
+              type="date"
+              onChange={(e) => {
+                if (e.target.value) handleEmptyRowCellChange(rowIdx, 'dob', e.target.value);
+              }}
+              className="w-4 h-4 opacity-35 hover:opacity-100 cursor-pointer print:hidden shrink-0 ml-0.5"
+              title="ជ្រើសរើសពីប្រតិទិន"
+            />
+          </div>
+        </td>
+
+        {/* 6. អាយុ */}
+        <td className="py-1 px-1 text-center font-bold text-xs sm:text-[13px] text-slate-400 bg-slate-50/50 border-r border-slate-200">
+          -
+        </td>
+
+        {/* 7. មកពីសាលា */}
+        <td className="py-1 px-1 border-r border-slate-200">
+          <input
+            type="text"
+            placeholder="សាលាចាស់..."
+            data-cell={`${rowIdx}-originSchool`}
+            onFocus={() => {
+              setSelectedCell({ rowIdx, colKey: 'originSchool', colName: 'មកពីសាលា' });
+              setSelectedRowIdx(rowIdx);
+            }}
+            onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'originSchool')}
+            onChange={(e) => handleEmptyRowCellChange(rowIdx, 'originSchool', e.target.value)}
+            className={cellClass('originSchool')}
+          />
+        </td>
+
+        {/* 8. ទីកន្លែងកំណើត - ភូមិ */}
+        <td className="py-1 px-1 border-r border-slate-200">
+          <input
+            type="text"
+            placeholder="ភូមិ..."
+            data-cell={`${rowIdx}-pobVillage`}
+            onFocus={() => {
+              setSelectedCell({ rowIdx, colKey: 'pobVillage', colName: 'ទីកន្លែងកំណើត (ភូមិ)' });
+              setSelectedRowIdx(rowIdx);
+            }}
+            onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'pobVillage')}
+            onChange={(e) => handleEmptyRowCellChange(rowIdx, 'pobVillage', e.target.value)}
+            className={cellClass('pobVillage')}
+          />
+        </td>
+
+        {/* 9. ទីកន្លែងកំណើត - ឃុំ/សង្កាត់ */}
+        <td className="py-1 px-1 border-r border-slate-200">
+          <input
+            type="text"
+            placeholder="ឃុំ/សង្កាត់..."
+            data-cell={`${rowIdx}-pobCommune`}
+            onFocus={() => {
+              setSelectedCell({ rowIdx, colKey: 'pobCommune', colName: 'ទីកន្លែងកំណើត (ឃុំ/សង្កាត់)' });
+              setSelectedRowIdx(rowIdx);
+            }}
+            onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'pobCommune')}
+            onChange={(e) => handleEmptyRowCellChange(rowIdx, 'pobCommune', e.target.value)}
+            className={cellClass('pobCommune')}
+          />
+        </td>
+
+        {/* 10. ទីកន្លែងកំណើត - ស្រុក/ខណ្ឌ */}
+        <td className="py-1 px-1 border-r border-slate-200">
+          <input
+            type="text"
+            placeholder="ស្រុក/ខណ្ឌ..."
+            data-cell={`${rowIdx}-pobDistrict`}
+            onFocus={() => {
+              setSelectedCell({ rowIdx, colKey: 'pobDistrict', colName: 'ទីកន្លែងកំណើត (ស្រុក/ខណ្ឌ)' });
+              setSelectedRowIdx(rowIdx);
+            }}
+            onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'pobDistrict')}
+            onChange={(e) => handleEmptyRowCellChange(rowIdx, 'pobDistrict', e.target.value)}
+            className={cellClass('pobDistrict')}
+          />
+        </td>
+
+        {/* 11. ទីកន្លែងកំណើត - ខេត្ត/រាជធានី */}
+        <td className="py-1 px-1 border-r border-slate-200">
+          <input
+            type="text"
+            placeholder="ខេត្ត/រាជធានី..."
+            data-cell={`${rowIdx}-pobProvince`}
+            onFocus={() => {
+              setSelectedCell({ rowIdx, colKey: 'pobProvince', colName: 'ទីកន្លែងកំណើត (ខេត្ត/រាជធានី)' });
+              setSelectedRowIdx(rowIdx);
+            }}
+            onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'pobProvince')}
+            onChange={(e) => handleEmptyRowCellChange(rowIdx, 'pobProvince', e.target.value)}
+            className={cellClass('pobProvince')}
+          />
+        </td>
+
+        {/* 12. អាសយដ្ឋានបច្ចុប្បន្ន - ភូមិ */}
+        <td className="py-1 px-1 border-r border-slate-200">
+          <input
+            type="text"
+            placeholder="ភូមិ..."
+            data-cell={`${rowIdx}-addrVillage`}
+            onFocus={() => {
+              setSelectedCell({ rowIdx, colKey: 'addrVillage', colName: 'អាសយដ្ឋានបច្ចុប្បន្ន (ភូមិ)' });
+              setSelectedRowIdx(rowIdx);
+            }}
+            onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'addrVillage')}
+            onChange={(e) => handleEmptyRowCellChange(rowIdx, 'addrVillage', e.target.value)}
+            className={cellClass('addrVillage')}
+          />
+        </td>
+
+        {/* 13. អាសយដ្ឋានបច្ចុប្បន្ន - ឃុំ */}
+        <td className="py-1 px-1 border-r border-slate-200">
+          <input
+            type="text"
+            placeholder="ឃុំ..."
+            data-cell={`${rowIdx}-addrCommune`}
+            onFocus={() => {
+              setSelectedCell({ rowIdx, colKey: 'addrCommune', colName: 'អាសយដ្ឋានបច្ចុប្បន្ន (ឃុំ)' });
+              setSelectedRowIdx(rowIdx);
+            }}
+            onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'addrCommune')}
+            onChange={(e) => handleEmptyRowCellChange(rowIdx, 'addrCommune', e.target.value)}
+            className={cellClass('addrCommune')}
+          />
+        </td>
+
+        {/* 14. អាសយដ្ឋានបច្ចុប្បន្ន - ស្រុក */}
+        <td className="py-1 px-1 border-r border-slate-200">
+          <input
+            type="text"
+            placeholder="ស្រុក..."
+            data-cell={`${rowIdx}-addrDistrict`}
+            onFocus={() => {
+              setSelectedCell({ rowIdx, colKey: 'addrDistrict', colName: 'អាសយដ្ឋានបច្ចុប្បន្ន (ស្រុក)' });
+              setSelectedRowIdx(rowIdx);
+            }}
+            onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'addrDistrict')}
+            onChange={(e) => handleEmptyRowCellChange(rowIdx, 'addrDistrict', e.target.value)}
+            className={cellClass('addrDistrict')}
+          />
+        </td>
+
+        {/* 15. អាសយដ្ឋានបច្ចុប្បន្ន - ខេត្ត */}
+        <td className="py-1 px-1 border-r border-slate-200">
+          <input
+            type="text"
+            placeholder="ខេត្ត..."
+            data-cell={`${rowIdx}-addrProvince`}
+            onFocus={() => {
+              setSelectedCell({ rowIdx, colKey: 'addrProvince', colName: 'អាសយដ្ឋានបច្ចុប្បន្ន (ខេត្ត)' });
+              setSelectedRowIdx(rowIdx);
+            }}
+            onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'addrProvince')}
+            onChange={(e) => handleEmptyRowCellChange(rowIdx, 'addrProvince', e.target.value)}
+            className={cellClass('addrProvince')}
+          />
+        </td>
+
+        {/* 16. លេខទូរស័ព្ទផ្ទាល់ខ្លួន */}
+        <td className="py-1 px-1 border-r border-slate-200">
+          <input
+            type="text"
+            placeholder="ទូរស័ព្ទសិស្ស..."
+            data-cell={`${rowIdx}-studentPhone`}
+            onFocus={() => {
+              setSelectedCell({ rowIdx, colKey: 'studentPhone', colName: 'លេខទូរស័ព្ទផ្ទាល់ខ្លួន' });
+              setSelectedRowIdx(rowIdx);
+            }}
+            onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'studentPhone')}
+            onChange={(e) => handleEmptyRowCellChange(rowIdx, 'studentPhone', e.target.value)}
+            className={`${cellClass('studentPhone')} font-mono`}
+          />
+        </td>
+
+        {/* 17. ឪពុក - ឈ្មោះ */}
+        <td className="py-1 px-1 border-r border-slate-200">
+          <input
+            type="text"
+            placeholder="ឈ្មោះឪពុក..."
+            data-cell={`${rowIdx}-fatherName`}
+            onFocus={() => {
+              setSelectedCell({ rowIdx, colKey: 'fatherName', colName: 'ឪពុក (ឈ្មោះ)' });
+              setSelectedRowIdx(rowIdx);
+            }}
+            onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'fatherName')}
+            onChange={(e) => handleEmptyRowCellChange(rowIdx, 'fatherName', e.target.value)}
+            className={cellClass('fatherName')}
+          />
+        </td>
+
+        {/* 18. ឪពុក - មុខរបរ */}
+        <td className="py-1 px-1 border-r border-slate-200">
+          <input
+            type="text"
+            placeholder="មុខរបរ..."
+            data-cell={`${rowIdx}-fatherOccupation`}
+            onFocus={() => {
+              setSelectedCell({ rowIdx, colKey: 'fatherOccupation', colName: 'ឪពុក (មុខរបរ)' });
+              setSelectedRowIdx(rowIdx);
+            }}
+            onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'fatherOccupation')}
+            onChange={(e) => handleEmptyRowCellChange(rowIdx, 'fatherOccupation', e.target.value)}
+            className={cellClass('fatherOccupation')}
+          />
+        </td>
+
+        {/* 19. ឪពុក - លេខទូរស័ព្ទ */}
+        <td className="py-1 px-1 border-r border-slate-200">
+          <input
+            type="text"
+            placeholder="ទូរស័ព្ទ..."
+            data-cell={`${rowIdx}-fatherPhone`}
+            onFocus={() => {
+              setSelectedCell({ rowIdx, colKey: 'fatherPhone', colName: 'ឪពុក (ទូរស័ព្ទ)' });
+              setSelectedRowIdx(rowIdx);
+            }}
+            onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'fatherPhone')}
+            onChange={(e) => handleEmptyRowCellChange(rowIdx, 'fatherPhone', e.target.value)}
+            className={`${cellClass('fatherPhone')} font-mono`}
+          />
+        </td>
+
+        {/* 20. ម្តាយ - ឈ្មោះ */}
+        <td className="py-1 px-1 border-r border-slate-200">
+          <input
+            type="text"
+            placeholder="ឈ្មោះម្តាយ..."
+            data-cell={`${rowIdx}-motherName`}
+            onFocus={() => {
+              setSelectedCell({ rowIdx, colKey: 'motherName', colName: 'ម្តាយ (ឈ្មោះ)' });
+              setSelectedRowIdx(rowIdx);
+            }}
+            onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'motherName')}
+            onChange={(e) => handleEmptyRowCellChange(rowIdx, 'motherName', e.target.value)}
+            className={cellClass('motherName')}
+          />
+        </td>
+
+        {/* 21. ម្តាយ - មុខរបរ */}
+        <td className="py-1 px-1 border-r border-slate-200">
+          <input
+            type="text"
+            placeholder="មុខរបរ..."
+            data-cell={`${rowIdx}-motherOccupation`}
+            onFocus={() => {
+              setSelectedCell({ rowIdx, colKey: 'motherOccupation', colName: 'ម្តាយ (មុខរបរ)' });
+              setSelectedRowIdx(rowIdx);
+            }}
+            onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'motherOccupation')}
+            onChange={(e) => handleEmptyRowCellChange(rowIdx, 'motherOccupation', e.target.value)}
+            className={cellClass('motherOccupation')}
+          />
+        </td>
+
+        {/* 22. ម្តាយ - លេខទូរស័ព្ទ */}
+        <td className="py-1 px-1 border-r border-slate-200">
+          <input
+            type="text"
+            placeholder="ទូរស័ព្ទ..."
+            data-cell={`${rowIdx}-motherPhone`}
+            onFocus={() => {
+              setSelectedCell({ rowIdx, colKey: 'motherPhone', colName: 'ម្តាយ (ទូរស័ព្ទ)' });
+              setSelectedRowIdx(rowIdx);
+            }}
+            onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'motherPhone')}
+            onChange={(e) => handleEmptyRowCellChange(rowIdx, 'motherPhone', e.target.value)}
+            className={`${cellClass('motherPhone')} font-mono`}
+          />
+        </td>
+
+        {/* 23. ផ្សេងៗ */}
+        <td className="py-1 px-1 border-r border-slate-200">
+          <input
+            type="text"
+            placeholder="ចំណាំ..."
+            data-cell={`${rowIdx}-otherNotes`}
+            onFocus={() => {
+              setSelectedCell({ rowIdx, colKey: 'otherNotes', colName: 'ផ្សេងៗ' });
+              setSelectedRowIdx(rowIdx);
+            }}
+            onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'otherNotes')}
+            onChange={(e) => handleEmptyRowCellChange(rowIdx, 'otherNotes', e.target.value)}
+            className={cellClass('otherNotes')}
+          />
+        </td>
+
+        {/* 24. សកម្មភាព */}
+        <td className="py-1 px-1 text-center no-print bg-slate-50/95 sticky right-0 z-10 border-l border-slate-200 shadow-xs print:hidden">
+          <span className="text-[11px] text-slate-400 font-medium italic">ក្រឡាទទេ</span>
+        </td>
+      </tr>
+    );
+  };
+
   return (
     <div className="space-y-3">
       {/* Clean, Modern, Elegant Header & Action Bar (Replacing messy cluttered panel) */}
@@ -274,6 +762,17 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
             >
               <Plus className="w-3.5 h-3.5 mr-1" />
               បន្ថែមសិស្សថ្មី
+            </button>
+
+            {/* Paste from Excel Button */}
+            <button
+              type="button"
+              onClick={() => setIsPasteModalOpen(true)}
+              className="inline-flex items-center px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer shrink-0"
+              title="បិទភ្ជាប់ទិន្នន័យដែលបាន Copy ពី Excel / XLSM (Ctrl+V)"
+            >
+              <Clipboard className="w-3.5 h-3.5 mr-1" />
+              បិទភ្ជាប់ពី Excel
             </button>
 
             {/* Excel Group */}
@@ -462,19 +961,62 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
       {/* Excel/XLSM Interactive Editable Spreadsheet Grid - EXACT REPLICA OF IMAGE 2 */}
       <div className="bg-white rounded-2xl border-2 border-blue-900/40 shadow-lg overflow-hidden print:border-none print:shadow-none print:rounded-none print:overflow-visible">
         {/* Spreadsheet Header Bar */}
-        <div className="bg-[#002060] text-white px-4 py-2 flex items-center justify-between text-xs font-bold no-print">
-          <div className="flex items-center space-x-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
-            <span>សន្លឹកទិន្នន័យ៖ បញ្ជីស្រង់ស្ថិតិ និងប្រវត្តិរូបសិស្ស.xlsm</span>
+        <div className="bg-[#002060] text-white px-4 py-2 flex flex-wrap items-center justify-between text-xs font-bold no-print gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span className="font-mono">សន្លឹកទិន្នន័យ៖ បញ្ជីស្រង់ស្ថិតិ និងប្រវត្តិរូបសិស្ស.xlsm</span>
+            {selectedCell ? (
+              <span className="px-2 py-0.5 bg-blue-900/90 text-amber-300 rounded font-mono text-[11px] border border-blue-400/40 shadow-xs flex items-center space-x-1">
+                <span>📍</span>
+                <span>ក្រឡា៖ <strong>[{selectedCell.colName}]</strong> ជួរដេកទី {selectedCell.rowIdx + 1}</span>
+              </span>
+            ) : (
+              <span className="text-[11px] text-blue-200 font-normal">
+                (ចុចលើក្រឡាដើម្បី Select ដូច Excel)
+              </span>
+            )}
           </div>
-          <div className="flex items-center space-x-3 text-[11px] text-blue-100 font-normal">
-            <span>💡 ចុចលើក្រឡាដើម្បីវាយបញ្ចូល/កែប្រែផ្ទាល់</span>
-            <span>|</span>
-            <span>⚡ រក្សាទុកស្វ័យប្រវត្តិ (Auto-Saved)</span>
+          <div className="flex flex-wrap items-center gap-2 text-[11px]">
+            <button
+              type="button"
+              onClick={() => setIsPasteModalOpen(true)}
+              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg cursor-pointer transition-colors font-bold flex items-center space-x-1.5 shadow-xs"
+              title="បិទភ្ជាប់ទិន្នន័យដែលបាន Copy ពី Excel (Ctrl+V)"
+            >
+              <Clipboard className="w-3.5 h-3.5" />
+              <span>បិទភ្ជាប់ពី Excel (Ctrl+V)</span>
+            </button>
+            <span className="text-blue-300">|</span>
+            <span className="text-blue-100 font-normal">⚡ រក្សាទុកស្វ័យប្រវត្តិ (Auto-Saved)</span>
           </div>
         </div>
 
-        <div ref={tableScrollRef} className="max-h-[70vh] print:max-h-none print:h-auto overflow-auto print:overflow-visible table-scrollbar relative print:border-none print:shadow-none">
+        {/* Empty State Banner if no students */}
+        {filteredStudents.length === 0 && (
+          <div className="bg-amber-50/90 border-b border-amber-200 px-4 py-2 text-xs text-amber-900 flex flex-wrap items-center justify-between gap-2 no-print">
+            <div className="flex items-center space-x-2">
+              <span className="text-base">📋</span>
+              <span>
+                <strong>ក្រឡាទទេរៀបចំរួចរាល់ (Empty Grid Ready)៖</strong> លោកគ្រូអ្នកគ្រូអាចចុចវាយបញ្ចូលផ្ទាល់ក្នុងក្រឡាខាងក្រោម ឬចុច <kbd className="px-1.5 py-0.5 bg-white border rounded shadow-2xs font-mono font-bold">Ctrl + V</kbd> ដើម្បីបិទភ្ជាប់ទិន្នន័យចម្លងពី Excel ចូលភ្លាមៗ!
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsPasteModalOpen(true)}
+              className="px-2.5 py-0.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold text-[11px] transition-colors cursor-pointer shadow-2xs"
+            >
+              + បើកផ្ទាំងបិទភ្ជាប់
+            </button>
+          </div>
+        )}
+
+        <div
+          ref={tableScrollRef}
+          tabIndex={0}
+          onPaste={handleTablePaste}
+          onKeyDown={handleTableKeyDown}
+          className="max-h-[70vh] print:max-h-none print:h-auto overflow-auto print:overflow-visible table-scrollbar relative print:border-none print:shadow-none focus:outline-none"
+        >
           <table className="w-full text-left border-collapse text-xs sm:text-[13px] print-fit-all">
             {/* Colgroup for 100% Page Fit in Print Mode */}
             <colgroup className="hidden print:table-column-group">
@@ -565,419 +1107,559 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
             {/* Table Body: Editable Rows with Enhanced Legible Font Sizes */}
             <tbody className="divide-y divide-slate-200 text-slate-800">
               {filteredStudents.length === 0 ? (
-                <tr>
-                  <td colSpan={24} className="py-12 text-center text-slate-400">
-                    <Users className="w-10 h-10 mx-auto text-slate-300 mb-2" />
-                    មិនមានទិន្នន័យសិស្សត្រូវនឹងលក្ខខណ្ឌស្វែងរកទេ
-                  </td>
-                </tr>
+                Array.from({ length: emptyRowCount }).map((_, idx) => renderEmptyRow(idx))
               ) : (
-                filteredStudents.map((stu, index) => {
-                  const age = stu.age || calculateAge(stu.dob);
+                <>
+                  {filteredStudents.map((stu, index) => {
+                    const age = stu.age || calculateAge(stu.dob);
+                    const isRowSelected = selectedRowIdx === index;
+                    const isCellSelected = (key: string) =>
+                      selectedCell?.rowIdx === index && selectedCell?.colKey === key;
+                    const cellRing = (key: string) =>
+                      isCellSelected(key) ? 'ring-2 ring-blue-600 bg-blue-50/80 font-bold z-10' : '';
 
-                  return (
-                    <tr
-                      key={stu.id}
-                      className="hover:bg-blue-50/40 transition-colors group border-b border-slate-200 print:break-inside-avoid"
-                    >
-                      {/* ល.រ (រត់តាមលំដាប់លំដោយ 1, 2, 3... Sticky on horizontal scroll) */}
-                      <td className="py-1 px-1 text-center font-bold text-slate-700 bg-slate-50/95 border-r border-slate-300 select-none sticky left-0 z-10 shadow-xs">
-                        <span className="inline-block px-2 py-0.5 rounded bg-slate-200/90 text-slate-800 text-xs sm:text-[13px] font-black font-mono print:hidden">
-                          {index + 1}
-                        </span>
-                        <span className="hidden print:inline-block font-mono font-bold text-[5.8pt]">
-                          {index + 1}
-                        </span>
-                      </td>
-
-                      {/* អត្តលេខ */}
-                      <td className="py-1 px-1 border-r border-slate-200">
-                        <input
-                          type="text"
-                          value={fromKhmerNum(stu.studentCode)}
-                          title={fromKhmerNum(stu.studentCode)}
-                          placeholder="STU-001"
-                          onChange={(e) => handleInlineChange(stu.id, 'studentCode', fromKhmerNum(e.target.value))}
-                          className="w-full font-mono text-xs sm:text-[12.5px] font-bold text-slate-800 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
-                        />
-                        <span className="hidden print:block font-mono font-bold truncate text-[5.5pt]">
-                          {fromKhmerNum(stu.studentCode)}
-                        </span>
-                      </td>
-
-                      {/* គោត្តនាម នាម */}
-                      <td className="py-1 px-1 border-r border-slate-200">
-                        <div className="flex items-center gap-1.5">
-                          <input
-                            type="text"
-                            value={stu.nameKh}
-                            title={stu.nameKh}
-                            placeholder="ឈ្មោះសិស្ស..."
-                            onChange={(e) => handleInlineChange(stu.id, 'nameKh', e.target.value)}
-                            className="flex-1 font-bold text-xs sm:text-[13px] text-slate-900 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
-                          />
-                          {selectedClassId === 'ALL' && (
-                            <span
-                              className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-black bg-indigo-50 text-indigo-700 border border-indigo-200 print:hidden select-none"
-                              title={`ថ្នាក់៖ ${classes.find((c) => c.id === stu.classId)?.name || 'មិនទាន់កំណត់'}`}
-                            >
-                              {classes.find((c) => c.id === stu.classId)?.name?.replace('ថ្នាក់ទី ', '') || '-'}
-                            </span>
-                          )}
-                        </div>
-                        <span className="hidden print:block font-bold truncate text-slate-900 text-[6pt]">
-                          {stu.nameKh}
-                        </span>
-                      </td>
-
-                      {/* ភេទ */}
-                      <td className="py-1 px-1 text-center border-r border-slate-200">
-                        <select
-                          value={stu.gender}
-                          onChange={(e) => handleInlineChange(stu.id, 'gender', e.target.value as Gender)}
-                          className={`w-full text-xs sm:text-[12px] font-bold rounded px-1.5 py-1 cursor-pointer border-0 print:hidden text-center transition-all ${
-                            stu.gender === 'ស្រី'
-                              ? 'bg-pink-100 text-pink-700 hover:bg-pink-200/80'
-                              : 'bg-blue-100 text-blue-700 hover:bg-blue-200/80'
-                          }`}
+                    return (
+                      <tr
+                        key={stu.id}
+                        className={`transition-colors group border-b border-slate-200 print:break-inside-avoid ${
+                          isRowSelected ? 'bg-blue-50/50' : 'hover:bg-blue-50/40'
+                        }`}
+                      >
+                        {/* ល.រ (រត់តាមលំដាប់លំដោយ 1, 2, 3... Sticky on horizontal scroll) */}
+                        <td
+                          onClick={() => {
+                            setSelectedRowIdx(index);
+                            setSelectedCell(null);
+                          }}
+                          className="py-1 px-1 text-center font-bold text-slate-700 bg-slate-50/95 border-r border-slate-300 select-none sticky left-0 z-10 shadow-xs cursor-pointer hover:bg-slate-200/80 transition-colors"
+                          title={`ជួរដេកទី ${index + 1} (ចុចដើម្បីជ្រើសជួរដេកទាំងមូល)`}
                         >
-                          <option value="ប្រុស">ប្រុស</option>
-                          <option value="ស្រី">ស្រី</option>
-                        </select>
-                        <span className={`hidden print:block font-bold text-center text-[5.5pt] ${stu.gender === 'ស្រី' ? 'text-pink-800' : 'text-blue-800'}`}>
-                          {stu.gender}
-                        </span>
-                      </td>
+                          <span className="inline-block px-2 py-0.5 rounded bg-slate-200/90 text-slate-800 text-xs sm:text-[13px] font-black font-mono print:hidden">
+                            {index + 1}
+                          </span>
+                          <span className="hidden print:inline-block font-mono font-bold text-[5.8pt]">
+                            {index + 1}
+                          </span>
+                        </td>
 
-                      {/* ថ្ងៃខែឆ្នាំកំណើត dd/mm/yyyy */}
-                      <td className="py-1 px-1 border-r border-slate-200">
-                        <div className="relative flex items-center justify-between">
+                        {/* អត្តលេខ */}
+                        <td className="py-1 px-1 border-r border-slate-200">
                           <input
                             type="text"
-                            value={formatToDMY(stu.dob)}
-                            title={`ថ្ងៃខែឆ្នាំកំណើត (dd/mm/yyyy): ${formatToDMY(stu.dob)}`}
-                            placeholder="dd/mm/yyyy"
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              const iso = parseDMYToISO(val);
-                              handleInlineChange(stu.id, 'dob', iso || val);
+                            value={fromKhmerNum(stu.studentCode)}
+                            title={fromKhmerNum(stu.studentCode)}
+                            placeholder="STU-001"
+                            data-cell={`${index}-studentCode`}
+                            onFocus={() => {
+                              setSelectedCell({ rowIdx: index, colKey: 'studentCode', colName: 'អត្តលេខ' });
+                              setSelectedRowIdx(index);
                             }}
-                            className="w-full text-xs sm:text-[12.5px] font-mono text-center text-slate-800 bg-transparent px-1 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
+                            onKeyDown={(e) => handleCellKeyDown(e, index, 'studentCode')}
+                            onChange={(e) => handleInlineChange(stu.id, 'studentCode', fromKhmerNum(e.target.value))}
+                            className={`w-full font-mono text-xs sm:text-[12.5px] font-bold text-slate-800 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none ${cellRing('studentCode')}`}
                           />
+                          <span className="hidden print:block font-mono font-bold truncate text-[5.5pt]">
+                            {fromKhmerNum(stu.studentCode)}
+                          </span>
+                        </td>
+
+                        {/* គោត្តនាម នាម */}
+                        <td className="py-1 px-1 border-r border-slate-200">
+                          <div className="flex items-center gap-1.5">
+                            <input
+                              type="text"
+                              value={stu.nameKh}
+                              title={stu.nameKh}
+                              placeholder="ឈ្មោះសិស្ស..."
+                              data-cell={`${index}-nameKh`}
+                              onFocus={() => {
+                                setSelectedCell({ rowIdx: index, colKey: 'nameKh', colName: 'គោត្តនាម នាម' });
+                                setSelectedRowIdx(index);
+                              }}
+                              onKeyDown={(e) => handleCellKeyDown(e, index, 'nameKh')}
+                              onChange={(e) => handleInlineChange(stu.id, 'nameKh', e.target.value)}
+                              className={`flex-1 font-bold text-xs sm:text-[13px] text-slate-900 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none ${cellRing('nameKh')}`}
+                            />
+                            {selectedClassId === 'ALL' && (
+                              <span
+                                className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-black bg-indigo-50 text-indigo-700 border border-indigo-200 print:hidden select-none"
+                                title={`ថ្នាក់៖ ${classes.find((c) => c.id === stu.classId)?.name || 'មិនទាន់កំណត់'}`}
+                              >
+                                {classes.find((c) => c.id === stu.classId)?.name?.replace('ថ្នាក់ទី ', '') || '-'}
+                              </span>
+                            )}
+                          </div>
+                          <span className="hidden print:block font-bold truncate text-slate-900 text-[6pt]">
+                            {stu.nameKh}
+                          </span>
+                        </td>
+
+                        {/* ភេទ */}
+                        <td className="py-1 px-1 text-center border-r border-slate-200">
+                          <select
+                            value={stu.gender}
+                            data-cell={`${index}-gender`}
+                            onFocus={() => {
+                              setSelectedCell({ rowIdx: index, colKey: 'gender', colName: 'ភេទ' });
+                              setSelectedRowIdx(index);
+                            }}
+                            onChange={(e) => handleInlineChange(stu.id, 'gender', e.target.value as Gender)}
+                            className={`w-full text-xs sm:text-[12px] font-bold rounded px-1.5 py-1 cursor-pointer border-0 print:hidden text-center transition-all ${
+                              stu.gender === 'ស្រី'
+                                ? 'bg-pink-100 text-pink-700 hover:bg-pink-200/80'
+                                : 'bg-blue-100 text-blue-700 hover:bg-blue-200/80'
+                            } ${cellRing('gender')}`}
+                          >
+                            <option value="ប្រុស">ប្រុស</option>
+                            <option value="ស្រី">ស្រី</option>
+                          </select>
+                          <span className={`hidden print:block font-bold text-center text-[5.5pt] ${stu.gender === 'ស្រី' ? 'text-pink-800' : 'text-blue-800'}`}>
+                            {stu.gender}
+                          </span>
+                        </td>
+
+                        {/* ថ្ងៃខែឆ្នាំកំណើត dd/mm/yyyy */}
+                        <td className="py-1 px-1 border-r border-slate-200">
+                          <div className="relative flex items-center justify-between">
+                            <input
+                              type="text"
+                              value={formatToDMY(stu.dob)}
+                              title={`ថ្ងៃខែឆ្នាំកំណើត (dd/mm/yyyy): ${formatToDMY(stu.dob)}`}
+                              placeholder="dd/mm/yyyy"
+                              data-cell={`${index}-dob`}
+                              onFocus={() => {
+                                setSelectedCell({ rowIdx: index, colKey: 'dob', colName: 'ថ្ងៃខែឆ្នាំកំណើត' });
+                                setSelectedRowIdx(index);
+                              }}
+                              onKeyDown={(e) => handleCellKeyDown(e, index, 'dob')}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                const iso = parseDMYToISO(val);
+                                handleInlineChange(stu.id, 'dob', iso || val);
+                              }}
+                              className={`w-full text-xs sm:text-[12.5px] font-mono text-center text-slate-800 bg-transparent px-1 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none ${cellRing('dob')}`}
+                            />
+                            <input
+                              type="date"
+                              value={stu.dob && stu.dob.includes('-') && stu.dob.length === 10 ? stu.dob : ''}
+                              onChange={(e) => {
+                                if (e.target.value) {
+                                  handleInlineChange(stu.id, 'dob', e.target.value);
+                                }
+                              }}
+                              className="w-4 h-4 opacity-35 hover:opacity-100 cursor-pointer print:hidden shrink-0 ml-0.5"
+                              title="ជ្រើសរើសពីប្រតិទិន"
+                            />
+                          </div>
+                          <span className="hidden print:block font-mono text-center text-[5.5pt] truncate">
+                            {formatToDMY(stu.dob) || ''}
+                          </span>
+                        </td>
+
+                        {/* អាយុ */}
+                        <td className="py-1 px-1 text-center font-bold text-xs sm:text-[13px] text-slate-700 bg-slate-50/50 border-r border-slate-200">
+                          <span className="print:hidden font-mono font-bold">{age}</span>
+                          <span className="hidden print:block text-center font-mono font-bold text-[5.5pt]">
+                            {age}
+                          </span>
+                        </td>
+
+                        {/* មកពីសាលា */}
+                        <td className="py-1 px-1 border-r border-slate-200">
                           <input
-                            type="date"
-                            value={stu.dob && stu.dob.includes('-') && stu.dob.length === 10 ? stu.dob : ''}
-                            onChange={(e) => {
-                              if (e.target.value) {
-                                handleInlineChange(stu.id, 'dob', e.target.value);
-                              }
+                            type="text"
+                            value={stu.originSchool || ''}
+                            title={stu.originSchool || ''}
+                            placeholder="សាលាចាស់..."
+                            data-cell={`${index}-originSchool`}
+                            onFocus={() => {
+                              setSelectedCell({ rowIdx: index, colKey: 'originSchool', colName: 'មកពីសាលា' });
+                              setSelectedRowIdx(index);
                             }}
-                            className="w-4 h-4 opacity-35 hover:opacity-100 cursor-pointer print:hidden shrink-0 ml-0.5"
-                            title="ជ្រើសរើសពីប្រតិទិន"
+                            onKeyDown={(e) => handleCellKeyDown(e, index, 'originSchool')}
+                            onChange={(e) => handleInlineChange(stu.id, 'originSchool', e.target.value)}
+                            className={`w-full text-xs sm:text-[12.5px] text-slate-800 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none ${cellRing('originSchool')}`}
                           />
-                        </div>
-                        <span className="hidden print:block font-mono text-center text-[5.5pt] truncate">
-                          {formatToDMY(stu.dob) || ''}
-                        </span>
-                      </td>
+                          <span className="hidden print:block truncate text-[5.5pt]">
+                            {stu.originSchool || ''}
+                          </span>
+                        </td>
 
-                      {/* អាយុ */}
-                      <td className="py-1 px-1 text-center font-bold text-xs sm:text-[13px] text-slate-700 bg-slate-50/50 border-r border-slate-200">
-                        <span className="print:hidden font-mono font-bold">{age}</span>
-                        <span className="hidden print:block text-center font-mono font-bold text-[5.5pt]">
-                          {age}
-                        </span>
-                      </td>
+                        {/* ទីកន្លែងកំណើត - ភូមិ */}
+                        <td className="py-1 px-1 border-r border-slate-200">
+                          <input
+                            type="text"
+                            value={stu.pobVillage || ''}
+                            title={stu.pobVillage || ''}
+                            placeholder="ភូមិ..."
+                            data-cell={`${index}-pobVillage`}
+                            onFocus={() => {
+                              setSelectedCell({ rowIdx: index, colKey: 'pobVillage', colName: 'ទីកន្លែងកំណើត (ភូមិ)' });
+                              setSelectedRowIdx(index);
+                            }}
+                            onKeyDown={(e) => handleCellKeyDown(e, index, 'pobVillage')}
+                            onChange={(e) => handleInlineChange(stu.id, 'pobVillage', e.target.value)}
+                            className={`w-full text-xs sm:text-[12.5px] text-slate-800 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none ${cellRing('pobVillage')}`}
+                          />
+                          <span className="hidden print:block truncate text-[5.2pt]">
+                            {stu.pobVillage || ''}
+                          </span>
+                        </td>
 
-                      {/* មកពីសាលា */}
-                      <td className="py-1 px-1 border-r border-slate-200">
-                        <input
-                          type="text"
-                          value={stu.originSchool || ''}
-                          title={stu.originSchool || ''}
-                          placeholder="សាលាចាស់..."
-                          onChange={(e) => handleInlineChange(stu.id, 'originSchool', e.target.value)}
-                          className="w-full text-xs sm:text-[12.5px] text-slate-800 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
-                        />
-                        <span className="hidden print:block truncate text-[5.5pt]">
-                          {stu.originSchool || ''}
-                        </span>
-                      </td>
+                        {/* ទីកន្លែងកំណើត - ឃុំ/សង្កាត់ */}
+                        <td className="py-1 px-1 border-r border-slate-200">
+                          <input
+                            type="text"
+                            value={stu.pobCommune || ''}
+                            title={stu.pobCommune || ''}
+                            placeholder="ឃុំ/សង្កាត់..."
+                            data-cell={`${index}-pobCommune`}
+                            onFocus={() => {
+                              setSelectedCell({ rowIdx: index, colKey: 'pobCommune', colName: 'ទីកន្លែងកំណើត (ឃុំ/សង្កាត់)' });
+                              setSelectedRowIdx(index);
+                            }}
+                            onKeyDown={(e) => handleCellKeyDown(e, index, 'pobCommune')}
+                            onChange={(e) => handleInlineChange(stu.id, 'pobCommune', e.target.value)}
+                            className={`w-full text-xs sm:text-[12.5px] text-slate-800 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none ${cellRing('pobCommune')}`}
+                          />
+                          <span className="hidden print:block truncate text-[5.2pt]">
+                            {stu.pobCommune || ''}
+                          </span>
+                        </td>
 
-                      {/* ទីកន្លែងកំណើត - ភូមិ */}
-                      <td className="py-1 px-1 border-r border-slate-200">
-                        <input
-                          type="text"
-                          value={stu.pobVillage || ''}
-                          title={stu.pobVillage || ''}
-                          placeholder="ភូមិ..."
-                          onChange={(e) => handleInlineChange(stu.id, 'pobVillage', e.target.value)}
-                          className="w-full text-xs sm:text-[12.5px] text-slate-800 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
-                        />
-                        <span className="hidden print:block truncate text-[5.2pt]">
-                          {stu.pobVillage || ''}
-                        </span>
-                      </td>
+                        {/* ទីកន្លែងកំណើត - ស្រុក/ខណ្ឌ */}
+                        <td className="py-1 px-1 border-r border-slate-200">
+                          <input
+                            type="text"
+                            value={stu.pobDistrict || ''}
+                            title={stu.pobDistrict || ''}
+                            placeholder="ស្រុក/ខណ្ឌ..."
+                            data-cell={`${index}-pobDistrict`}
+                            onFocus={() => {
+                              setSelectedCell({ rowIdx: index, colKey: 'pobDistrict', colName: 'ទីកន្លែងកំណើត (ស្រុក/ខណ្ឌ)' });
+                              setSelectedRowIdx(index);
+                            }}
+                            onKeyDown={(e) => handleCellKeyDown(e, index, 'pobDistrict')}
+                            onChange={(e) => handleInlineChange(stu.id, 'pobDistrict', e.target.value)}
+                            className={`w-full text-xs sm:text-[12.5px] text-slate-800 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none ${cellRing('pobDistrict')}`}
+                          />
+                          <span className="hidden print:block truncate text-[5.2pt]">
+                            {stu.pobDistrict || ''}
+                          </span>
+                        </td>
 
-                      {/* ទីកន្លែងកំណើត - ឃុំ/សង្កាត់ */}
-                      <td className="py-1 px-1 border-r border-slate-200">
-                        <input
-                          type="text"
-                          value={stu.pobCommune || ''}
-                          title={stu.pobCommune || ''}
-                          placeholder="ឃុំ/សង្កាត់..."
-                          onChange={(e) => handleInlineChange(stu.id, 'pobCommune', e.target.value)}
-                          className="w-full text-xs sm:text-[12.5px] text-slate-800 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
-                        />
-                        <span className="hidden print:block truncate text-[5.2pt]">
-                          {stu.pobCommune || ''}
-                        </span>
-                      </td>
+                        {/* ទីកន្លែងកំណើត - ខេត្ត/រាជធានី */}
+                        <td className="py-1 px-1 border-r border-slate-200">
+                          <input
+                            type="text"
+                            value={stu.pobProvince || stu.pob || ''}
+                            title={stu.pobProvince || stu.pob || ''}
+                            placeholder="ខេត្ត/រាជធានី..."
+                            data-cell={`${index}-pobProvince`}
+                            onFocus={() => {
+                              setSelectedCell({ rowIdx: index, colKey: 'pobProvince', colName: 'ទីកន្លែងកំណើត (ខេត្ត/រាជធានី)' });
+                              setSelectedRowIdx(index);
+                            }}
+                            onKeyDown={(e) => handleCellKeyDown(e, index, 'pobProvince')}
+                            onChange={(e) => handleInlineChange(stu.id, 'pobProvince', e.target.value)}
+                            className={`w-full text-xs sm:text-[12.5px] text-slate-800 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none ${cellRing('pobProvince')}`}
+                          />
+                          <span className="hidden print:block truncate text-[5.2pt]">
+                            {stu.pobProvince || stu.pob || ''}
+                          </span>
+                        </td>
 
-                      {/* ទីកន្លែងកំណើត - ស្រុក/ខណ្ឌ */}
-                      <td className="py-1 px-1 border-r border-slate-200">
-                        <input
-                          type="text"
-                          value={stu.pobDistrict || ''}
-                          title={stu.pobDistrict || ''}
-                          placeholder="ស្រុក/ខណ្ឌ..."
-                          onChange={(e) => handleInlineChange(stu.id, 'pobDistrict', e.target.value)}
-                          className="w-full text-xs sm:text-[12.5px] text-slate-800 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
-                        />
-                        <span className="hidden print:block truncate text-[5.2pt]">
-                          {stu.pobDistrict || ''}
-                        </span>
-                      </td>
+                        {/* អាសយដ្ឋានបច្ចុប្បន្ន - ភូមិ */}
+                        <td className="py-1 px-1 border-r border-slate-200">
+                          <input
+                            type="text"
+                            value={stu.addrVillage || ''}
+                            title={stu.addrVillage || ''}
+                            placeholder="ភូមិ..."
+                            data-cell={`${index}-addrVillage`}
+                            onFocus={() => {
+                              setSelectedCell({ rowIdx: index, colKey: 'addrVillage', colName: 'អាសយដ្ឋានបច្ចុប្បន្ន (ភូមិ)' });
+                              setSelectedRowIdx(index);
+                            }}
+                            onKeyDown={(e) => handleCellKeyDown(e, index, 'addrVillage')}
+                            onChange={(e) => handleInlineChange(stu.id, 'addrVillage', e.target.value)}
+                            className={`w-full text-xs sm:text-[12.5px] text-slate-800 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none ${cellRing('addrVillage')}`}
+                          />
+                          <span className="hidden print:block truncate text-[5.2pt]">
+                            {stu.addrVillage || ''}
+                          </span>
+                        </td>
 
-                      {/* ទីកន្លែងកំណើត - ខេត្ត/រាជធានី */}
-                      <td className="py-1 px-1 border-r border-slate-200">
-                        <input
-                          type="text"
-                          value={stu.pobProvince || stu.pob || ''}
-                          title={stu.pobProvince || stu.pob || ''}
-                          placeholder="ខេត្ត/រាជធានី..."
-                          onChange={(e) => handleInlineChange(stu.id, 'pobProvince', e.target.value)}
-                          className="w-full text-xs sm:text-[12.5px] text-slate-800 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
-                        />
-                        <span className="hidden print:block truncate text-[5.2pt]">
-                          {stu.pobProvince || stu.pob || ''}
-                        </span>
-                      </td>
+                        {/* អាសយដ្ឋានបច្ចុប្បន្ន - ឃុំ */}
+                        <td className="py-1 px-1 border-r border-slate-200">
+                          <input
+                            type="text"
+                            value={stu.addrCommune || ''}
+                            title={stu.addrCommune || ''}
+                            placeholder="ឃុំ..."
+                            data-cell={`${index}-addrCommune`}
+                            onFocus={() => {
+                              setSelectedCell({ rowIdx: index, colKey: 'addrCommune', colName: 'អាសយដ្ឋានបច្ចុប្បន្ន (ឃុំ)' });
+                              setSelectedRowIdx(index);
+                            }}
+                            onKeyDown={(e) => handleCellKeyDown(e, index, 'addrCommune')}
+                            onChange={(e) => handleInlineChange(stu.id, 'addrCommune', e.target.value)}
+                            className={`w-full text-xs sm:text-[12.5px] text-slate-800 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none ${cellRing('addrCommune')}`}
+                          />
+                          <span className="hidden print:block truncate text-[5.2pt]">
+                            {stu.addrCommune || ''}
+                          </span>
+                        </td>
 
-                      {/* អាសយដ្ឋានបច្ចុប្បន្ន - ភូមិ */}
-                      <td className="py-1 px-1 border-r border-slate-200">
-                        <input
-                          type="text"
-                          value={stu.addrVillage || ''}
-                          title={stu.addrVillage || ''}
-                          placeholder="ភូមិ..."
-                          onChange={(e) => handleInlineChange(stu.id, 'addrVillage', e.target.value)}
-                          className="w-full text-xs sm:text-[12.5px] text-slate-800 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
-                        />
-                        <span className="hidden print:block truncate text-[5.2pt]">
-                          {stu.addrVillage || ''}
-                        </span>
-                      </td>
+                        {/* អាសយដ្ឋានបច្ចុប្បន្ន - ស្រុក */}
+                        <td className="py-1 px-1 border-r border-slate-200">
+                          <input
+                            type="text"
+                            value={stu.addrDistrict || ''}
+                            title={stu.addrDistrict || ''}
+                            placeholder="ស្រុក..."
+                            data-cell={`${index}-addrDistrict`}
+                            onFocus={() => {
+                              setSelectedCell({ rowIdx: index, colKey: 'addrDistrict', colName: 'អាសយដ្ឋានបច្ចុប្បន្ន (ស្រុក)' });
+                              setSelectedRowIdx(index);
+                            }}
+                            onKeyDown={(e) => handleCellKeyDown(e, index, 'addrDistrict')}
+                            onChange={(e) => handleInlineChange(stu.id, 'addrDistrict', e.target.value)}
+                            className={`w-full text-xs sm:text-[12.5px] text-slate-800 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none ${cellRing('addrDistrict')}`}
+                          />
+                          <span className="hidden print:block truncate text-[5.2pt]">
+                            {stu.addrDistrict || ''}
+                          </span>
+                        </td>
 
-                      {/* អាសយដ្ឋានបច្ចុប្បន្ន - ឃុំ */}
-                      <td className="py-1 px-1 border-r border-slate-200">
-                        <input
-                          type="text"
-                          value={stu.addrCommune || ''}
-                          title={stu.addrCommune || ''}
-                          placeholder="ឃុំ..."
-                          onChange={(e) => handleInlineChange(stu.id, 'addrCommune', e.target.value)}
-                          className="w-full text-xs sm:text-[12.5px] text-slate-800 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
-                        />
-                        <span className="hidden print:block truncate text-[5.2pt]">
-                          {stu.addrCommune || ''}
-                        </span>
-                      </td>
+                        {/* អាសយដ្ឋានបច្ចុប្បន្ន - ខេត្ត */}
+                        <td className="py-1 px-1 border-r border-slate-200">
+                          <input
+                            type="text"
+                            value={stu.addrProvince || stu.currentAddress || ''}
+                            title={stu.addrProvince || stu.currentAddress || ''}
+                            placeholder="ខេត្ត..."
+                            data-cell={`${index}-addrProvince`}
+                            onFocus={() => {
+                              setSelectedCell({ rowIdx: index, colKey: 'addrProvince', colName: 'អាសយដ្ឋានបច្ចុប្បន្ន (ខេត្ត)' });
+                              setSelectedRowIdx(index);
+                            }}
+                            onKeyDown={(e) => handleCellKeyDown(e, index, 'addrProvince')}
+                            onChange={(e) => handleInlineChange(stu.id, 'addrProvince', e.target.value)}
+                            className={`w-full text-xs sm:text-[12.5px] text-slate-800 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none ${cellRing('addrProvince')}`}
+                          />
+                          <span className="hidden print:block truncate text-[5.2pt]">
+                            {stu.addrProvince || stu.currentAddress || ''}
+                          </span>
+                        </td>
 
-                      {/* អាសយដ្ឋានបច្ចុប្បន្ន - ស្រុក */}
-                      <td className="py-1 px-1 border-r border-slate-200">
-                        <input
-                          type="text"
-                          value={stu.addrDistrict || ''}
-                          title={stu.addrDistrict || ''}
-                          placeholder="ស្រុក..."
-                          onChange={(e) => handleInlineChange(stu.id, 'addrDistrict', e.target.value)}
-                          className="w-full text-xs sm:text-[12.5px] text-slate-800 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
-                        />
-                        <span className="hidden print:block truncate text-[5.2pt]">
-                          {stu.addrDistrict || ''}
-                        </span>
-                      </td>
+                        {/* លេខទូរស័ព្ទផ្ទាល់ខ្លួន */}
+                        <td className="py-1 px-1 border-r border-slate-200">
+                          <input
+                            type="text"
+                            value={stu.studentPhone || ''}
+                            title={stu.studentPhone || ''}
+                            placeholder="ទូរស័ព្ទសិស្ស..."
+                            data-cell={`${index}-studentPhone`}
+                            onFocus={() => {
+                              setSelectedCell({ rowIdx: index, colKey: 'studentPhone', colName: 'លេខទូរស័ព្ទផ្ទាល់ខ្លួន' });
+                              setSelectedRowIdx(index);
+                            }}
+                            onKeyDown={(e) => handleCellKeyDown(e, index, 'studentPhone')}
+                            onChange={(e) => handleInlineChange(stu.id, 'studentPhone', e.target.value)}
+                            className={`w-full text-xs sm:text-[12.5px] font-mono font-bold text-blue-700 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none ${cellRing('studentPhone')}`}
+                          />
+                          <span className="hidden print:block font-mono text-center text-[5.2pt] truncate">
+                            {stu.studentPhone || ''}
+                          </span>
+                        </td>
 
-                      {/* អាសយដ្ឋានបច្ចុប្បន្ន - ខេត្ត */}
-                      <td className="py-1 px-1 border-r border-slate-200">
-                        <input
-                          type="text"
-                          value={stu.addrProvince || stu.currentAddress || ''}
-                          title={stu.addrProvince || stu.currentAddress || ''}
-                          placeholder="ខេត្ត..."
-                          onChange={(e) => handleInlineChange(stu.id, 'addrProvince', e.target.value)}
-                          className="w-full text-xs sm:text-[12.5px] text-slate-800 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
-                        />
-                        <span className="hidden print:block truncate text-[5.2pt]">
-                          {stu.addrProvince || stu.currentAddress || ''}
-                        </span>
-                      </td>
+                        {/* ឪពុក - ឈ្មោះ */}
+                        <td className="py-1 px-1 border-r border-slate-200">
+                          <input
+                            type="text"
+                            value={stu.fatherName || stu.guardianName || ''}
+                            title={stu.fatherName || stu.guardianName || ''}
+                            placeholder="ឈ្មោះឪពុក..."
+                            data-cell={`${index}-fatherName`}
+                            onFocus={() => {
+                              setSelectedCell({ rowIdx: index, colKey: 'fatherName', colName: 'ឪពុក (ឈ្មោះ)' });
+                              setSelectedRowIdx(index);
+                            }}
+                            onKeyDown={(e) => handleCellKeyDown(e, index, 'fatherName')}
+                            onChange={(e) => handleInlineChange(stu.id, 'fatherName', e.target.value)}
+                            className={`w-full text-xs sm:text-[12.5px] font-semibold text-slate-850 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none ${cellRing('fatherName')}`}
+                          />
+                          <span className="hidden print:block truncate text-[5.5pt]">
+                            {stu.fatherName || stu.guardianName || ''}
+                          </span>
+                        </td>
 
-                      {/* លេខទូរស័ព្ទផ្ទាល់ខ្លួន */}
-                      <td className="py-1 px-1 border-r border-slate-200">
-                        <input
-                          type="text"
-                          value={stu.studentPhone || ''}
-                          title={stu.studentPhone || ''}
-                          placeholder="ទូរស័ព្ទសិស្ស..."
-                          onChange={(e) => handleInlineChange(stu.id, 'studentPhone', e.target.value)}
-                          className="w-full text-xs sm:text-[12.5px] font-mono font-bold text-blue-700 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
-                        />
-                        <span className="hidden print:block font-mono text-center text-[5.2pt] truncate">
-                          {stu.studentPhone || ''}
-                        </span>
-                      </td>
+                        {/* ឪពុក - មុខរបរ */}
+                        <td className="py-1 px-1 border-r border-slate-200">
+                          <input
+                            type="text"
+                            value={stu.fatherOccupation || stu.guardianOccupation || ''}
+                            title={stu.fatherOccupation || stu.guardianOccupation || ''}
+                            placeholder="មុខរបរ..."
+                            data-cell={`${index}-fatherOccupation`}
+                            onFocus={() => {
+                              setSelectedCell({ rowIdx: index, colKey: 'fatherOccupation', colName: 'ឪពុក (មុខរបរ)' });
+                              setSelectedRowIdx(index);
+                            }}
+                            onKeyDown={(e) => handleCellKeyDown(e, index, 'fatherOccupation')}
+                            onChange={(e) => handleInlineChange(stu.id, 'fatherOccupation', e.target.value)}
+                            className={`w-full text-xs sm:text-[12.5px] text-slate-800 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none ${cellRing('fatherOccupation')}`}
+                          />
+                          <span className="hidden print:block truncate text-[5.2pt]">
+                            {stu.fatherOccupation || stu.guardianOccupation || ''}
+                          </span>
+                        </td>
 
-                      {/* ឪពុក - ឈ្មោះ */}
-                      <td className="py-1 px-1 border-r border-slate-200">
-                        <input
-                          type="text"
-                          value={stu.fatherName || stu.guardianName || ''}
-                          title={stu.fatherName || stu.guardianName || ''}
-                          placeholder="ឈ្មោះឪពុក..."
-                          onChange={(e) => handleInlineChange(stu.id, 'fatherName', e.target.value)}
-                          className="w-full text-xs sm:text-[12.5px] font-semibold text-slate-850 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
-                        />
-                        <span className="hidden print:block truncate text-[5.5pt]">
-                          {stu.fatherName || stu.guardianName || ''}
-                        </span>
-                      </td>
+                        {/* ឪពុក - លេខទូរស័ព្ទ */}
+                        <td className="py-1 px-1 border-r border-slate-200">
+                          <input
+                            type="text"
+                            value={stu.fatherPhone || stu.guardianPhone || ''}
+                            title={stu.fatherPhone || stu.guardianPhone || ''}
+                            placeholder="ទូរស័ព្ទ..."
+                            data-cell={`${index}-fatherPhone`}
+                            onFocus={() => {
+                              setSelectedCell({ rowIdx: index, colKey: 'fatherPhone', colName: 'ឪពុក (ទូរស័ព្ទ)' });
+                              setSelectedRowIdx(index);
+                            }}
+                            onKeyDown={(e) => handleCellKeyDown(e, index, 'fatherPhone')}
+                            onChange={(e) => handleInlineChange(stu.id, 'fatherPhone', e.target.value)}
+                            className={`w-full text-xs sm:text-[12.5px] font-mono text-slate-800 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none ${cellRing('fatherPhone')}`}
+                          />
+                          <span className="hidden print:block font-mono text-center text-[5.2pt] truncate">
+                            {stu.fatherPhone || stu.guardianPhone || ''}
+                          </span>
+                        </td>
 
-                      {/* ឪពុក - មុខរបរ */}
-                      <td className="py-1 px-1 border-r border-slate-200">
-                        <input
-                          type="text"
-                          value={stu.fatherOccupation || stu.guardianOccupation || ''}
-                          title={stu.fatherOccupation || stu.guardianOccupation || ''}
-                          placeholder="មុខរបរ..."
-                          onChange={(e) => handleInlineChange(stu.id, 'fatherOccupation', e.target.value)}
-                          className="w-full text-xs sm:text-[12.5px] text-slate-800 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
-                        />
-                        <span className="hidden print:block truncate text-[5.2pt]">
-                          {stu.fatherOccupation || stu.guardianOccupation || ''}
-                        </span>
-                      </td>
+                        {/* ម្តាយ - ឈ្មោះ */}
+                        <td className="py-1 px-1 border-r border-slate-200">
+                          <input
+                            type="text"
+                            value={stu.motherName || ''}
+                            title={stu.motherName || ''}
+                            placeholder="ឈ្មោះម្តាយ..."
+                            data-cell={`${index}-motherName`}
+                            onFocus={() => {
+                              setSelectedCell({ rowIdx: index, colKey: 'motherName', colName: 'ម្តាយ (ឈ្មោះ)' });
+                              setSelectedRowIdx(index);
+                            }}
+                            onKeyDown={(e) => handleCellKeyDown(e, index, 'motherName')}
+                            onChange={(e) => handleInlineChange(stu.id, 'motherName', e.target.value)}
+                            className={`w-full text-xs sm:text-[12.5px] font-semibold text-slate-850 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none ${cellRing('motherName')}`}
+                          />
+                          <span className="hidden print:block truncate text-[5.5pt]">
+                            {stu.motherName || ''}
+                          </span>
+                        </td>
 
-                      {/* ឪពុក - លេខទូរស័ព្ទ */}
-                      <td className="py-1 px-1 border-r border-slate-200">
-                        <input
-                          type="text"
-                          value={stu.fatherPhone || stu.guardianPhone || ''}
-                          title={stu.fatherPhone || stu.guardianPhone || ''}
-                          placeholder="ទូរស័ព្ទ..."
-                          onChange={(e) => handleInlineChange(stu.id, 'fatherPhone', e.target.value)}
-                          className="w-full text-xs sm:text-[12.5px] font-mono text-slate-800 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
-                        />
-                        <span className="hidden print:block font-mono text-center text-[5.2pt] truncate">
-                          {stu.fatherPhone || stu.guardianPhone || ''}
-                        </span>
-                      </td>
+                        {/* ម្តាយ - មុខរបរ */}
+                        <td className="py-1 px-1 border-r border-slate-200">
+                          <input
+                            type="text"
+                            value={stu.motherOccupation || ''}
+                            title={stu.motherOccupation || ''}
+                            placeholder="មុខរបរ..."
+                            data-cell={`${index}-motherOccupation`}
+                            onFocus={() => {
+                              setSelectedCell({ rowIdx: index, colKey: 'motherOccupation', colName: 'ម្តាយ (មុខរបរ)' });
+                              setSelectedRowIdx(index);
+                            }}
+                            onKeyDown={(e) => handleCellKeyDown(e, index, 'motherOccupation')}
+                            onChange={(e) => handleInlineChange(stu.id, 'motherOccupation', e.target.value)}
+                            className={`w-full text-xs sm:text-[12.5px] text-slate-800 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none ${cellRing('motherOccupation')}`}
+                          />
+                          <span className="hidden print:block truncate text-[5.2pt]">
+                            {stu.motherOccupation || ''}
+                          </span>
+                        </td>
 
-                      {/* ម្តាយ - ឈ្មោះ */}
-                      <td className="py-1 px-1 border-r border-slate-200">
-                        <input
-                          type="text"
-                          value={stu.motherName || ''}
-                          title={stu.motherName || ''}
-                          placeholder="ឈ្មោះម្តាយ..."
-                          onChange={(e) => handleInlineChange(stu.id, 'motherName', e.target.value)}
-                          className="w-full text-xs sm:text-[12.5px] font-semibold text-slate-850 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
-                        />
-                        <span className="hidden print:block truncate text-[5.5pt]">
-                          {stu.motherName || ''}
-                        </span>
-                      </td>
+                        {/* ម្តាយ - លេខទូរស័ព្ទ */}
+                        <td className="py-1 px-1 border-r border-slate-200">
+                          <input
+                            type="text"
+                            value={stu.motherPhone || ''}
+                            title={stu.motherPhone || ''}
+                            placeholder="ទូរស័ព្ទ..."
+                            data-cell={`${index}-motherPhone`}
+                            onFocus={() => {
+                              setSelectedCell({ rowIdx: index, colKey: 'motherPhone', colName: 'ម្តាយ (ទូរស័ព្ទ)' });
+                              setSelectedRowIdx(index);
+                            }}
+                            onKeyDown={(e) => handleCellKeyDown(e, index, 'motherPhone')}
+                            onChange={(e) => handleInlineChange(stu.id, 'motherPhone', e.target.value)}
+                            className={`w-full text-xs sm:text-[12.5px] font-mono text-slate-800 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none ${cellRing('motherPhone')}`}
+                          />
+                          <span className="hidden print:block font-mono text-center text-[5.2pt] truncate">
+                            {stu.motherPhone || ''}
+                          </span>
+                        </td>
 
-                      {/* ម្តាយ - មុខរបរ */}
-                      <td className="py-1 px-1 border-r border-slate-200">
-                        <input
-                          type="text"
-                          value={stu.motherOccupation || ''}
-                          title={stu.motherOccupation || ''}
-                          placeholder="មុខរបរ..."
-                          onChange={(e) => handleInlineChange(stu.id, 'motherOccupation', e.target.value)}
-                          className="w-full text-xs sm:text-[12.5px] text-slate-800 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
-                        />
-                        <span className="hidden print:block truncate text-[5.2pt]">
-                          {stu.motherOccupation || ''}
-                        </span>
-                      </td>
+                        {/* ផ្សេងៗ */}
+                        <td className="py-1 px-1 border-r border-slate-200">
+                          <input
+                            type="text"
+                            value={stu.otherNotes || stu.notes || ''}
+                            title={stu.otherNotes || stu.notes || ''}
+                            placeholder="ចំណាំ..."
+                            data-cell={`${index}-otherNotes`}
+                            onFocus={() => {
+                              setSelectedCell({ rowIdx: index, colKey: 'otherNotes', colName: 'ផ្សេងៗ' });
+                              setSelectedRowIdx(index);
+                            }}
+                            onKeyDown={(e) => handleCellKeyDown(e, index, 'otherNotes')}
+                            onChange={(e) => handleInlineChange(stu.id, 'otherNotes', e.target.value)}
+                            className={`w-full text-xs sm:text-[12.5px] text-slate-700 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none ${cellRing('otherNotes')}`}
+                          />
+                          <span className="hidden print:block truncate text-[5.2pt]">
+                            {stu.otherNotes || stu.notes || ''}
+                          </span>
+                        </td>
 
-                      {/* ម្តាយ - លេខទូរស័ព្ទ */}
-                      <td className="py-1 px-1 border-r border-slate-200">
-                        <input
-                          type="text"
-                          value={stu.motherPhone || ''}
-                          title={stu.motherPhone || ''}
-                          placeholder="ទូរស័ព្ទ..."
-                          onChange={(e) => handleInlineChange(stu.id, 'motherPhone', e.target.value)}
-                          className="w-full text-xs sm:text-[12.5px] font-mono text-slate-800 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
-                        />
-                        <span className="hidden print:block font-mono text-center text-[5.2pt] truncate">
-                          {stu.motherPhone || ''}
-                        </span>
-                      </td>
+                        {/* សកម្មភាព (Sticky right on horizontal scroll) */}
+                        <td className="py-1 px-1 text-center no-print bg-slate-50/95 sticky right-0 z-10 border-l border-slate-200 shadow-xs print:hidden">
+                          <div className="flex items-center justify-center space-x-1">
+                            {/* ចម្លងសិស្ស */}
+                            <button
+                              onClick={() => handleDirectDuplicate(stu)}
+                              className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
+                              title="ចម្លងសិស្ស (បង្កើតសិស្សស្ទួន)"
+                            >
+                              <Copy className="w-4 h-4" />
+                            </button>
 
-                      {/* ផ្សេងៗ */}
-                      <td className="py-1 px-1 border-r border-slate-200">
-                        <input
-                          type="text"
-                          value={stu.otherNotes || stu.notes || ''}
-                          title={stu.otherNotes || stu.notes || ''}
-                          placeholder="ចំណាំ..."
-                          onChange={(e) => handleInlineChange(stu.id, 'otherNotes', e.target.value)}
-                          className="w-full text-xs sm:text-[12.5px] text-slate-700 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
-                        />
-                        <span className="hidden print:block truncate text-[5.2pt]">
-                          {stu.otherNotes || stu.notes || ''}
-                        </span>
-                      </td>
+                            {/* មើលប្រវត្តិរូប */}
+                            <button
+                              onClick={() => setViewingStudent(stu)}
+                              className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                              title="មើលប្រវត្តិរូបលម្អិត"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
 
-                      {/* សកម្មភាព (Sticky right on horizontal scroll) */}
-                      <td className="py-1 px-1 text-center no-print bg-slate-50/95 sticky right-0 z-10 border-l border-slate-200 shadow-xs print:hidden">
-                        <div className="flex items-center justify-center space-x-1">
-                          {/* ចម្លងសិស្ស */}
-                          <button
-                            onClick={() => handleDirectDuplicate(stu)}
-                            className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
-                            title="ចម្លងសិស្ស (បង្កើតសិស្សស្ទួន)"
-                          >
-                            <Copy className="w-4 h-4" />
-                          </button>
-
-                          {/* មើលប្រវត្តិរូប */}
-                          <button
-                            onClick={() => setViewingStudent(stu)}
-                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-                            title="មើលប្រវត្តិរូបលម្អិត"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-
-                          {/* លុប */}
-                          <button
-                            onClick={() => handleDirectDelete(stu)}
-                            className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                            title="លុបសិស្សនេះចេញ"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
+                            {/* លុប */}
+                            <button
+                              onClick={() => handleDirectDelete(stu)}
+                              className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                              title="លុបសិស្សនេះចេញ"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {/* Append 3 interactive empty rows at the bottom for quick addition */}
+                  {Array.from({ length: 3 }).map((_, idx) =>
+                    renderEmptyRow(filteredStudents.length + idx)
+                  )}
+                </>
               )}
             </tbody>
           </table>
@@ -1007,6 +1689,31 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
             >
               ស្តាំ
               <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
+            </button>
+
+            {/* Quick Add 5 Empty Rows */}
+            <button
+              type="button"
+              onClick={() => {
+                setEmptyRowCount((prev) => prev + 5);
+                showToast('➕ បានបន្ថែម ៥ ជួរដេកទទេសម្រាប់វាយបញ្ចូល');
+              }}
+              className="inline-flex items-center px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg font-bold text-emerald-800 shadow-2xs transition-colors cursor-pointer text-xs"
+              title="បន្ថែម ៥ ជួរដេកទទេបន្ថែមទៀត"
+            >
+              <Plus className="w-3.5 h-3.5 mr-0.5" />
+              + ៥ ជួរទទេ
+            </button>
+
+            {/* Quick Open Paste Modal */}
+            <button
+              type="button"
+              onClick={() => setIsPasteModalOpen(true)}
+              className="inline-flex items-center px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 border border-indigo-300 rounded-lg font-bold text-indigo-800 shadow-2xs transition-colors cursor-pointer text-xs"
+              title="បិទភ្ជាប់ទិន្នន័យពី Excel (Ctrl+V)"
+            >
+              <Clipboard className="w-3.5 h-3.5 mr-0.5" />
+              បិទភ្ជាប់ Excel
             </button>
 
             {/* Direct Section Jump Tabs */}
@@ -1265,6 +1972,19 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
         defaultClassId={activeClassId}
         onSave={handleSaveNewStudent}
         nextRollNo={1}
+      />
+
+      {/* Excel Direct Paste Modal */}
+      <StudentPasteModal
+        isOpen={isPasteModalOpen}
+        onClose={() => setIsPasteModalOpen(false)}
+        classId={activeClassId}
+        className={currentClassName}
+        startRollNo={filteredStudents.length + 1}
+        onSuccess={(count) => {
+          onRefresh();
+          showToast(`📋 បានបញ្ចូលសិស្សចំនួន ${count} នាក់ពី Excel ដោយជោគជ័យ!`);
+        }}
       />
     </div>
   );

@@ -161,3 +161,240 @@ export async function parseExcelStudents(file: File, classId: string): Promise<P
     reader.readAsArrayBuffer(file);
   });
 }
+
+/**
+ * Parse tab-separated or comma-separated text copied from Excel/XLSM/Sheets
+ */
+export function parsePastedExcelText(
+  pastedText: string,
+  classId: string,
+  startRollNo = 1
+): Partial<Student>[] {
+  if (!pastedText || !pastedText.trim()) return [];
+
+  const rawLines = pastedText
+    .trim()
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+
+  if (rawLines.length === 0) return [];
+
+  // Check delimiter (Tab is standard for Excel clipboard, Comma fallback)
+  const rows = rawLines.map((line) => {
+    if (line.includes('\t')) {
+      return line.split('\t').map((c) => c.trim().replace(/^["']|["']$/g, ''));
+    }
+    return line.split(',').map((c) => c.trim().replace(/^["']|["']$/g, ''));
+  });
+
+  // Check if first row is a table header
+  let startIndex = 0;
+  const firstRowStr = rows[0].join(' ').toLowerCase();
+  const isHeader =
+    firstRowStr.includes('ល.រ') ||
+    firstRowStr.includes('អត្តលេខ') ||
+    firstRowStr.includes('គោត្តនាម') ||
+    firstRowStr.includes('ឈ្មោះ') ||
+    firstRowStr.includes('ភេទ') ||
+    firstRowStr.includes('name') ||
+    firstRowStr.includes('gender') ||
+    firstRowStr.includes('code');
+
+  if (isHeader) {
+    startIndex = 1;
+  }
+
+  // Khmer to Arabic digits map
+  const khmerToArabic = (str: string) => {
+    const kMap: Record<string, string> = {
+      '០': '0', '១': '1', '២': '2', '៣': '3', '៤': '4',
+      '៥': '5', '៦': '6', '៧': '7', '៨': '8', '៩': '9',
+    };
+    return str.replace(/[០-៩]/g, (ch) => kMap[ch] || ch);
+  };
+
+  const normalizeDate = (val: string): string => {
+    if (!val) return '2011-01-01';
+    val = khmerToArabic(val).trim();
+    // Case 1: DD/MM/YYYY or DD-MM-YYYY
+    const dmy = val.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+    if (dmy) {
+      const day = dmy[1].padStart(2, '0');
+      const month = dmy[2].padStart(2, '0');
+      const year = dmy[3];
+      return `${year}-${month}-${day}`;
+    }
+    // Case 2: YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+    // Case 3: Excel serial number date
+    const serial = Number(val);
+    if (!isNaN(serial) && serial > 20000 && serial < 60000) {
+      const utc_days = Math.floor(serial - 25569);
+      const utc_value = utc_days * 86400;
+      const date_info = new Date(utc_value * 1000);
+      return date_info.toISOString().slice(0, 10);
+    }
+    return val;
+  };
+
+  const results: Partial<Student>[] = [];
+  let currentRoll = startRollNo;
+
+  for (let i = startIndex; i < rows.length; i++) {
+    const cells = rows[i];
+    if (cells.length === 0 || cells.every((c) => !c)) continue;
+
+    let rollNo = currentRoll;
+    let studentCode = '';
+    let nameKh = '';
+    let gender: Gender = 'ប្រុស';
+    let dob = '2011-01-01';
+    let age = 0;
+    let originSchool = '';
+    let pobVillage = '';
+    let pobCommune = '';
+    let pobDistrict = '';
+    let pobProvince = '';
+    let addrVillage = '';
+    let addrCommune = '';
+    let addrDistrict = '';
+    let addrProvince = '';
+    let studentPhone = '';
+    let fatherName = '';
+    let fatherOccupation = '';
+    let fatherPhone = '';
+    let motherName = '';
+    let motherOccupation = '';
+    let motherPhone = '';
+    let otherNotes = '';
+
+    if (cells.length >= 15) {
+      // Full MoEYS 23-column format
+      if (cells[0] && !isNaN(Number(khmerToArabic(cells[0])))) {
+        rollNo = Number(khmerToArabic(cells[0]));
+      }
+      studentCode = cells[1] || '';
+      nameKh = cells[2] || '';
+      gender =
+        cells[3] === 'ស្រី' || /^(F|Female)$/i.test(cells[3]) ? 'ស្រី' : 'ប្រុស';
+      dob = normalizeDate(cells[4]);
+      if (cells[5] && !isNaN(Number(khmerToArabic(cells[5])))) {
+        age = Number(khmerToArabic(cells[5]));
+      }
+      originSchool = cells[6] || '';
+      pobVillage = cells[7] || '';
+      pobCommune = cells[8] || '';
+      pobDistrict = cells[9] || '';
+      pobProvince = cells[10] || '';
+      addrVillage = cells[11] || '';
+      addrCommune = cells[12] || '';
+      addrDistrict = cells[13] || '';
+      addrProvince = cells[14] || '';
+      studentPhone = cells[15] || '';
+      fatherName = cells[16] || '';
+      fatherOccupation = cells[17] || '';
+      fatherPhone = cells[18] || '';
+      motherName = cells[19] || '';
+      motherOccupation = cells[20] || '';
+      motherPhone = cells[21] || '';
+      otherNotes = cells[22] || '';
+    } else {
+      // Dynamic column detector for custom / partial Excel pastes
+      let colIdx = 0;
+      // 1. Roll number (pure integer < 300)
+      if (
+        cells.length > 1 &&
+        !isNaN(Number(khmerToArabic(cells[0]))) &&
+        Number(khmerToArabic(cells[0])) < 300
+      ) {
+        rollNo = Number(khmerToArabic(cells[0]));
+        colIdx = 1;
+      }
+      // 2. Student code (STU-xxx or numeric ID with > 4 digits)
+      if (
+        cells[colIdx] &&
+        (/^STU/i.test(cells[colIdx]) || /^\d{4,8}$/.test(cells[colIdx]))
+      ) {
+        studentCode = cells[colIdx];
+        colIdx++;
+      }
+      // 3. Name (mandatory)
+      if (cells[colIdx]) {
+        nameKh = cells[colIdx];
+        colIdx++;
+      }
+      // 4. Gender (ប្រុស / ស្រី or M / F)
+      if (cells[colIdx]) {
+        if (
+          cells[colIdx] === 'ស្រី' ||
+          cells[colIdx] === 'ប្រុស' ||
+          /^(F|M|Female|Male)$/i.test(cells[colIdx])
+        ) {
+          gender =
+            cells[colIdx] === 'ស្រី' || /^(F|Female)$/i.test(cells[colIdx])
+              ? 'ស្រី'
+              : 'ប្រុស';
+          colIdx++;
+        }
+      }
+      // 5. DOB
+      if (cells[colIdx]) {
+        if (/\d{1,4}[-/.]\d{1,2}[-/.]\d{1,4}/.test(cells[colIdx])) {
+          dob = normalizeDate(cells[colIdx]);
+          colIdx++;
+        }
+      }
+      // 6. Remaining columns sequentially
+      if (cells[colIdx]) originSchool = cells[colIdx++];
+      if (cells[colIdx]) pobProvince = cells[colIdx++];
+      if (cells[colIdx]) addrProvince = cells[colIdx++];
+      if (cells[colIdx]) studentPhone = cells[colIdx++];
+      if (cells[colIdx]) fatherName = cells[colIdx++];
+      if (cells[colIdx]) motherName = cells[colIdx++];
+    }
+
+    if (!studentCode) {
+      studentCode = `STU-${String(currentRoll).padStart(3, '0')}`;
+    }
+    if (!nameKh) {
+      nameKh = `សិស្ស ${currentRoll}`;
+    }
+
+    const calculatedAge = age || calculateAge(dob);
+
+    results.push({
+      id: `stu-${Date.now()}-${i}-${Math.random().toString(36).substring(2, 6)}`,
+      classId,
+      rollNo,
+      studentCode,
+      nameKh,
+      gender,
+      dob,
+      age: calculatedAge,
+      originSchool,
+      pobVillage,
+      pobCommune,
+      pobDistrict,
+      pobProvince,
+      addrVillage,
+      addrCommune,
+      addrDistrict,
+      addrProvince,
+      studentPhone,
+      fatherName,
+      fatherOccupation,
+      fatherPhone,
+      motherName,
+      motherOccupation,
+      motherPhone,
+      otherNotes,
+      status: 'active',
+      createdAt: new Date().toISOString(),
+    });
+
+    currentRoll++;
+  }
+
+  return results;
+}
