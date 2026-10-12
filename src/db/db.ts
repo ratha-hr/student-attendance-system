@@ -21,7 +21,7 @@ import {
 } from './seedData';
 
 import { enrichStudentWithMoEYSFields } from '../utils/studentEnricher';
-import { generateStandardClasses } from '../utils/classUtils';
+import { generateStandardClasses, getStreamForClass } from '../utils/classUtils';
 import { fromKhmerNum } from '../utils/dateUtils';
 
 export class TeacherDatabase extends Dexie {
@@ -183,13 +183,19 @@ export class TeacherDatabase extends Dexie {
       await this.classes.bulkAdd(toAdd);
     }
 
-    // 3. Ensure all classes have a homeroom teacher (គ្រូទទួលបន្ទុក)
+    // 3. Ensure all classes have a homeroom teacher (គ្រូទទួលបន្ទុក) and stream (វិទ្យាសាស្ត្រ / សង្គម)
     const allClasses = await this.classes.toArray();
     const standardMap = new Map(standard.map((s) => [s.name, s.homeroomTeacher]));
     for (const c of allClasses) {
+      const updates: Partial<ClassRoom> = {};
       if (!c.homeroomTeacher) {
-        const defaultTeacher = standardMap.get(c.name) || (c.id === 'class-7' || c.name.includes('7A') ? 'ហ៊ុន រដ្ឋា' : 'គ្រូទទួលបន្ទុក');
-        await this.classes.update(c.id, { homeroomTeacher: defaultTeacher });
+        updates.homeroomTeacher = standardMap.get(c.name) || (c.id === 'class-7' || c.name.includes('7A') ? 'ហ៊ុន រដ្ឋា' : 'គ្រូទទួលបន្ទុក');
+      }
+      if (!c.stream) {
+        updates.stream = getStreamForClass(c.grade, c.name);
+      }
+      if (Object.keys(updates).length > 0) {
+        await this.classes.update(c.id, updates);
       }
     }
   }

@@ -13,7 +13,7 @@ import {
   User,
   AlertTriangle,
 } from 'lucide-react';
-import type { ClassRoom, Student } from '../types';
+import type { ClassRoom, Student, ClassStream } from '../types';
 import { db } from '../db/db';
 import { toKhmerNum } from '../utils/dateUtils';
 import {
@@ -21,6 +21,9 @@ import {
   parseGradeNumber,
   generateStandardClasses,
   STANDARD_CLASS_CONFIGS,
+  HIGH_SCHOOL_STREAM_CONFIGS,
+  getStreamForClass,
+  getStreamBadge,
 } from '../utils/classUtils';
 import { Modal } from './common/Modal';
 
@@ -51,6 +54,7 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
   // Add Class Form State
   const [formClassName, setFormClassName] = useState('');
   const [formGrade, setFormGrade] = useState('7');
+  const [formStream, setFormStream] = useState<ClassStream>('science');
   const [formHomeroomTeacher, setFormHomeroomTeacher] = useState('ហ៊ុន រដ្ឋា');
   const [formAcademicYear, setFormAcademicYear] = useState(academicYear || '២០២៤-២០២៥');
 
@@ -62,6 +66,7 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
   const [editingClassId, setEditingClassId] = useState<string | null>(null);
   const [editingClassName, setEditingClassName] = useState('');
   const [editingHomeroomTeacher, setEditingHomeroomTeacher] = useState('');
+  const [editingStream, setEditingStream] = useState<ClassStream>('science');
 
   // Status feedback message
   const [feedbackMsg, setFeedbackMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -112,13 +117,17 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
     }
 
     const gNum = parseGradeNumber(formGrade || fullName);
+    const stream = (gNum === 11 || gNum === 12) ? formStream : getStreamForClass(formGrade, fullName);
+    const streamInfo = getStreamBadge(stream);
+
     const newClass: ClassRoom = {
       id: `class-${formGrade}-${Date.now()}`,
       name: fullName,
       grade: gNum !== 999 ? `${gNum}` : formGrade,
       academicYear: formAcademicYear || academicYear,
+      stream,
       homeroomTeacher: formHomeroomTeacher.trim() || 'គ្រូទទួលបន្ទុក',
-      description: `ថ្នាក់ទី ${formGrade}`,
+      description: (gNum === 11 || gNum === 12) ? `ថ្នាក់ ${fullName} (${streamInfo.label})` : `ថ្នាក់ទី ${formGrade}`,
       createdAt: new Date().toISOString(),
     };
 
@@ -126,7 +135,7 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
     setFormClassName('');
     onSelectClass(newClass.id);
     onRefresh();
-    showFeedback('success', `បានបន្ថែម "${fullName}" ដោយមានគ្រូទទួលបន្ទុក "${newClass.homeroomTeacher}" ដោយជោគជ័យ!`);
+    showFeedback('success', `បានបន្ថែម "${fullName}" ${stream !== 'general' ? `(${streamInfo.badgeKh})` : ''} ដោយជោគជ័យ!`);
   };
 
   // Handle quick adding standard class (Grade + Letter)
@@ -137,19 +146,25 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
       return;
     }
 
+    const gNum = parseGradeNumber(quickGrade);
+    const stream = getStreamForClass(quickGrade, `${quickGrade}${quickLetter}`);
+    const streamInfo = getStreamBadge(stream);
+
     const newClass: ClassRoom = {
       id: `class-${quickGrade}-${quickLetter.toLowerCase()}-${Date.now()}`,
       name: fullName,
       grade: quickGrade,
       academicYear,
+      stream,
       homeroomTeacher: formHomeroomTeacher.trim() || 'ហ៊ុន រដ្ឋា',
+      description: (gNum === 11 || gNum === 12) ? `ថ្នាក់ ${fullName} (${streamInfo.label})` : `ថ្នាក់ទី ${quickGrade}`,
       createdAt: new Date().toISOString(),
     };
 
     await db.classes.add(newClass);
     onSelectClass(newClass.id);
     onRefresh();
-    showFeedback('success', `បានបង្កើត "${fullName}" ដោយជោគជ័យ!`);
+    showFeedback('success', `បានបង្កើត "${fullName}" ${stream !== 'general' ? `(${streamInfo.badgeKh})` : ''} ដោយជោគជ័យ!`);
   };
 
   // Start inline edit
@@ -157,6 +172,7 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
     setEditingClassId(c.id);
     setEditingClassName(c.name);
     setEditingHomeroomTeacher(c.homeroomTeacher || 'ហ៊ុន រដ្ឋា');
+    setEditingStream(getStreamForClass(c.grade, c.name, c.stream));
   };
 
   // Save inline edit
@@ -170,10 +186,12 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
     }
 
     const gNum = parseGradeNumber(newName);
+    const stream = (gNum === 11 || gNum === 12) ? editingStream : getStreamForClass(`${gNum}`, newName);
     await db.classes.update(c.id, {
       name: newName,
       homeroomTeacher: editingHomeroomTeacher.trim() || 'គ្រូទទួលបន្ទុក',
       grade: gNum !== 999 ? `${gNum}` : c.grade,
+      stream,
       room: '',
     });
 
@@ -217,7 +235,7 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
     showFeedback('success', 'បានលុបថ្នាក់ទាំងអស់រួចរាល់!');
   };
 
-  // Quick add standard classes for a specific grade
+  // Quick add standard classes for a specific grade (7, 8, 9, 10)
   const handleAddGradeClasses = async (grade: string) => {
     const cfg = STANDARD_CLASS_CONFIGS.find((c) => c.grade === grade);
     if (!cfg) return;
@@ -229,13 +247,17 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
       const fullName = `ថ្នាក់ទី ${cfg.grade}${letter}`;
       if (!existingNames.has(fullName.toLowerCase())) {
         const id = idx === 0 ? cfg.mainId : `class-${cfg.grade}-${letter.toLowerCase()}-${Date.now()}`;
+        const stream = getStreamForClass(cfg.grade, `${cfg.grade}${letter}`);
+        const streamInfo = getStreamBadge(stream);
+
         toAdd.push({
           id,
           name: fullName,
           grade: cfg.grade,
           academicYear,
+          stream,
           homeroomTeacher: (cfg.grade === '7' && letter === 'A') ? 'ហ៊ុន រដ្ឋា' : 'គ្រូទទួលបន្ទុក',
-          description: `ថ្នាក់ ${cfg.grade}${letter} (${cfg.levelLabel})`,
+          description: `ថ្នាក់ ${cfg.grade}${letter} (${cfg.grade === '11' || cfg.grade === '12' ? streamInfo.label : cfg.levelLabel})`,
           createdAt: new Date().toISOString(),
         });
       }
@@ -249,6 +271,48 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
     await db.classes.bulkAdd(toAdd);
     onRefresh();
     showFeedback('success', `បានបន្ថែមថ្នាក់ទី ${grade} (${toAdd.length} ថ្នាក់) ដោយជោគជ័យ!`);
+  };
+
+  // Quick add standard classes for Grade 11 & 12 streams (វិទ្យាសាស្ត្រ ឬ វិទ្យាសាស្ត្រសង្គម)
+  const handleAddStreamClasses = async (grade: '11' | '12', stream: 'science' | 'social') => {
+    const letters =
+      grade === '11'
+        ? stream === 'science'
+          ? HIGH_SCHOOL_STREAM_CONFIGS.grade11Science
+          : HIGH_SCHOOL_STREAM_CONFIGS.grade11Social
+        : stream === 'science'
+        ? HIGH_SCHOOL_STREAM_CONFIGS.grade12Science
+        : HIGH_SCHOOL_STREAM_CONFIGS.grade12Social;
+
+    const streamInfo = getStreamBadge(stream);
+    const existingNames = new Set(classes.map((c) => c.name.toLowerCase()));
+    const toAdd: ClassRoom[] = [];
+
+    letters.forEach((letter) => {
+      const fullName = `ថ្នាក់ទី ${grade}${letter}`;
+      if (!existingNames.has(fullName.toLowerCase())) {
+        const id = `class-${grade}-${letter.toLowerCase()}-${Date.now()}`;
+        toAdd.push({
+          id,
+          name: fullName,
+          grade,
+          academicYear,
+          stream,
+          homeroomTeacher: 'គ្រូទទួលបន្ទុក',
+          description: `ថ្នាក់ ${grade}${letter} (${streamInfo.label})`,
+          createdAt: new Date().toISOString(),
+        });
+      }
+    });
+
+    if (toAdd.length === 0) {
+      showFeedback('error', `ថ្នាក់ទី ${grade} (${streamInfo.badgeKh}) មានរួចរាល់ទាំងអស់ហើយ!`);
+      return;
+    }
+
+    await db.classes.bulkAdd(toAdd);
+    onRefresh();
+    showFeedback('success', `បានបង្កើតថ្នាក់ទី ${grade} (${streamInfo.badgeKh}) ចំនួន ${toAdd.length} ថ្នាក់ដោយជោគជ័យ!`);
   };
 
   // Reset or regenerate all 49 standard classes
@@ -357,6 +421,38 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
                   className="w-full px-3 py-1.5 text-xs sm:text-sm font-bold bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 shadow-2xs"
                 />
               </div>
+
+              {/* If Grade 11 or 12: Stream selector */}
+              {(formGrade === '11' || formGrade === '12') && (
+                <div className="col-span-1 sm:col-span-3 bg-linear-to-r from-emerald-50/70 via-teal-50/60 to-amber-50/70 p-2.5 rounded-xl border border-teal-200/80 flex flex-wrap items-center gap-3">
+                  <span className="text-xs font-bold text-slate-800 flex items-center">
+                    <span className="mr-1">🎓</span>
+                    <span>ផ្នែក/ជំនាញសិក្សា (ថ្នាក់ទី {formGrade})៖</span>
+                  </span>
+                  <label className="flex items-center space-x-1.5 cursor-pointer px-2.5 py-1 rounded-lg bg-white border border-teal-300 shadow-2xs text-xs font-bold text-emerald-800 hover:bg-emerald-50 transition-colors">
+                    <input
+                      type="radio"
+                      name="formStream"
+                      value="science"
+                      checked={formStream === 'science'}
+                      onChange={() => setFormStream('science')}
+                      className="text-emerald-600 focus:ring-emerald-500"
+                    />
+                    <span>🔬 ថ្នាក់វិទ្យាសាស្ត្រ (Science)</span>
+                  </label>
+                  <label className="flex items-center space-x-1.5 cursor-pointer px-2.5 py-1 rounded-lg bg-white border border-amber-300 shadow-2xs text-xs font-bold text-amber-900 hover:bg-amber-50 transition-colors">
+                    <input
+                      type="radio"
+                      name="formStream"
+                      value="social"
+                      checked={formStream === 'social'}
+                      onChange={() => setFormStream('social')}
+                      className="text-amber-600 focus:ring-amber-500"
+                    />
+                    <span>📚 ថ្នាក់វិទ្យាសាស្ត្រសង្គម (Social Science)</span>
+                  </label>
+                </div>
+              )}
             </div>
 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 border-t border-slate-200/80">
@@ -395,13 +491,13 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
                 type="submit"
                 className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs transition-colors cursor-pointer self-end sm:self-auto"
               >
-                <Plus className="w-4 h-4 mr-1" />
-                + រក្សាទុកថ្នាក់ថ្មី
+                <Plus className="w-4 h-4 mr-1.5" />
+                <span>រក្សាទុកថ្នាក់ថ្មី</span>
               </button>
             </div>
           </form>
 
-          {/* Quick Grade Batch Generators (ថ្នាក់ទី ៧, ៨, ៩, ១០, ១១, ១២) & Action Buttons */}
+          {/* Quick Grade Batch Generators (ថ្នាក់ទី ៧, ៨, ៩, ១០, ១១ វិទ្យាសាស្ត្រ/សង្គម, ១២ វិទ្យាសាស្ត្រ/សង្គម) */}
           <div className="pt-2 border-t border-slate-200/80 flex flex-wrap items-center justify-between gap-2">
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="text-[11px] font-bold text-slate-500 mr-1">បន្ថែមតាមកម្រិត៖</span>
@@ -410,8 +506,6 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
                 { grade: '8', label: 'ថ្នាក់ទី ៨ (8A-8E)' },
                 { grade: '9', label: 'ថ្នាក់ទី ៩ (9A-9D)' },
                 { grade: '10', label: 'ថ្នាក់ទី ១០ (10A-10L)' },
-                { grade: '11', label: 'ថ្នាក់ទី ១១ (11A-11J)' },
-                { grade: '12', label: 'ថ្នាក់ទី ១២ (12A-12M)' },
               ].map((g) => (
                 <button
                   key={g.grade}
@@ -422,6 +516,46 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
                   + {g.label}
                 </button>
               ))}
+
+              {/* Grade 11 Science & Social Science */}
+              <button
+                type="button"
+                onClick={() => handleAddStreamClasses('11', 'science')}
+                className="px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-md text-[11px] font-bold cursor-pointer transition-colors flex items-center space-x-1"
+                title="បន្ថែមថ្នាក់ទី ១១ វិទ្យាសាស្ត្រ (11A-11E)"
+              >
+                <span>🔬</span>
+                <span>+ ថ្នាក់ទី ១១ វិទ្យាសាស្ត្រ (11A-11E)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAddStreamClasses('11', 'social')}
+                className="px-2 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-md text-[11px] font-bold cursor-pointer transition-colors flex items-center space-x-1"
+                title="បន្ថែមថ្នាក់ទី ១១ វិទ្យាសាស្ត្រសង្គម (11F-11J)"
+              >
+                <span>📚</span>
+                <span>+ ថ្នាក់ទី ១១ សង្គម (11F-11J)</span>
+              </button>
+
+              {/* Grade 12 Science & Social Science */}
+              <button
+                type="button"
+                onClick={() => handleAddStreamClasses('12', 'science')}
+                className="px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-md text-[11px] font-bold cursor-pointer transition-colors flex items-center space-x-1"
+                title="បន្ថែមថ្នាក់ទី ១២ វិទ្យាសាស្ត្រ (12A-12F)"
+              >
+                <span>🔬</span>
+                <span>+ ថ្នាក់ទី ១២ វិទ្យាសាស្ត្រ (12A-12F)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAddStreamClasses('12', 'social')}
+                className="px-2 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-md text-[11px] font-bold cursor-pointer transition-colors flex items-center space-x-1"
+                title="បន្ថែមថ្នាក់ទី ១២ វិទ្យាសាស្ត្រសង្គម (12G-12M)"
+              >
+                <span>📚</span>
+                <span>+ ថ្នាក់ទី ១២ សង្គម (12G-12M)</span>
+              </button>
             </div>
 
             <div className="flex items-center space-x-2">
@@ -514,6 +648,9 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
               filteredClasses.map((c) => {
                 const count = students.filter((s) => s.classId === c.id).length;
                 const isEditing = editingClassId === c.id;
+                const gNum = parseGradeNumber(c.grade || c.name);
+                const stream = getStreamForClass(c.grade, c.name, c.stream);
+                const streamInfo = getStreamBadge(stream);
 
                 return (
                   <div
@@ -545,6 +682,34 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
                           />
                         </div>
 
+                        {(gNum === 11 || gNum === 12) && (
+                          <div className="w-full flex items-center gap-2 pt-1 border-t border-slate-100">
+                            <span className="text-[10px] text-slate-500 font-bold">ផ្នែក/ជំនាញ៖</span>
+                            <button
+                              type="button"
+                              onClick={() => setEditingStream('science')}
+                              className={`px-2 py-0.5 rounded text-[11px] font-bold cursor-pointer transition-colors ${
+                                editingStream === 'science'
+                                  ? 'bg-emerald-600 text-white'
+                                  : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                              }`}
+                            >
+                              🔬 វិទ្យាសាស្ត្រ
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingStream('social')}
+                              className={`px-2 py-0.5 rounded text-[11px] font-bold cursor-pointer transition-colors ${
+                                editingStream === 'social'
+                                  ? 'bg-amber-600 text-white'
+                                  : 'bg-amber-50 text-amber-900 border border-amber-200'
+                              }`}
+                            >
+                              📚 វិទ្យាសាស្ត្រសង្គម
+                            </button>
+                          </div>
+                        )}
+
                         <div className="flex items-center space-x-1 self-end mb-0.5">
                           <button
                             type="button"
@@ -565,17 +730,25 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
                         </div>
                       </div>
                     ) : (
-                      /* Normal Display Row with Homeroom Teacher */
+                      /* Normal Display Row with Homeroom Teacher & Stream Badge */
                       <>
                         <div className="flex items-center space-x-2.5 min-w-0">
                           <span className="w-8 h-8 rounded-xl bg-blue-100 text-blue-800 flex items-center justify-center font-black text-xs shrink-0 shadow-2xs">
-                            {c.grade || parseGradeNumber(c.name)}
+                            {c.grade || gNum}
                           </span>
                           <div className="min-w-0">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5 flex-wrap">
                               <span className="font-bold text-xs sm:text-sm text-slate-900 truncate">
                                 {c.name}
                               </span>
+                              {(gNum === 11 || gNum === 12) && (
+                                <span
+                                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border shadow-2xs ${streamInfo.colorClass}`}
+                                >
+                                  <span className="mr-0.5">{streamInfo.icon}</span>
+                                  <span>{streamInfo.badgeKh}</span>
+                                </span>
+                              )}
                               <span
                                 className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold ${
                                   count > 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-500'

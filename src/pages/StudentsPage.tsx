@@ -503,30 +503,23 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
               <col style={{ width: '3.8%' }} />
               <col style={{ width: '3.8%' }} />
               {/* 16. លេខទូរស័ព្ទផ្ទាល់ខ្លួន */}
+              {/* 16. លេខទូរស័ព្ទផ្ទាល់ខ្លួន */}
               <col style={{ width: '4.5%' }} />
-              {/* 17-23. ស្ថានភាពសិស្ស (ឪពុក, ម្តាយ, ឪពុកម្តាយ, ពិការ, ក្រីក្រ, អាហារូបករណ៍, ស្នាក់នៅវត្ត) */}
-              <col style={{ width: '1.5%' }} />
-              <col style={{ width: '1.5%' }} />
-              <col style={{ width: '2.0%' }} />
-              <col style={{ width: '1.5%' }} />
-              <col style={{ width: '1.5%' }} />
-              <col style={{ width: '2.0%' }} />
-              <col style={{ width: '2.0%' }} />
-              {/* 24-26. ឪពុក (ឈ្មោះ, មុខរបរ, ទូរស័ព្ទ) */}
+              {/* 17-19. ឪពុក (ឈ្មោះ, មុខរបរ, ទូរស័ព្ទ) */}
               <col style={{ width: '4.0%' }} />
               <col style={{ width: '3.0%' }} />
               <col style={{ width: '4.0%' }} />
-              {/* 27-29. ម្តាយ (ឈ្មោះ, មុខរបរ, ទូរស័ព្ទ) */}
+              {/* 20-22. ម្តាយ (ឈ្មោះ, មុខរបរ, ទូរស័ព្ទ) */}
               <col style={{ width: '4.0%' }} />
               <col style={{ width: '3.0%' }} />
               <col style={{ width: '4.0%' }} />
-              {/* 30. ផ្សេងៗ */}
+              {/* 23. ផ្សេងៗ */}
               <col style={{ width: '3.5%' }} />
-              {/* 31. សកម្មភាព (Screen only) */}
+              {/* 24. សកម្មភាព (Screen only) */}
               <col className="no-print" />
             </colgroup>
 
-            {/* Table Header: 2 Rows Exactly Matching Image 2 */}
+            {/* Table Header: 2 Rows */}
             <thead className="sticky top-0 z-20 shadow-xs font-kantumruy">
               {/* Row 1 Header */}
               <tr className="bg-[#002060] text-white font-bold text-center border-b border-white/20 print:bg-slate-100 print:text-black text-xs sm:text-sm">
@@ -540,7 +533,6 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                 <th colSpan={4} className="py-1.5 px-2 border border-white/30 bg-[#0f3b73] print:bg-slate-200">ទីកន្លែងកំណើត</th>
                 <th colSpan={4} className="py-1.5 px-2 border border-white/30 bg-[#0f3b73] print:bg-slate-200">អាសយដ្ឋានបច្ចុប្បន្ន</th>
                 <th rowSpan={2} className="py-3 px-2 border border-white/30 min-w-[120px]">លេខទូរស័ព្ទផ្ទាល់ខ្លួន</th>
-                <th colSpan={7} className="py-1.5 px-2 border border-white/30 bg-[#0f3b73] print:bg-slate-200">ស្ថានភាពសិស្ស</th>
                 <th colSpan={3} className="py-1.5 px-2 border border-white/30 bg-[#0f3b73] print:bg-slate-200">គោត្តនាម នាម (ឪពុក)</th>
                 <th colSpan={3} className="py-1.5 px-2 border border-white/30 bg-[#0f3b73] print:bg-slate-200">គោត្តនាម នាម (ម្តាយ)</th>
                 <th rowSpan={2} className="py-3 px-2 border border-white/30 min-w-[120px]">ផ្សេងៗ</th>
@@ -559,14 +551,6 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                 <th className="py-1.5 px-1 border border-white/30 min-w-[110px]">ឃុំ</th>
                 <th className="py-1.5 px-1 border border-white/30 min-w-[110px]">ស្រុក</th>
                 <th className="py-1.5 px-1 border border-white/30 min-w-[120px]">ខេត្ត</th>
-                {/* ស្ថានភាពសិស្ស */}
-                <th className="py-1.5 px-1 border border-white/30 min-w-[50px]" title="កំព្រាឪពុក">ឪពុក</th>
-                <th className="py-1.5 px-1 border border-white/30 min-w-[50px]" title="កំព្រាម្តាយ">ម្តាយ</th>
-                <th className="py-1.5 px-1 border border-white/30 min-w-[65px]" title="កំព្រាទាំងឪពុកម្តាយ">ឪពុកម្តាយ</th>
-                <th className="py-1.5 px-1 border border-white/30 min-w-[50px]">ពិការ</th>
-                <th className="py-1.5 px-1 border border-white/30 min-w-[50px]">ក្រីក្រ</th>
-                <th className="py-1.5 px-1 border border-white/30 min-w-[75px]">អាហារូបករណ៍</th>
-                <th className="py-1.5 px-1 border border-white/30 min-w-[70px]">ស្នាក់នៅវត្ត</th>
                 {/* ឪពុក */}
                 <th className="py-1.5 px-1 border border-white/30 min-w-[135px]">ឪពុក</th>
                 <th className="py-1.5 px-1 border border-white/30 min-w-[105px]">មុខរបរ</th>
@@ -582,7 +566,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
             <tbody className="divide-y divide-slate-200 text-slate-800">
               {filteredStudents.length === 0 ? (
                 <tr>
-                  <td colSpan={31} className="py-12 text-center text-slate-400">
+                  <td colSpan={24} className="py-12 text-center text-slate-400">
                     <Users className="w-10 h-10 mx-auto text-slate-300 mb-2" />
                     មិនមានទិន្នន័យសិស្សត្រូវនឹងលក្ខខណ្ឌស្វែងរកទេ
                   </td>
@@ -623,14 +607,24 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
 
                       {/* គោត្តនាម នាម */}
                       <td className="py-1 px-1 border-r border-slate-200">
-                        <input
-                          type="text"
-                          value={stu.nameKh}
-                          title={stu.nameKh}
-                          placeholder="ឈ្មោះសិស្ស..."
-                          onChange={(e) => handleInlineChange(stu.id, 'nameKh', e.target.value)}
-                          className="w-full font-bold text-xs sm:text-[13px] text-slate-900 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
-                        />
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="text"
+                            value={stu.nameKh}
+                            title={stu.nameKh}
+                            placeholder="ឈ្មោះសិស្ស..."
+                            onChange={(e) => handleInlineChange(stu.id, 'nameKh', e.target.value)}
+                            className="flex-1 font-bold text-xs sm:text-[13px] text-slate-900 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none"
+                          />
+                          {selectedClassId === 'ALL' && (
+                            <span
+                              className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-black bg-indigo-50 text-indigo-700 border border-indigo-200 print:hidden select-none"
+                              title={`ថ្នាក់៖ ${classes.find((c) => c.id === stu.classId)?.name || 'មិនទាន់កំណត់'}`}
+                            >
+                              {classes.find((c) => c.id === stu.classId)?.name?.replace('ថ្នាក់ទី ', '') || '-'}
+                            </span>
+                          )}
+                        </div>
                         <span className="hidden print:block font-bold truncate text-slate-900 text-[6pt]">
                           {stu.nameKh}
                         </span>
@@ -842,137 +836,6 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                         />
                         <span className="hidden print:block font-mono text-center text-[5.2pt] truncate">
                           {stu.studentPhone || ''}
-                        </span>
-                      </td>
-
-                      {/* ស្ថានភាពសិស្ស - កំព្រាឪពុក */}
-                      <td className="py-1 px-1 text-center border-r border-slate-200">
-                        <div className="flex items-center justify-center">
-                          <input
-                            type="checkbox"
-                            checked={stu.orphanStatus === 'father' || stu.orphanStatus === 'both'}
-                            onChange={(e) =>
-                              handleInlineChange(
-                                stu.id,
-                                'orphanStatus',
-                                e.target.checked
-                                  ? stu.orphanStatus === 'mother'
-                                    ? 'both'
-                                    : 'father'
-                                  : stu.orphanStatus === 'both'
-                                  ? 'mother'
-                                  : 'none'
-                              )
-                            }
-                            className="w-4 h-4 rounded text-blue-600 cursor-pointer print:hidden"
-                          />
-                        </div>
-                        <span className="hidden print:block text-center font-bold text-[7pt]">
-                          {(stu.orphanStatus === 'father' || stu.orphanStatus === 'both') ? '✓' : ''}
-                        </span>
-                      </td>
-
-                      {/* ស្ថានភាពសិស្ស - កំព្រាម្តាយ */}
-                      <td className="py-1 px-1 text-center border-r border-slate-200">
-                        <div className="flex items-center justify-center">
-                          <input
-                            type="checkbox"
-                            checked={stu.orphanStatus === 'mother' || stu.orphanStatus === 'both'}
-                            onChange={(e) =>
-                              handleInlineChange(
-                                stu.id,
-                                'orphanStatus',
-                                e.target.checked
-                                  ? stu.orphanStatus === 'father'
-                                    ? 'both'
-                                    : 'mother'
-                                  : stu.orphanStatus === 'both'
-                                  ? 'father'
-                                  : 'none'
-                              )
-                            }
-                            className="w-4 h-4 rounded text-blue-600 cursor-pointer print:hidden"
-                          />
-                        </div>
-                        <span className="hidden print:block text-center font-bold text-[7pt]">
-                          {(stu.orphanStatus === 'mother' || stu.orphanStatus === 'both') ? '✓' : ''}
-                        </span>
-                      </td>
-
-                      {/* ស្ថានភាពសិស្ស - កំព្រាទាំងឪពុកម្តាយ */}
-                      <td className="py-1 px-1 text-center border-r border-slate-200">
-                        <div className="flex items-center justify-center">
-                          <input
-                            type="checkbox"
-                            checked={stu.orphanStatus === 'both'}
-                            onChange={(e) =>
-                              handleInlineChange(stu.id, 'orphanStatus', e.target.checked ? 'both' : 'none')
-                            }
-                            className="w-4 h-4 rounded text-rose-600 cursor-pointer print:hidden"
-                          />
-                        </div>
-                        <span className="hidden print:block text-center font-bold text-[7pt]">
-                          {stu.orphanStatus === 'both' ? '✓' : ''}
-                        </span>
-                      </td>
-
-                      {/* ស្ថានភាពសិស្ស - ពិការ */}
-                      <td className="py-1 px-1 text-center border-r border-slate-200">
-                        <div className="flex items-center justify-center">
-                          <input
-                            type="checkbox"
-                            checked={!!stu.isDisabled}
-                            onChange={(e) => handleInlineChange(stu.id, 'isDisabled', e.target.checked)}
-                            className="w-4 h-4 rounded text-amber-600 cursor-pointer print:hidden"
-                          />
-                        </div>
-                        <span className="hidden print:block text-center font-bold text-[7pt]">
-                          {stu.isDisabled ? '✓' : ''}
-                        </span>
-                      </td>
-
-                      {/* ស្ថានភាពសិស្ស - ក្រីក្រ */}
-                      <td className="py-1 px-1 text-center border-r border-slate-200">
-                        <div className="flex items-center justify-center">
-                          <input
-                            type="checkbox"
-                            checked={!!stu.isPoor}
-                            onChange={(e) => handleInlineChange(stu.id, 'isPoor', e.target.checked)}
-                            className="w-4 h-4 rounded text-amber-600 cursor-pointer print:hidden"
-                          />
-                        </div>
-                        <span className="hidden print:block text-center font-bold text-[7pt]">
-                          {stu.isPoor ? '✓' : ''}
-                        </span>
-                      </td>
-
-                      {/* ស្ថានភាពសិស្ស - អាហារូបករណ៍ */}
-                      <td className="py-1 px-1 text-center border-r border-slate-200">
-                        <div className="flex items-center justify-center">
-                          <input
-                            type="checkbox"
-                            checked={!!stu.hasScholarship}
-                            onChange={(e) => handleInlineChange(stu.id, 'hasScholarship', e.target.checked)}
-                            className="w-4 h-4 rounded text-emerald-600 cursor-pointer print:hidden"
-                          />
-                        </div>
-                        <span className="hidden print:block text-center font-bold text-[7pt]">
-                          {stu.hasScholarship ? '✓' : ''}
-                        </span>
-                      </td>
-
-                      {/* ស្ថានភាពសិស្ស - ស្នាក់នៅវត្ត */}
-                      <td className="py-1 px-1 text-center border-r border-slate-200">
-                        <div className="flex items-center justify-center">
-                          <input
-                            type="checkbox"
-                            checked={!!stu.stayInPagoda}
-                            onChange={(e) => handleInlineChange(stu.id, 'stayInPagoda', e.target.checked)}
-                            className="w-4 h-4 rounded text-indigo-600 cursor-pointer print:hidden"
-                          />
-                        </div>
-                        <span className="hidden print:block text-center font-bold text-[7pt]">
-                          {stu.stayInPagoda ? '✓' : ''}
                         </span>
                       </td>
 
@@ -1279,9 +1142,28 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                   <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-md font-bold font-mono">
                     {fromKhmerNum(viewingStudent.studentCode)}
                   </span>
-                  <span className="px-2 py-0.5 bg-slate-200 text-slate-800 text-xs rounded-md font-bold">
-                    {classes.find((c) => c.id === viewingStudent.classId)?.name || 'ថ្នាក់រៀន'}
-                  </span>
+                  <div className="flex items-center gap-1.5 bg-blue-50 border border-blue-200 rounded-md px-2 py-0.5">
+                    <span className="text-[11px] font-bold text-blue-900">ថ្នាក់៖</span>
+                    <select
+                      value={viewingStudent.classId}
+                      onChange={async (e) => {
+                        const newClassId = e.target.value;
+                        await db.students.update(viewingStudent.id, { classId: newClassId });
+                        setViewingStudent({ ...viewingStudent, classId: newClassId });
+                        onRefresh();
+                        const targetClass = classes.find((c) => c.id === newClassId);
+                        showToast(`បានកំណត់ ${viewingStudent.nameKh} ទៅកាន់ ${targetClass?.name || 'ថ្នាក់ថ្មី'} ដោយជោគជ័យ!`);
+                      }}
+                      className="bg-transparent text-xs font-black text-blue-900 cursor-pointer outline-none font-sans"
+                      title="ជ្រើសរើសដើម្បីប្តូរថ្នាក់សិស្ស (ឧ. 7A, 7B, 7C...)"
+                    >
+                      {classes.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                   <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-xs rounded-md font-bold">
                     លេខរៀង៖ {viewingStudent.rollNo}
                   </span>

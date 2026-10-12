@@ -145,7 +145,6 @@ export function App() {
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
         onOpenSettings={() => setIsSettingsOpen(true)}
-        onOpenStudentMode={() => setIsStudentMode(true)}
       />
 
       {/* Main Content Area */}

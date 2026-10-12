@@ -1,10 +1,13 @@
 export type Gender = 'ប្រុស' | 'ស្រី';
 
+export type ClassStream = 'science' | 'social' | 'general';
+
 export interface ClassRoom {
   id: string;
   name: string; // ឧ. ថ្នាក់ទី ៧ ក, ថ្នាក់ទី ៨ ខ
   grade: string; // ឧ. ៧, ៨, ៩, ១០, ១១, ១២
   academicYear: string; // ឧ. ២០២៤-២០២៥
+  stream?: ClassStream; // វិទ្យាសាស្ត្រ (science) | វិទ្យាសាស្ត្រសង្គម (social) | ចំណេះទូទៅ (general)
   homeroomTeacher?: string; // គ្រូទទួលបន្ទុកថ្នាក់ (Homeroom Teacher)
   room?: string; // ឧ. បន្ទប់ ១០២
   description?: string;

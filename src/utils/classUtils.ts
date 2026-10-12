@@ -1,4 +1,4 @@
-import type { ClassRoom } from '../types';
+import type { ClassRoom, ClassStream } from '../types';
 import { toKhmerNum } from './dateUtils';
 
 export interface StandardGradeConfig {
@@ -47,6 +47,88 @@ export const STANDARD_CLASS_CONFIGS: StandardGradeConfig[] = [
   },
 ];
 
+/**
+ * Split configurations for High School Grade 11 & 12:
+ * Grade 11:
+ * - Science (11A - 11E)
+ * - Social Science (11F - 11J)
+ * Grade 12:
+ * - Science (12A - 12F)
+ * - Social Science (12G - 12M)
+ */
+export const HIGH_SCHOOL_STREAM_CONFIGS = {
+  grade11Science: ['A', 'B', 'C', 'D', 'E'],
+  grade11Social: ['F', 'G', 'H', 'I', 'J'],
+  grade12Science: ['A', 'B', 'C', 'D', 'E', 'F'],
+  grade12Social: ['G', 'H', 'I', 'J', 'K', 'L', 'M'],
+};
+
+/**
+ * Determine the stream (វិទ្យាសាស្ត្រ ឬ វិទ្យាសាស្ត្រសង្គម) for a class
+ */
+export function getStreamForClass(
+  grade: string | undefined,
+  name: string,
+  explicitStream?: ClassStream
+): ClassStream {
+  if (explicitStream && explicitStream !== 'general') {
+    return explicitStream;
+  }
+  const gNum = parseGradeNumber(grade || name);
+  if (gNum !== 11 && gNum !== 12) {
+    return 'general';
+  }
+
+  // Extract letter from name (e.g. 11A, 11F, 12B, 12M)
+  const upper = name.toUpperCase();
+  const match = upper.match(/([A-Z])(?:\b|$|\s)/);
+  const letter = match ? match[1] : '';
+
+  if (gNum === 11) {
+    if (HIGH_SCHOOL_STREAM_CONFIGS.grade11Science.includes(letter)) return 'science';
+    if (HIGH_SCHOOL_STREAM_CONFIGS.grade11Social.includes(letter)) return 'social';
+  } else if (gNum === 12) {
+    if (HIGH_SCHOOL_STREAM_CONFIGS.grade12Science.includes(letter)) return 'science';
+    if (HIGH_SCHOOL_STREAM_CONFIGS.grade12Social.includes(letter)) return 'social';
+  }
+
+  // Check if Khmer text indicates stream
+  if (name.includes('សង្គម')) return 'social';
+  if (name.includes('វិទ្យាសាស្ត្រ') || name.includes('វិទ្យា')) return 'science';
+
+  return explicitStream || 'science';
+}
+
+export function getStreamBadge(stream: ClassStream): {
+  label: string;
+  badgeKh: string;
+  colorClass: string;
+  icon: string;
+} {
+  if (stream === 'science') {
+    return {
+      label: 'ថ្នាក់វិទ្យាសាស្ត្រ',
+      badgeKh: 'វិទ្យាសាស្ត្រ',
+      colorClass: 'bg-emerald-50 text-emerald-800 border-emerald-300',
+      icon: '🔬',
+    };
+  }
+  if (stream === 'social') {
+    return {
+      label: 'ថ្នាក់វិទ្យាសាស្ត្រសង្គម',
+      badgeKh: 'វិទ្យាសាស្ត្រសង្គម',
+      colorClass: 'bg-amber-50 text-amber-900 border-amber-300',
+      icon: '📚',
+    };
+  }
+  return {
+    label: 'ចំណេះទូទៅ',
+    badgeKh: 'ទូទៅ',
+    colorClass: 'bg-slate-50 text-slate-700 border-slate-200',
+    icon: '🎓',
+  };
+}
+
 const DEFAULT_HOMEROOM_TEACHERS = [
   'ហ៊ុន រដ្ឋា',
   'ស៊ឹម វីរៈ',
@@ -64,8 +146,8 @@ const DEFAULT_HOMEROOM_TEACHERS = [
 
 /**
  * Generate standard 49 classes:
- * 7A-E (5), 8A-E (5), 9A-D (4), 10A-L (12), 11A-J (10), 12A-M (13)
- * With assigned homeroom teachers (គ្រូទទួលបន្ទុក) and completely free of room (បន្ទប់) and building (អគារ).
+ * 7A-E (5), 8A-E (5), 9A-D (4), 10A-L (12), 11A-J (10: 5 វិទ្យាសាស្ត្រ, 5 សង្គម), 12A-M (13: 6 វិទ្យាសាស្ត្រ, 7 សង្គម)
+ * With assigned homeroom teachers (គ្រូទទួលបន្ទុក) and distinct streams for Grades 11 and 12.
  */
 export function generateStandardClasses(academicYear = '២០២៤-២០២៥'): ClassRoom[] {
   const result: ClassRoom[] = [];
@@ -80,13 +162,17 @@ export function generateStandardClasses(academicYear = '២០២៤-២០២�
         : DEFAULT_HOMEROOM_TEACHERS[teacherCounter % DEFAULT_HOMEROOM_TEACHERS.length];
       teacherCounter++;
 
+      const stream = getStreamForClass(cfg.grade, `${cfg.grade}${letter}`);
+      const streamInfo = getStreamBadge(stream);
+
       result.push({
         id,
         name: `ថ្នាក់ទី ${cfg.grade}${letter}`,
         grade: cfg.grade,
         academicYear,
+        stream,
         homeroomTeacher,
-        description: `ថ្នាក់ ${cfg.grade}${letter} (${cfg.levelLabel})`,
+        description: `ថ្នាក់ ${cfg.grade}${letter} (${cfg.grade === '11' || cfg.grade === '12' ? streamInfo.label : cfg.levelLabel})`,
         createdAt: '2024-10-01T08:00:00Z',
       });
     });

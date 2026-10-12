@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   CalendarCheck2,
   CheckCircle,
@@ -17,7 +17,11 @@ import {
   Unlock,
   Key,
   ShieldCheck,
+  ShieldAlert,
   AlertTriangle,
+  Eye,
+  EyeOff,
+  Timer,
 } from 'lucide-react';
 import type { Student, ClassRoom, AttendanceRecord, AttendanceStatus, TeacherSettings } from '../types';
 import { db } from '../db/db';
@@ -69,6 +73,53 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
   const [enteredPin, setEnteredPin] = useState('');
   const [pinError, setPinError] = useState('');
+  const [showPinText, setShowPinText] = useState(false);
+
+  // Brute-force protection & cooldown rate limiter
+  const [failedAttempts, setFailedAttempts] = useState<number>(() => {
+    try {
+      const saved = sessionStorage.getItem('attendance_pin_failures');
+      return saved ? parseInt(saved, 10) : 0;
+    } catch {
+      return 0;
+    }
+  });
+
+  const [lockoutUntil, setLockoutUntil] = useState<number>(() => {
+    try {
+      const saved = sessionStorage.getItem('attendance_pin_lockout_until');
+      return saved ? parseInt(saved, 10) : 0;
+    } catch {
+      return 0;
+    }
+  });
+
+  const [cooldownRemaining, setCooldownRemaining] = useState<number>(0);
+
+  // Rate-limiting countdown timer
+  useEffect(() => {
+    const updateCooldown = () => {
+      const now = Date.now();
+      if (lockoutUntil > now) {
+        setCooldownRemaining(Math.ceil((lockoutUntil - now) / 1000));
+      } else {
+        setCooldownRemaining(0);
+      }
+    };
+    updateCooldown();
+    const timer = setInterval(updateCooldown, 1000);
+    return () => clearInterval(timer);
+  }, [lockoutUntil]);
+
+  // Auto-lock after 15 minutes of inactivity when unlocked
+  useEffect(() => {
+    if (!isEditUnlocked) return;
+    const timeout = setTimeout(() => {
+      setIsEditUnlocked(false);
+      showToast('🔒 បានចាក់សោសុវត្ថិភាពឡើងវិញដោយស្វ័យប្រវត្តិ (ផុតកំណត់ពេល)!');
+    }, 15 * 60 * 1000);
+    return () => clearTimeout(timeout);
+  }, [isEditUnlocked]);
 
   // Active class
   const currentClass = useMemo(() => {
@@ -171,19 +222,50 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
     });
   }, [classStudents, dailyRecordMap, statusFilter, searchQuery]);
 
-  // Handle PIN verification to unlock Edit mode
+  // Handle PIN verification to unlock Edit mode with brute-force defense
   const handleVerifyPin = (e: React.FormEvent) => {
     e.preventDefault();
+    if (cooldownRemaining > 0) return;
+
     const correctPin = settings?.studentAttendancePin || '1234';
     if (enteredPin.trim() === correctPin.trim()) {
       setIsEditUnlocked(true);
       setIsPinModalOpen(false);
       setEnteredPin('');
       setPinError('');
+      setFailedAttempts(0);
+      setLockoutUntil(0);
+      try {
+        sessionStorage.removeItem('attendance_pin_failures');
+        sessionStorage.removeItem('attendance_pin_lockout_until');
+      } catch {}
       if (soundOn) soundEffects.playSuccess();
       showToast('🔓 ដោះសោជោគជ័យ! លោកគ្រូ ឬប្រធានថ្នាក់អាចកត់វត្តមានបានហើយ។');
     } else {
-      setPinError('❌ លេខកូដសម្ងាត់មិនត្រឹមត្រូវទេ! សិស្សមិនអាចកែប្រែវត្តមានបានឡើយ។');
+      const nextFailures = failedAttempts + 1;
+      setFailedAttempts(nextFailures);
+      try {
+        sessionStorage.setItem('attendance_pin_failures', String(nextFailures));
+      } catch {}
+
+      if (nextFailures >= 5) {
+        const lockTime = Date.now() + 300 * 1000; // 5 minutes lockout
+        setLockoutUntil(lockTime);
+        try {
+          sessionStorage.setItem('attendance_pin_lockout_until', String(lockTime));
+        } catch {}
+        setPinError('🚫 បានបញ្ចូលខុស ៥ ដង! ប្រព័ន្ធត្រូវបានចាក់សោសុវត្ថិភាពរយពេល ៥ នាទី។');
+      } else if (nextFailures >= 3) {
+        const lockTime = Date.now() + 60 * 1000; // 1 minute lockout
+        setLockoutUntil(lockTime);
+        try {
+          sessionStorage.setItem('attendance_pin_lockout_until', String(lockTime));
+        } catch {}
+        setPinError('⚠️ បានបញ្ចូលខុស ៣ ដង! សូមរង់ចាំ ១ នាទី មុននឹងសាកល្បងម្ដងទៀត។');
+      } else {
+        const remaining = 3 - nextFailures;
+        setPinError(`❌ លេខកូដសម្ងាត់មិនត្រឹមត្រូវទេ! នៅសល់ ${remaining} ដងទៀត មុននឹងប្រព័ន្ធចាក់សោបណ្តោះអាសន្ន។`);
+      }
       if (soundOn) soundEffects.playAbsentChime();
     }
   };
@@ -718,6 +800,18 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
             </div>
           </div>
 
+          {cooldownRemaining > 0 && (
+            <div className="bg-rose-50 border border-rose-300 rounded-2xl p-3 text-xs text-rose-800 flex items-center space-x-2.5 animate-pulse">
+              <Timer className="w-5 h-5 text-rose-600 shrink-0" />
+              <div>
+                <p className="font-bold">ប្រព័ន្ធត្រូវបានចាក់សោសុវត្ថិភាពបណ្តោះអាសន្ន!</p>
+                <p className="text-[11px] text-rose-700 mt-0.5">
+                  ដោយសារបញ្ចូលខុសច្រើនដង សូមរង់ចាំ <strong className="font-mono font-bold text-rose-900">{cooldownRemaining}</strong> វិនាទី មុននឹងសាកល្បងម្ដងទៀត។
+                </p>
+              </div>
+            </div>
+          )}
+
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1.5">
               លេខកូដសម្ងាត់ (Security PIN) <span className="text-rose-500">*</span>
@@ -725,18 +819,29 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
             <div className="relative">
               <Key className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
-                type="password"
-                maxLength={6}
+                type={showPinText ? 'text' : 'password'}
+                maxLength={8}
                 required
                 autoFocus
+                disabled={cooldownRemaining > 0}
                 placeholder="បញ្ចូលលេខសម្ងាត់..."
                 value={enteredPin}
                 onChange={(e) => {
                   setEnteredPin(e.target.value);
                   setPinError('');
                 }}
-                className="w-full pl-9 pr-3 py-2.5 text-base border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono font-black text-center tracking-widest text-slate-900"
+                className={`w-full pl-9 pr-10 py-2.5 text-base border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono font-black text-center tracking-widest text-slate-900 ${
+                  cooldownRemaining > 0 ? 'bg-slate-100 opacity-60 cursor-not-allowed' : 'bg-white'
+                }`}
               />
+              <button
+                type="button"
+                onClick={() => setShowPinText(!showPinText)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                title={showPinText ? 'លាក់លេខសម្ងាត់' : 'បង្ហាញលេខសម្ងាត់'}
+              >
+                {showPinText ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
             {pinError && (
               <p className="text-xs text-rose-600 font-bold mt-1.5 flex items-center">
@@ -744,8 +849,9 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
                 {pinError}
               </p>
             )}
-            <p className="text-[11px] text-slate-400 mt-1">
-              (លេខកូដសម្ងាត់លំនាំដើម៖ <strong className="font-mono text-slate-600">1234</strong> • គ្រូអាចប្តូរក្នុង Settings)
+            <p className="text-[11px] text-slate-500 mt-1.5 flex items-center">
+              <ShieldAlert className="w-3.5 h-3.5 mr-1 text-slate-400 shrink-0" />
+              <span>មានតែលោកគ្រូ-អ្នកគ្រូ ឬប្រធានថ្នាក់ដែលមានលេខសម្ងាត់ត្រឹមត្រូវប៉ុណ្ណោះ ទើបអាចដោះសោបាន។</span>
             </p>
           </div>
 
@@ -763,10 +869,15 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
             </button>
             <button
               type="submit"
-              className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-600/20 cursor-pointer flex items-center space-x-1.5"
+              disabled={cooldownRemaining > 0 || !enteredPin.trim()}
+              className={`px-5 py-2 rounded-xl text-white text-xs font-bold shadow-md shadow-indigo-600/20 flex items-center space-x-1.5 transition-all ${
+                cooldownRemaining > 0 || !enteredPin.trim()
+                  ? 'bg-indigo-300 opacity-60 cursor-not-allowed'
+                  : 'bg-indigo-600 hover:bg-indigo-700 cursor-pointer active:scale-95'
+              }`}
             >
               <Key className="w-3.5 h-3.5" />
-              <span>ផ្ទៀងផ្ទាត់ & ដោះសោ</span>
+              <span>{cooldownRemaining > 0 ? `រង់ចាំ (${cooldownRemaining}s)` : 'ផ្ទៀងផ្ទាត់ & ដោះសោ'}</span>
             </button>
           </div>
         </form>
