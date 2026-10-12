@@ -35,6 +35,7 @@ import {
   downloadStudentTemplate,
   parseExcelStudents,
   parsePastedExcelText,
+  parseClipboardGrid,
   calculateAge,
 } from '../utils/excelUtils';
 import { enrichStudentWithMoEYSFields } from '../utils/studentEnricher';
@@ -163,8 +164,8 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
         nameKh: field === 'nameKh' ? value : `សិស្ស ${targetRollNo}`,
         nameEn: field === 'nameEn' ? value : '',
         gender: field === 'gender' ? value : 'ប្រុស',
-        dob: field === 'dob' ? value : '2011-01-01',
-        age: field === 'dob' ? calculateAge(value) : 13,
+        dob: field === 'dob' ? value : '',
+        age: field === 'dob' ? calculateAge(value) : 0,
         status: 'active',
         createdAt: new Date().toISOString(),
         [field]: value,
@@ -179,11 +180,11 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
     }
   };
 
-  // Direct Ctrl+V on the spreadsheet table (intercepts TSV from Excel)
+  // Direct Ctrl+V on the spreadsheet table (Intelligent Excel-like grid paste)
   const handleTablePaste = async (e: React.ClipboardEvent) => {
     const text = e.clipboardData.getData('text/plain');
     if (!text || (!text.includes('\t') && !text.includes('\n'))) {
-      return; // Regular single cell inline text paste, let browser handle it
+      return; // Regular single cell inline text paste, let browser handle it natively
     }
     e.preventDefault();
     const targetClassId = selectedClassId === 'ALL' ? (classes[0]?.id || '') : selectedClassId;
@@ -192,17 +193,81 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
       return;
     }
 
-    const startRoll = selectedCell
-      ? selectedCell.rowIdx + 1
-      : filteredStudents.length + 1;
+    const startRowIdx = selectedCell ? selectedCell.rowIdx : 0;
+    const startColKey = selectedCell ? (selectedCell.colKey as keyof Student) : undefined;
 
-    const parsed = parsePastedExcelText(text, targetClassId, startRoll);
-    if (parsed.length === 0) return;
+    const parsedGrid = parseClipboardGrid(text, startColKey);
+    if (parsedGrid.rows.length === 0) return;
 
-    await pushSnapshot(`បិទភ្ជាប់សិស្ស ${parsed.length} នាក់ពី Excel`);
-    await db.students.bulkAdd(parsed as Student[]);
+    await pushSnapshot(`បិទភ្ជាប់ទិន្នន័យ ${parsedGrid.rows.length} ជួរពី Excel`);
+
+    let updatedCount = 0;
+    let addedCount = 0;
+    const newStudentsToAdd: Student[] = [];
+
+    for (let rIdx = 0; rIdx < parsedGrid.rows.length; rIdx++) {
+      const rowData = parsedGrid.rows[rIdx];
+      const targetIdx = startRowIdx + rIdx;
+
+      if (targetIdx < filteredStudents.length) {
+        // Target row already has an existing student -> UPDATE only the pasted fields!
+        const existingStudent = filteredStudents[targetIdx];
+        const updates: Partial<Student> = { ...rowData };
+        if (updates.dob) {
+          updates.age = calculateAge(updates.dob);
+        }
+        await db.students.update(existingStudent.id, updates);
+        updatedCount++;
+      } else {
+        // Row extends beyond existing students -> CREATE a new student!
+        const targetRollNo = targetIdx + 1;
+        const newStu: Student = {
+          id: `stu-${Date.now()}-${rIdx}-${Math.random().toString(36).substring(2, 6)}`,
+          classId: targetClassId,
+          rollNo: rowData.rollNo ? Number(rowData.rollNo) : targetRollNo,
+          studentCode: rowData.studentCode || `STU-${String(targetRollNo).padStart(3, '0')}`,
+          nameKh: rowData.nameKh || `សិស្ស ${targetRollNo}`,
+          nameEn: rowData.nameEn || '',
+          gender: rowData.gender === 'ស្រី' ? 'ស្រី' : 'ប្រុស',
+          dob: rowData.dob || '',
+          age: rowData.dob ? calculateAge(rowData.dob) : 0,
+          originSchool: rowData.originSchool || '',
+          pobVillage: rowData.pobVillage || '',
+          pobCommune: rowData.pobCommune || '',
+          pobDistrict: rowData.pobDistrict || '',
+          pobProvince: rowData.pobProvince || '',
+          addrVillage: rowData.addrVillage || '',
+          addrCommune: rowData.addrCommune || '',
+          addrDistrict: rowData.addrDistrict || '',
+          addrProvince: rowData.addrProvince || '',
+          studentPhone: rowData.studentPhone || '',
+          fatherName: rowData.fatherName || '',
+          fatherOccupation: rowData.fatherOccupation || '',
+          fatherPhone: rowData.fatherPhone || '',
+          motherName: rowData.motherName || '',
+          motherOccupation: rowData.motherOccupation || '',
+          motherPhone: rowData.motherPhone || '',
+          otherNotes: rowData.otherNotes || '',
+          status: 'active',
+          createdAt: new Date().toISOString(),
+          ...rowData,
+        };
+        newStudentsToAdd.push(newStu);
+        addedCount++;
+      }
+    }
+
+    if (newStudentsToAdd.length > 0) {
+      await db.students.bulkAdd(newStudentsToAdd);
+    }
+
     onRefresh();
-    showToast(`📋 បានបិទភ្ជាប់សិស្សចំនួន ${parsed.length} នាក់ពី Excel ដោយជោគជ័យ!`);
+
+    const colInfo = selectedCell ? `ចាប់ពីក្រឡា [${selectedCell.colName}]` : '';
+    const summary = [];
+    if (updatedCount > 0) summary.push(`កែប្រែសិស្ស ${updatedCount} នាក់`);
+    if (addedCount > 0) summary.push(`បន្ថែមសិស្សថ្មី ${addedCount} នាក់`);
+    showToast(`📋 បានបិទភ្ជាប់ទិន្នន័យពី Excel ${colInfo} ដោយជោគជ័យ (${summary.join(', ')})!`);
   };
 
   // Keyboard navigation inside table (Enter moves down, Tab moves right)

@@ -104,7 +104,7 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({
       setNameKh('');
       setNameEn('');
       setGender('ប្រុស');
-      setDob('2011-01-01');
+      setDob('');
       setOriginSchool('វិទ្យាល័យ ហ៊ុន សែន កំពង់ត្រឡាច');
       setStudentPhone('');
 
@@ -210,9 +210,6 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({
       newErrors.gender = 'សូមជ្រើសរើសភេទ (ចាំបាច់)';
     }
 
-    if (!dob) {
-      newErrors.dob = 'សូមបញ្ចូលថ្ងៃខែឆ្នាំកំណើត (ចាំបាច់)';
-    }
 
     if (!classId) {
       newErrors.classId = 'សូមជ្រើសរើសថ្នាក់រៀន (ចាំបាច់)';

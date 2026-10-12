@@ -13,9 +13,13 @@ import {
   Info,
   Phone,
   Trash2,
+  AlertTriangle,
+  RotateCcw,
+  Check,
 } from 'lucide-react';
 import type { ClassRoom, TimetableSlot, TeacherSettings } from '../types';
 import { db } from '../db/db';
+import { useUndoRedo } from '../context/UndoRedoContext';
 import { toKhmerNum, getKhmerLunarDate, getKhmerSolarDate } from '../utils/dateUtils';
 import { Modal } from '../components/common/Modal';
 import { PrintButton } from '../components/common/PrintButton';
@@ -214,6 +218,7 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
   onRefresh,
   defaultMode = 'class',
 }) => {
+  const { pushSnapshot, showToast } = useUndoRedo();
   const [activeTab, setActiveTab] = useState<'class' | 'teacher'>(defaultMode);
   // Default to 'all' to render full official weekly sheet as shown in Image 4
   const [selectedSession, setSelectedSession] = useState<'morning' | 'afternoon' | 'all'>('all');
@@ -224,6 +229,19 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
   const [editRoom, setEditRoom] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
 
+  // Timetable Official Date Setting (អ្នកប្រើប្រាស់ជាអ្នកកំណត់កាលបរិច្ឆេទ ហើយកាលបរិច្ឆេទថ្នាក់ និងគ្រូដូចគ្នា)
+  const [timetableDate, setTimetableDate] = useState<string>(() => {
+    return localStorage.getItem('app_timetable_official_date') || new Date().toISOString().split('T')[0];
+  });
+  const [isDateModalOpen, setIsDateModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [customLunarDate, setCustomLunarDate] = useState<string>(() => {
+    return localStorage.getItem('app_timetable_custom_lunar') || '';
+  });
+  const [customSolarDate, setCustomSolarDate] = useState<string>(() => {
+    return localStorage.getItem('app_timetable_custom_solar') || '';
+  });
+
   // Active class for class view
   const activeClassId = selectedClassId === 'ALL' ? (classes[0]?.id || '') : selectedClassId;
   const currentClass = classes.find((c) => c.id === activeClassId);
@@ -232,9 +250,33 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
   const teacherName = settings?.teacherName || 'ហ៊ុន រដ្ឋា';
   const teacherPhone = settings?.phone || '093 486 987';
 
-  // Dynamic Khmer Lunar & Solar dates for official footer
-  const lunarInfo = useMemo(() => getKhmerLunarDate(), []);
-  const solarInfo = useMemo(() => getKhmerSolarDate(), []);
+  // Dynamic Khmer Lunar & Solar dates computed from user-selected timetableDate (ថ្នាក់ & គ្រូ ប្រើដូចគ្នា)
+  const lunarInfo = useMemo(() => getKhmerLunarDate(timetableDate), [timetableDate]);
+  const solarInfo = useMemo(() => getKhmerSolarDate(timetableDate), [timetableDate]);
+
+  // Update timetable date
+  const handleDateChange = (newDate: string) => {
+    setTimetableDate(newDate);
+    localStorage.setItem('app_timetable_official_date', newDate);
+    showToast(`📅 បានកំណត់កាលបរិច្ឆេទកាលវិភាគ៖ ${newDate}`);
+  };
+
+  const handleSaveCustomDates = (e: React.FormEvent) => {
+    e.preventDefault();
+    localStorage.setItem('app_timetable_official_date', timetableDate);
+    localStorage.setItem('app_timetable_custom_lunar', customLunarDate);
+    localStorage.setItem('app_timetable_custom_solar', customSolarDate);
+    setIsDateModalOpen(false);
+    showToast('💾 បានរក្សាទុកការកំណត់កាលបរិច្ឆេទកាលវិភាគដោយជោគជ័យ!');
+  };
+
+  const handleResetToAutoDate = () => {
+    setCustomLunarDate('');
+    setCustomSolarDate('');
+    localStorage.removeItem('app_timetable_custom_lunar');
+    localStorage.removeItem('app_timetable_custom_solar');
+    showToast('✨ បានកំណត់កាលបរិច្ឆេទចន្ទគតិ-សុរិយគតិ ស្វ័យប្រវត្តិតាមប្រតិទិន');
+  };
 
   // Filter slots for active class
   const classSlotsMap = useMemo(() => {
@@ -312,6 +354,7 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
     e.preventDefault();
     if (!editingSlot) return;
 
+    await pushSnapshot(`កែសម្រួលកាលវិភាគ "${editSubject.trim()}"`);
     const slotData: TimetableSlot = {
       ...editingSlot,
       subject: editSubject.trim(),
@@ -325,14 +368,69 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
     setTimeout(() => setSaveSuccess(false), 2000);
     setEditingSlot(null);
     onRefresh();
+    showToast(`✨ បានរក្សាទុកម៉ោង "${slotData.subject}"`);
   };
 
-  // Delete slot
+  // Delete single slot from modal
   const handleDeleteSlot = async () => {
     if (!editingSlot) return;
+    await pushSnapshot(`លុបម៉ោង ${editingSlot.subject || 'កាលវិភាគ'}`);
     await db.timetable.delete(editingSlot.id);
     setEditingSlot(null);
     onRefresh();
+    showToast(`🗑️ បានសម្អាតម៉ោង "${editingSlot.subject || 'កាលវិភាគ'}" (អាចចុច ↶ Undo បាន)`);
+  };
+
+  // Direct single slot delete on cell hover with Undo support
+  const handleDirectDeleteSlot = async (slot: TimetableSlot) => {
+    await pushSnapshot(`លុបម៉ោង ${slot.subject || 'កាលវិភាគ'}`);
+    await db.timetable.delete(slot.id);
+    onRefresh();
+    showToast(`🗑️ បានលុបម៉ោង "${slot.subject || 'កាលវិភាគ'}" (អាចចុច ↶ Undo បាន)`);
+  };
+
+  // Bulk delete timetable for active class
+  const handleDeleteClassTimetable = async () => {
+    const slotsToDelete = timetableSlots.filter((s) => s.classId === activeClassId);
+    if (slotsToDelete.length === 0) {
+      showToast(`ℹ️ មិនមានកាលវិភាគក្នុងថ្នាក់ ${currentClassName} ត្រូវលុបទេ`);
+      setIsDeleteModalOpen(false);
+      return;
+    }
+    await pushSnapshot(`លុបកាលវិភាគថ្នាក់ ${currentClassName}`);
+    await db.timetable.bulkDelete(slotsToDelete.map((s) => s.id));
+    setIsDeleteModalOpen(false);
+    onRefresh();
+    showToast(`🗑️ បានលុបកាលវិភាគថ្នាក់ ${currentClassName} ទាំងអស់រួចរាល់! (អាចចុច ↶ Undo បាន)`);
+  };
+
+  // Bulk delete timetable for this teacher
+  const handleDeleteTeacherTimetable = async () => {
+    const slotsToDelete = teacherSlots;
+    if (slotsToDelete.length === 0) {
+      showToast(`ℹ️ មិនមានម៉ោងបង្រៀនរបស់គ្រូ ${teacherName} ត្រូវលុបទេ`);
+      setIsDeleteModalOpen(false);
+      return;
+    }
+    await pushSnapshot(`លុបកាលវិភាគគ្រូ ${teacherName}`);
+    await db.timetable.bulkDelete(slotsToDelete.map((s) => s.id));
+    setIsDeleteModalOpen(false);
+    onRefresh();
+    showToast(`🗑️ បានលុបម៉ោងបង្រៀនរបស់លោកគ្រូ ${teacherName} ទាំងអស់រួចរាល់! (អាចចុច ↶ Undo បាន)`);
+  };
+
+  // Bulk clear all timetables across all classes
+  const handleDeleteAllTimetables = async () => {
+    if (timetableSlots.length === 0) {
+      showToast('ℹ️ មិនមានកាលវិភាគត្រូវលុបទេ');
+      setIsDeleteModalOpen(false);
+      return;
+    }
+    await pushSnapshot('លុបកាលវិភាគទាំងអស់');
+    await db.timetable.clear();
+    setIsDeleteModalOpen(false);
+    onRefresh();
+    showToast('🗑️ បានលុបកាលវិភាគទាំងអស់គ្រប់ថ្នាក់រួចរាល់! (អាចចុច ↶ Undo បាន)');
   };
 
   return (
@@ -412,6 +510,42 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
               🌇 រសៀល (1h-5h)
             </button>
           </div>
+
+          {/* Date Picker Control (កាលបរិច្ឆេទកាលវិភាគ - ថ្នាក់ & គ្រូ ប្រើដូចគ្នា) */}
+          <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs font-bold shrink-0">
+            <span className="text-slate-600 px-2 py-1 flex items-center">
+              <Calendar className="w-3.5 h-3.5 mr-1 text-blue-600" />
+              កាលបរិច្ឆេទ៖
+            </span>
+            <input
+              type="date"
+              value={timetableDate}
+              onChange={(e) => {
+                if (e.target.value) handleDateChange(e.target.value);
+              }}
+              className="bg-white px-2 py-1 rounded-lg border border-slate-300 font-mono text-xs font-bold text-slate-800 cursor-pointer hover:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+              title="ជ្រើសរើសកាលបរិច្ឆេទកាលវិភាគ (ថ្នាក់ & គ្រូ ប្រើដូចគ្នា)"
+            />
+            <button
+              type="button"
+              onClick={() => setIsDateModalOpen(true)}
+              className="px-2 py-1 ml-0.5 rounded-lg text-blue-700 hover:bg-white transition-colors cursor-pointer"
+              title="កែសម្រួលកាលបរិច្ឆេទចន្ទគតិ-សុរិយគតិលម្អិត"
+            >
+              កែសម្រួល
+            </button>
+          </div>
+
+          {/* Delete Timetable Button (លុបកាលវិភាគ) */}
+          <button
+            type="button"
+            onClick={() => setIsDeleteModalOpen(true)}
+            className="inline-flex items-center px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold rounded-xl border border-rose-200 transition-colors cursor-pointer shrink-0"
+            title="លុបកាលវិភាគ (មានជម្រើសលុបតាមថ្នាក់ តាមគ្រូ ឬទាំងអស់)"
+          >
+            <Trash2 className="w-3.5 h-3.5 mr-1 text-rose-600" />
+            លុបកាលវិភាគ
+          </button>
 
           {/* Print with Orientation Selector */}
           <PrintButton defaultOrientation="landscape" label="បោះពុម្ព" />
@@ -538,17 +672,31 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
                                 </div>
                               )}
 
-                              {/* Edit Action Button on Hover */}
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleOpenEdit(slot);
-                                }}
-                                className="absolute top-1 right-1 p-1 text-slate-400 hover:text-blue-600 rounded bg-white shadow-2xs opacity-0 group-hover:opacity-100 transition-opacity no-print"
-                                title="កែប្រែម៉ោងនេះ"
-                              >
-                                <Edit2 className="w-3 h-3" />
-                              </button>
+                              {/* Action Buttons on Hover (Edit & Delete) */}
+                              <div className="absolute top-1 right-1 flex items-center space-x-0.5 opacity-0 group-hover:opacity-100 transition-opacity no-print bg-white/95 rounded-md shadow-2xs p-0.5 border border-slate-200">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenEdit(slot);
+                                  }}
+                                  className="p-1 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                  title="កែប្រែម៉ោងនេះ"
+                                >
+                                  <Edit2 className="w-3 h-3" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDirectDeleteSlot(slot);
+                                  }}
+                                  className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
+                                  title="លុបម៉ោងនេះចេញ (↶ Undo បាន)"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </div>
                             </div>
                           ) : (
                             <div className="py-2 text-slate-300 hover:text-blue-500 transition-colors text-xs select-none">
@@ -633,17 +781,31 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
                                 </div>
                               )}
 
-                              {/* Edit Action Button on Hover */}
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleOpenEdit(slot);
-                                }}
-                                className="absolute top-1 right-1 p-1 text-slate-400 hover:text-blue-600 rounded bg-white shadow-2xs opacity-0 group-hover:opacity-100 transition-opacity no-print"
-                                title="កែប្រែម៉ោងនេះ"
-                              >
-                                <Edit2 className="w-3 h-3" />
-                              </button>
+                              {/* Action Buttons on Hover (Edit & Delete) */}
+                              <div className="absolute top-1 right-1 flex items-center space-x-0.5 opacity-0 group-hover:opacity-100 transition-opacity no-print bg-white/95 rounded-md shadow-2xs p-0.5 border border-slate-200">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenEdit(slot);
+                                  }}
+                                  className="p-1 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                  title="កែប្រែម៉ោងនេះ"
+                                >
+                                  <Edit2 className="w-3 h-3" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDirectDeleteSlot(slot);
+                                  }}
+                                  className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
+                                  title="លុបម៉ោងនេះចេញ (↶ Undo បាន)"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </div>
                             </div>
                           ) : (
                             <div className="py-2 text-slate-300 hover:text-blue-500 transition-colors text-xs select-none">
@@ -679,12 +841,21 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
 
           {/* Right Signature: កាលបរិច្ឆេទចន្ទគតិ-សុរិយគតិ និង នាយកសាលា */}
           <div className="text-center w-72 sm:w-80 space-y-1 self-end sm:self-auto">
-            <p className="text-xs sm:text-[12.5px] font-bold text-slate-800">
-              ធ្វើនៅ{lunarInfo.fullLunarStr}
-            </p>
-            <p className="text-xs sm:text-[12.5px] font-bold text-slate-800">
-              {settings?.provinceCity || 'កំពង់ត្រឡាច'}, {solarInfo.shortSolarStr}
-            </p>
+            <div
+              onClick={() => setIsDateModalOpen(true)}
+              className="cursor-pointer hover:bg-blue-50/70 p-1.5 rounded-xl border border-transparent hover:border-blue-200 transition-all group relative"
+              title="ចុចដើម្បីកំណត់/កែប្រែកាលបរិច្ឆេទកាលវិភាគ (ថ្នាក់ & គ្រូ ប្រើដូចគ្នា)"
+            >
+              <p className="text-xs sm:text-[12.5px] font-bold text-slate-800">
+                ធ្វើនៅ{customLunarDate.trim() || lunarInfo.fullLunarStr}
+              </p>
+              <p className="text-xs sm:text-[12.5px] font-bold text-slate-800">
+                {customSolarDate.trim() || `${settings?.provinceCity || 'កំពង់ត្រឡាច'}, ${solarInfo.shortSolarStr}`}
+              </p>
+              <span className="text-[10px] text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity block no-print font-bold">
+                ✏️ កែប្រែកាលបរិច្ឆេទ
+              </span>
+            </div>
             <p className="font-black text-slate-900 font-moul text-xs sm:text-sm pt-1">
               នាយកសាលា
             </p>
@@ -796,6 +967,221 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
             </div>
           </form>
         )}
+      </Modal>
+
+      {/* Date Setting Modal (កំណត់កាលបរិច្ឆេទកាលវិភាគ) */}
+      <Modal
+        isOpen={isDateModalOpen}
+        onClose={() => setIsDateModalOpen(false)}
+        title="📅 កំណត់កាលបរិច្ឆេទកាលវិភាគ (Timetable Date Setting)"
+        subtitle="កាលបរិច្ឆេទនេះនឹងត្រូវបង្ហាញលើកាលវិភាគផ្លូវការ (ទាំងកាលវិភាគតាមថ្នាក់ និងកាលវិភាគគ្រូ)"
+        maxWidth="md"
+      >
+        <form onSubmit={handleSaveCustomDates} className="space-y-4 text-xs sm:text-sm">
+          {/* Date Picker */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              ជ្រើសរើសកាលបរិច្ឆេទ <span className="text-rose-500">*</span>
+            </label>
+            <input
+              type="date"
+              required
+              value={timetableDate}
+              onChange={(e) => setTimetableDate(e.target.value)}
+              className="w-full px-3 py-2 text-sm font-mono font-bold text-slate-800 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+            />
+          </div>
+
+          {/* Quick Date Selectors */}
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <span className="text-[11px] font-bold text-slate-500">កាលបរិច្ឆេទរហ័ស៖</span>
+            <button
+              type="button"
+              onClick={() => {
+                const today = new Date().toISOString().split('T')[0];
+                setTimetableDate(today);
+              }}
+              className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+            >
+              ថ្ងៃនេះ
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const d = new Date();
+                const day = d.getDay();
+                const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday
+                const monday = new Date(d.setDate(diff)).toISOString().split('T')[0];
+                setTimetableDate(monday);
+              }}
+              className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+            >
+              ថ្ងៃច័ន្ទសប្តាហ៍នេះ
+            </button>
+          </div>
+
+          {/* Dynamic Preview Banner */}
+          <div className="bg-amber-50/80 border border-amber-200 p-3 rounded-2xl space-y-1.5 text-xs text-amber-950">
+            <p className="font-bold flex items-center text-amber-900">
+              <Sparkles className="w-4 h-4 text-amber-600 mr-1.5" />
+              ទម្រង់កាលបរិច្ឆេទស្វ័យប្រវត្តិតាមប្រតិទិនខ្មែរ៖
+            </p>
+            <div className="space-y-1 pl-5 text-[12px]">
+              <p>
+                🌙 <strong>ចន្ទគតិ៖</strong> ធ្វើនៅ{lunarInfo.fullLunarStr}
+              </p>
+              <p>
+                ☀️ <strong>សុរិយគតិ៖</strong> {settings?.provinceCity || 'កំពង់ត្រឡាច'}, {solarInfo.shortSolarStr}
+              </p>
+            </div>
+          </div>
+
+          {/* Manual Customization (Optional) */}
+          <div className="space-y-3 pt-2 border-t border-slate-200">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-slate-700 text-xs">
+                កែសម្រួលអត្ថបទដោយផ្ទាល់ (ស្រេចចិត្ត)៖
+              </span>
+              {(customLunarDate || customSolarDate) && (
+                <button
+                  type="button"
+                  onClick={handleResetToAutoDate}
+                  className="text-xs text-blue-600 hover:text-blue-800 font-bold hover:underline flex items-center cursor-pointer"
+                >
+                  <RotateCcw className="w-3 h-3 mr-1" />
+                  កំណត់ស្វ័យប្រវត្តិតាមប្រតិទិន
+                </button>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                អត្ថបទចន្ទគតិ (ឧ. ធ្វើនៅថ្ងៃចន្ទ ២កើត ខែកត្តិក ឆ្នាំរោង ឆស័ក ព.ស. ២៥៧០)
+              </label>
+              <input
+                type="text"
+                value={customLunarDate}
+                onChange={(e) => setCustomLunarDate(e.target.value)}
+                placeholder={`ធ្វើនៅ${lunarInfo.fullLunarStr}`}
+                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                អត្ថបទសុរិយគតិ (ឧ. ខេត្តកំពង់ចាម, ថ្ងៃទី១២ ខែតុលា ឆ្នាំ២០២៦)
+              </label>
+              <input
+                type="text"
+                value={customSolarDate}
+                onChange={(e) => setCustomSolarDate(e.target.value)}
+                placeholder={`${settings?.provinceCity || 'កំពង់ត្រឡាច'}, ${solarInfo.shortSolarStr}`}
+                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-200">
+            <button
+              type="button"
+              onClick={() => setIsDateModalOpen(false)}
+              className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+            >
+              បោះបង់
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-xs transition-colors cursor-pointer flex items-center"
+            >
+              <Save className="w-3.5 h-3.5 mr-1" />
+              រក្សាទុកកាលបរិច្ឆេទ
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Delete Timetable Confirmation Modal */}
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        title="🗑️ លុបកាលវិភាគបង្រៀន (Delete Timetable)"
+        subtitle="សូមជ្រើសរើសជម្រើសខាងក្រោមដើម្បីលុបទិន្នន័យកាលវិភាគ (អាចចុច Undo ដើម្បីយកមកវិញបាន)"
+        maxWidth="md"
+      >
+        <div className="space-y-4 text-xs sm:text-sm">
+          <div className="bg-rose-50 border border-rose-200 p-3.5 rounded-2xl flex items-start gap-2.5 text-xs text-rose-900">
+            <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold">ការលុបកាលវិភាគមិនបាត់បង់ទិន្នន័យរហូតឡើយ៖</p>
+              <p className="text-rose-700 mt-0.5">
+                លោកគ្រូអ្នកគ្រូអាចចុចប៊ូតុង <strong>↶ Undo</strong> (Ctrl+Z) នៅផ្នែកខាងលើនៃប្រព័ន្ធដើម្បីទាញយកកាលវិភាគដែលបានលុបមកវិញបានគ្រប់ពេលវេលា។
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-2 pt-1">
+            {/* Option 1: Delete active class timetable */}
+            <button
+              type="button"
+              onClick={handleDeleteClassTimetable}
+              className="w-full text-left p-3.5 rounded-2xl border border-slate-200 hover:border-rose-300 hover:bg-rose-50/50 transition-all cursor-pointer flex items-center justify-between group"
+            >
+              <div>
+                <p className="font-bold text-slate-800 group-hover:text-rose-700">
+                  ១. លុបកាលវិភាគថ្នាក់នេះ ({currentClassName})
+                </p>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  លុបម៉ោងបង្រៀនទាំងអស់សម្រាប់តែថ្នាក់ {currentClassName} (ថ្នាក់ដទៃនៅដដែល)
+                </p>
+              </div>
+              <Trash2 className="w-4 h-4 text-slate-400 group-hover:text-rose-600 shrink-0 ml-2" />
+            </button>
+
+            {/* Option 2: Delete this teacher's timetable */}
+            <button
+              type="button"
+              onClick={handleDeleteTeacherTimetable}
+              className="w-full text-left p-3.5 rounded-2xl border border-slate-200 hover:border-rose-300 hover:bg-rose-50/50 transition-all cursor-pointer flex items-center justify-between group"
+            >
+              <div>
+                <p className="font-bold text-slate-800 group-hover:text-rose-700">
+                  ២. លុបម៉ោងបង្រៀនរបស់គ្រូ ({teacherName})
+                </p>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  លុបតែម៉ោងដែលបង្រៀនដោយលោកគ្រូ {teacherName} គ្រប់ថ្នាក់
+                </p>
+              </div>
+              <Trash2 className="w-4 h-4 text-slate-400 group-hover:text-rose-600 shrink-0 ml-2" />
+            </button>
+
+            {/* Option 3: Delete all timetables across all classes */}
+            <button
+              type="button"
+              onClick={handleDeleteAllTimetables}
+              className="w-full text-left p-3.5 rounded-2xl border border-rose-200 bg-rose-50/40 hover:bg-rose-100/60 transition-all cursor-pointer flex items-center justify-between group"
+            >
+              <div>
+                <p className="font-black text-rose-800">
+                  ៣. សម្អាតកាលវិភាគទាំងអស់គ្រប់ថ្នាក់ (Reset All)
+                </p>
+                <p className="text-[11px] text-rose-600 mt-0.5">
+                  សម្អាតទិន្នន័យកាលវិភាគទាំងអស់ក្នុងប្រព័ន្ធឱ្យនៅទទេស្អាត
+                </p>
+              </div>
+              <Trash2 className="w-4 h-4 text-rose-600 shrink-0 ml-2" />
+            </button>
+          </div>
+
+          <div className="flex items-center justify-end pt-3 border-t border-slate-200">
+            <button
+              type="button"
+              onClick={() => setIsDeleteModalOpen(false)}
+              className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+            >
+              បិទផ្ទាំង
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

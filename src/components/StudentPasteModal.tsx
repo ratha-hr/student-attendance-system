@@ -2,15 +2,14 @@ import React, { useState, useEffect } from 'react';
 import {
   Clipboard,
   Check,
-  X,
   FileSpreadsheet,
-  AlertCircle,
   Users,
-  DownloadCloud,
+  Settings2,
 } from 'lucide-react';
 import type { Student } from '../types';
 import { db } from '../db/db';
 import { parsePastedExcelText } from '../utils/excelUtils';
+import { formatToDMY } from '../utils/dateUtils';
 import { Modal } from './common/Modal';
 
 interface StudentPasteModalProps {
@@ -31,18 +30,20 @@ export const StudentPasteModal: React.FC<StudentPasteModalProps> = ({
   onSuccess,
 }) => {
   const [pastedText, setPastedText] = useState('');
+  const [startColKey, setStartColKey] = useState<string>('auto');
   const [parsedStudents, setParsedStudents] = useState<Partial<Student>[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Automatically update preview when text changes
+  // Automatically update preview when text or column mode changes
   useEffect(() => {
     if (!pastedText.trim()) {
       setParsedStudents([]);
       return;
     }
-    const parsed = parsePastedExcelText(pastedText, classId, startRollNo);
+    const targetCol = startColKey === 'auto' ? undefined : (startColKey as keyof Student);
+    const parsed = parsePastedExcelText(pastedText, classId, startRollNo, targetCol);
     setParsedStudents(parsed);
-  }, [pastedText, classId, startRollNo]);
+  }, [pastedText, classId, startRollNo, startColKey]);
 
   // Read from system clipboard
   const handleReadClipboard = async () => {
@@ -92,16 +93,34 @@ export const StudentPasteModal: React.FC<StudentPasteModalProps> = ({
               💡 របៀបប្រើប្រាស់៖ បើកឯកសារ Excel (.xlsx / .xlsm) រួចជ្រើសរើស (Highlight) ជួរដេកសិស្ស → ចុច <kbd className="px-1.5 py-0.5 bg-white border rounded shadow-2xs font-mono font-bold">Ctrl + C</kbd> → រួចចុច <kbd className="px-1.5 py-0.5 bg-white border rounded shadow-2xs font-mono font-bold">Ctrl + V</kbd> ក្នុងប្រអប់ខាងក្រោមនេះ!
             </p>
             <p className="text-[11px] text-blue-700">
-              ប្រព័ន្ធអាចអានទម្រង់ក្បាលតារាងក្រសួង (MoEYS ២៣ ជួរឈរ) ឬទម្រង់សាមញ្ញ (ល.រ, អត្តលេខ, ឈ្មោះ, ភេទ, ថ្ងៃខែឆ្នាំកំណើត, ទីលំនៅ, ទូរស័ព្ទ, ឪពុកម្តាយ) ដោយស្វ័យប្រវត្តិ។
+              ប្រព័ន្ធអាចអានទម្រង់ក្បាលតារាងក្រសួង (MoEYS ២៣ ជួរឈរ) ឬទម្រង់សាមញ្ញ (ល.រ, ឈ្មោះ, ភេទ, ថ្ងៃខែឆ្នាំកំណើត) ដោយស្វ័យប្រវត្តិ។ ថ្ងៃខែឆ្នាំកំណើតនឹងមិនត្រូវបានដាក់អូតូក្លែងក្លាយជាដាច់ខាត។
             </p>
           </div>
         </div>
 
         {/* Action bar above textarea */}
-        <div className="flex items-center justify-between">
-          <label className="text-xs font-bold text-slate-700">
-            ប្រអប់បិទភ្ជាប់ (Paste Area)៖
-          </label>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center space-x-2">
+            <label className="text-xs font-bold text-slate-700">
+              ប្រអប់បិទភ្ជាប់ (Paste Area)៖
+            </label>
+            <div className="flex items-center space-x-1.5 text-xs text-slate-600 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200">
+              <Settings2 className="w-3.5 h-3.5 text-slate-500" />
+              <span className="font-semibold text-[11px]">តម្រឹមជួរឈរ៖</span>
+              <select
+                value={startColKey}
+                onChange={(e) => setStartColKey(e.target.value)}
+                className="bg-white border border-slate-300 rounded px-1.5 py-0.5 text-xs font-bold text-slate-700 cursor-pointer outline-none"
+              >
+                <option value="auto">✨ ស្វ័យប្រវត្តិ (Auto Detect)</option>
+                <option value="nameKh">គោត្តនាម នាម (ឈ្មោះសិស្ស)</option>
+                <option value="rollNo">ល.រ (ចាប់ពីលេខរៀង)</option>
+                <option value="studentCode">អត្តលេខ</option>
+                <option value="dob">ថ្ងៃខែឆ្នាំកំណើត</option>
+                <option value="studentPhone">លេខទូរស័ព្ទ</option>
+              </select>
+            </div>
+          </div>
           <button
             type="button"
             onClick={handleReadClipboard}
@@ -133,7 +152,7 @@ export const StudentPasteModal: React.FC<StudentPasteModalProps> = ({
               </span>
 
               <span className="text-[11px] text-slate-500 font-medium">
-                (បង្ហាញគំរូ ៥ ជួរដំបូង)
+                (បង្ហាញគំរូ ១០ ជួរដំបូង)
               </span>
             </div>
 
@@ -162,7 +181,13 @@ export const StudentPasteModal: React.FC<StudentPasteModalProps> = ({
                           {s.gender}
                         </span>
                       </td>
-                      <td className="p-2 font-mono text-slate-700 border-r">{s.dob}</td>
+                      <td className="p-2 font-mono text-slate-700 border-r">
+                        {s.dob ? (
+                          formatToDMY(s.dob)
+                        ) : (
+                          <span className="text-slate-400 italic text-[11px]">-</span>
+                        )}
+                      </td>
                       <td className="p-2 text-slate-700 border-r">{s.pobProvince || '-'}</td>
                       <td className="p-2 font-mono text-blue-700 border-r">{s.studentPhone || '-'}</td>
                       <td className="p-2 text-slate-700">{s.fatherName || s.motherName || '-'}</td>
