@@ -20,8 +20,15 @@ export const khmerToArabic = (str: string | number | undefined | null): string =
 };
 
 // Normalize dates in any common Cambodian / Excel format to YYYY-MM-DD (NEVER return fake dates)
-export const normalizeDate = (val: string | number | undefined | null): string => {
+export const normalizeDate = (val: string | number | Date | undefined | null): string => {
   if (!val) return '';
+  if (val instanceof Date) {
+    if (!isNaN(val.getTime())) {
+      return val.toISOString().slice(0, 10);
+    }
+    return '';
+  }
+
   const cleanVal = khmerToArabic(String(val)).trim();
   if (!cleanVal) return '';
 
@@ -76,10 +83,32 @@ export interface ColumnDef {
 
 export const SPREADSHEET_COLUMNS: ColumnDef[] = [
   { key: 'rollNo', name: 'ល.រ', aliases: ['ល.រ', 'លរ', 'លេខរៀង', 'roll', 'no', '#'] },
-  { key: 'studentCode', name: 'អត្តលេខ', aliases: ['អត្តលេខ', 'កូដ', 'code', 'id', 'student_id'] },
-  { key: 'nameKh', name: 'គោត្តនាម នាម', aliases: ['គោត្តនាម នាម', 'គោត្តនាម-នាម', 'គោត្តនាម', 'នាម', 'ឈ្មោះ', 'ឈ្មោះសិស្ស', 'name', 'namekh', 'full name'] },
+  { key: 'studentCode', name: 'អត្តលេខ', aliases: ['អត្តលេខ', 'អត្តលេខសិស្ស', 'កូដ', 'code', 'id', 'student_id'] },
+  {
+    key: 'nameKh',
+    name: 'គោត្តនាម នាម',
+    aliases: [
+      'គោត្តនាម និងនាម',
+      'គោត្តនាម និង នាម',
+      'គោត្តនាម នាម',
+      'គោត្តនាម-នាម',
+      'គោត្តនាម',
+      'ឈ្មោះសិស្ស',
+      'ឈ្មោះ',
+      'នាម',
+      'នាមត្រកូល',
+      'name',
+      'namekh',
+      'full name',
+      'student name',
+    ],
+  },
   { key: 'gender', name: 'ភេទ', aliases: ['ភេទ', 'gender', 'sex', 'f/m'] },
-  { key: 'dob', name: 'ថ្ងៃខែឆ្នាំកំណើត', aliases: ['ថ្ងៃខែឆ្នាំកំណើត', 'ថ្ងៃកំណើត', 'កំណើត', 'dob', 'birthdate', 'birth_date'] },
+  {
+    key: 'dob',
+    name: 'ថ្ងៃខែឆ្នាំកំណើត',
+    aliases: ['ថ្ងៃខែឆ្នាំកំណើត', 'ថ្ងៃ ខែ ឆ្នាំកំណើត', 'ថ្ងៃកំណើត', 'កំណើត', 'dob', 'birthdate', 'birth_date'],
+  },
   { key: 'age', name: 'អាយុ', aliases: ['អាយុ', 'age'] },
   { key: 'originSchool', name: 'មកពីសាលា', aliases: ['មកពីសាលា', 'សាលាចាស់', 'school', 'origin_school'] },
   { key: 'pobVillage', name: 'ភូមិ (កំណើត)', aliases: ['ទីកន្លែងកំណើត_ភូមិ', 'ភូមិកំណើត', 'ភូមិ (កំណើត)'] },
@@ -183,67 +212,175 @@ export function downloadStudentTemplate() {
   XLSX.writeFile(workbook, 'គំរូ_បញ្ជីប្រវត្តិរូបសិស្ស.xlsx');
 }
 
+/**
+ * Robust Excel File Parser for any Cambodian school Excel format.
+ * Scans all sheets and searches for header rows dynamically (ignoring title/cover rows).
+ * Skips empty or non-student rows. NEVER creates fake dummy students.
+ */
 export async function parseExcelStudents(file: File, classId: string): Promise<Partial<Student>[]> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
         const data = new Uint8Array(e.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const firstSheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[firstSheetName];
-        const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet);
+        const workbook = XLSX.read(data, { type: 'array', cellDates: true });
 
-        const parsedStudents: Partial<Student>[] = jsonData.map((row, idx) => {
-          const gender: Gender = row['ភេទ'] === 'ស្រី' || row['Gender'] === 'F' ? 'ស្រី' : 'ប្រុស';
-          const rawDob = row['ថ្ងៃខែឆ្នាំកំណើត'] || row['DOB'] || row['ថ្ងៃកំណើត'] || '';
-          const dob = rawDob ? normalizeDate(String(rawDob)) : '';
-          const age = Number(row['អាយុ']) || (dob ? calculateAge(dob) : 0);
-          const orphanStr = String(row['កំព្រា'] || '');
-          let orphanStatus: 'none' | 'father' | 'mother' | 'both' = 'none';
-          if (orphanStr.includes('ឪពុកម្តាយ')) orphanStatus = 'both';
-          else if (orphanStr.includes('ឪពុក')) orphanStatus = 'father';
-          else if (orphanStr.includes('ម្តាយ')) orphanStatus = 'mother';
+        let bestRows: any[][] = [];
+        let headerRowIdx = -1;
 
-          return {
-            id: 'stu_' + Date.now() + '_' + idx,
-            classId: classId,
-            rollNo: Number(row['ល.រ'] || row['លេខរៀង'] || row['Roll'] || idx + 1),
-            studentCode: String(row['អត្តលេខ'] || row['Code'] || `STU-${String(idx + 1).padStart(3, '0')}`),
-            nameKh: String(row['គោត្តនាម នាម'] || row['គោត្តនាម-នាម'] || row['NameKh'] || `សិស្ស ${idx + 1}`),
-            nameEn: String(row['ឈ្មោះជាអក្សរឡាតាំង'] || row['NameEn'] || ''),
+        // Check all sheets in the workbook
+        for (const sheetName of workbook.SheetNames) {
+          const ws = workbook.Sheets[sheetName];
+          if (!ws) continue;
+          const rows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+          if (!rows || rows.length === 0) continue;
+
+          // Find header row in first 25 rows
+          for (let r = 0; r < Math.min(25, rows.length); r++) {
+            const rowStr = rows[r].map((c) => String(c).trim()).join(' ').toLowerCase();
+            const hasName = /គោត្តនាម|ឈ្មោះ|នាម|name/i.test(rowStr);
+            const hasOther = /ភេទ|gender|sex|ល\.?រ|លេខរៀង|អត្តលេខ|roll/i.test(rowStr);
+            if (hasName && hasOther) {
+              headerRowIdx = r;
+              bestRows = rows;
+              break;
+            }
+          }
+          if (headerRowIdx !== -1) break;
+        }
+
+        // Fallback to first sheet if no clear header row found
+        if (headerRowIdx === -1) {
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          bestRows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '' });
+        }
+
+        if (!bestRows || bestRows.length === 0) {
+          resolve([]);
+          return;
+        }
+
+        // Map column indices from header row
+        const colMap: Record<string, number> = {};
+        if (headerRowIdx !== -1) {
+          const headerCells = bestRows[headerRowIdx].map((c) =>
+            String(c).toLowerCase().replace(/[\s_\-#.]/g, '')
+          );
+          headerCells.forEach((h, colIdx) => {
+            if (/^(លរ|លេខរៀង|no|roll)$/i.test(h)) colMap.rollNo = colIdx;
+            else if (/^(អត្តលេខ|អត្តលេខសិស្ស|កូដ|code|id|studentid)$/i.test(h)) colMap.studentCode = colIdx;
+            else if (/គោត្តនាម.*នាម|គោត្តនាម|ឈ្មោះសិស្ស|ឈ្មោះ|name/i.test(h)) {
+              if (colMap.nameKh === undefined) colMap.nameKh = colIdx;
+            } else if (/^(ភេទ|gender|sex)$/i.test(h)) colMap.gender = colIdx;
+            else if (/ថ្ងៃ.*កំណើត|កំណើត|dob|birth/i.test(h)) colMap.dob = colIdx;
+            else if (/^អាយុ|age$/i.test(h)) colMap.age = colIdx;
+            else if (/សាលា|school/i.test(h)) colMap.originSchool = colIdx;
+            else if (/ទីកន្លែងកំណើត.*ខេត្ត|ខេត្ត.*កំណើត|ទីកន្លែងកំណើត/i.test(h)) colMap.pobProvince = colIdx;
+            else if (/ទូរស័ព្ទ|phone/i.test(h)) colMap.studentPhone = colIdx;
+            else if (/ឪពុក|father|អាណាព្យាបាល/i.test(h)) colMap.fatherName = colIdx;
+            else if (/ម្តាយ|mother/i.test(h)) colMap.motherName = colIdx;
+            else if (/ផ្សេងៗ|កំណត់ចំណាំ|ចំណាំ|remark|notes/i.test(h)) colMap.otherNotes = colIdx;
+          });
+        }
+
+        const startDataIdx = headerRowIdx !== -1 ? headerRowIdx + 1 : 0;
+        const parsedStudents: Partial<Student>[] = [];
+        let rollCounter = 1;
+
+        for (let r = startDataIdx; r < bestRows.length; r++) {
+          const cells = bestRows[r];
+          if (!cells || cells.length === 0 || cells.every((c) => !String(c).trim())) continue;
+
+          // 1. Extract Name
+          let name = '';
+          if (colMap.nameKh !== undefined && cells[colMap.nameKh]) {
+            name = String(cells[colMap.nameKh]).trim();
+          } else {
+            // Find first cell containing text/letters (not pure digits, not header keywords)
+            for (let c = 0; c < cells.length; c++) {
+              const val = String(cells[c] || '').trim();
+              if (
+                val &&
+                !/^\d+$/.test(val) &&
+                val.length >= 2 &&
+                !/^(ល\.?រ|ភេទ|ប្រុស|ស្រី|អត្តលេខ|no)$/i.test(val)
+              ) {
+                name = val;
+                break;
+              }
+            }
+          }
+
+          // If no genuine name found, or if it's a title/header line, SKIP IT!
+          if (!name || /^\d+$/.test(name) || /^(ល\.?រ|អត្តលេខ|គោត្តនាម|ឈ្មោះ|name)$/i.test(name)) {
+            continue;
+          }
+
+          // 2. Extract Gender
+          let genderStr = colMap.gender !== undefined ? String(cells[colMap.gender] || '').trim() : '';
+          if (!genderStr) {
+            for (const cell of cells) {
+              const s = String(cell).trim();
+              if (s === 'ស្រី' || s === 'ប្រុស' || /^(F|M|Female|Male)$/i.test(s)) {
+                genderStr = s;
+                break;
+              }
+            }
+          }
+          const gender: Gender =
+            genderStr === 'ស្រី' || /^(F|Female)$/i.test(genderStr) ? 'ស្រី' : 'ប្រុស';
+
+          // 3. Extract DOB
+          let dob = '';
+          if (colMap.dob !== undefined && cells[colMap.dob]) {
+            dob = normalizeDate(cells[colMap.dob]);
+          } else {
+            for (const cell of cells) {
+              const d = normalizeDate(cell);
+              if (d) {
+                dob = d;
+                break;
+              }
+            }
+          }
+
+          // 4. Extract Roll No
+          let rollNo = rollCounter;
+          if (colMap.rollNo !== undefined && cells[colMap.rollNo]) {
+            const parsedRoll = Number(khmerToArabic(cells[colMap.rollNo]));
+            if (!isNaN(parsedRoll) && parsedRoll > 0) rollNo = parsedRoll;
+          }
+
+          // 5. Extract Code
+          let studentCode = '';
+          if (colMap.studentCode !== undefined && cells[colMap.studentCode]) {
+            studentCode = String(cells[colMap.studentCode]).trim();
+          }
+          if (!studentCode) {
+            studentCode = `STU-${String(rollNo).padStart(3, '0')}`;
+          }
+
+          parsedStudents.push({
+            id: `stu_${Date.now()}_${r}_${Math.random().toString(36).substring(2, 6)}`,
+            classId,
+            rollNo,
+            studentCode,
+            nameKh: name,
             gender,
             dob,
-            age,
-            originSchool: String(row['មកពីសាលា'] || ''),
-            pobVillage: String(row['ទីកន្លែងកំណើត_ភូមិ'] || ''),
-            pobCommune: String(row['ទីកន្លែងកំណើត_ឃុំ_សង្កាត់'] || ''),
-            pobDistrict: String(row['ទីកន្លែងកំណើត_ស្រុក_ខណ្ឌ'] || ''),
-            pobProvince: String(row['ទីកន្លែងកំណើត_ខេត្ត_រាជធានី'] || row['ទីកន្លែងកំណើត'] || ''),
-            addrVillage: String(row['អាសយដ្ឋាន_ភូមិ'] || ''),
-            addrCommune: String(row['អាសយដ្ឋាន_ឃុំ'] || ''),
-            addrDistrict: String(row['អាសយដ្ឋាន_ស្រុក'] || ''),
-            addrProvince: String(row['អាសយដ្ឋាន_ខេត្ត'] || row['អាសយដ្ឋានបច្ចុប្បន្ន'] || ''),
-            studentPhone: String(row['ទូរស័ព្ទផ្ទាល់ខ្លួន'] || ''),
-            orphanStatus,
-            isDisabled: !!(row['ពិការ'] && String(row['ពិការ']).trim() !== 'ទេ'),
-            isPoor: !!(row['ក្រីក្រ'] && String(row['ក្រីក្រ']).trim() !== 'ទេ'),
-            hasScholarship: !!(row['អាហារូបករណ៍'] && String(row['អាហារូបករណ៍']).trim() !== 'ទេ'),
-            stayInPagoda: !!(row['ស្នាក់នៅវត្ត'] && String(row['ស្នាក់នៅវត្ត']).trim() !== 'ទេ'),
-            fatherName: String(row['ឪពុក_ឈ្មោះ'] || row['ឈ្មោះអាណាព្យាបាល'] || ''),
-            fatherOccupation: String(row['ឪពុក_មុខរបរ'] || row['មុខរបរ'] || ''),
-            fatherPhone: String(row['ឪពុក_ទូរស័ព្ទ'] || row['លេខទូរស័ព្ទ'] || ''),
-            motherName: String(row['ម្តាយ_ឈ្មោះ'] || ''),
-            motherOccupation: String(row['ម្តាយ_មុខរបរ'] || ''),
-            motherPhone: String(row['ម្តាយ_ទូរស័ព្ទ'] || ''),
-            guardianName: String(row['ឪពុក_ឈ្មោះ'] || row['ឈ្មោះអាណាព្យាបាល'] || ''),
-            guardianPhone: String(row['ឪពុក_ទូរស័ព្ទ'] || row['លេខទូរស័ព្ទ'] || ''),
-            guardianRelationship: 'ឪពុក',
-            otherNotes: String(row['ផ្សេងៗ'] || row['កំណត់ចំណាំ'] || ''),
+            age: dob ? calculateAge(dob) : 0,
+            originSchool: colMap.originSchool !== undefined ? String(cells[colMap.originSchool] || '').trim() : '',
+            pobProvince: colMap.pobProvince !== undefined ? String(cells[colMap.pobProvince] || '').trim() : '',
+            studentPhone: colMap.studentPhone !== undefined ? String(cells[colMap.studentPhone] || '').trim() : '',
+            fatherName: colMap.fatherName !== undefined ? String(cells[colMap.fatherName] || '').trim() : '',
+            motherName: colMap.motherName !== undefined ? String(cells[colMap.motherName] || '').trim() : '',
+            otherNotes: colMap.otherNotes !== undefined ? String(cells[colMap.otherNotes] || '').trim() : '',
             status: 'active',
             createdAt: new Date().toISOString(),
-          };
-        });
+          });
+
+          rollCounter++;
+        }
 
         resolve(parsedStudents);
       } catch (err) {
@@ -262,8 +399,8 @@ export interface ParsedGridResult {
 }
 
 /**
- * Intelligent Grid Parser for clipboard text (Excel, Sheets, CSV, TSV)
- * Accurately aligns columns starting from clicked target column or auto-detected headers.
+ * Intelligent Content-Aware Grid Parser for clipboard text (Excel, Sheets, CSV, TSV)
+ * Identifies student row structures automatically. Never puts roll numbers into student names.
  */
 export function parseClipboardGrid(
   pastedText: string,
@@ -291,8 +428,9 @@ export function parseClipboardGrid(
   });
 
   const firstRow = rawGrid[0];
+  const colCount = firstRow.length;
 
-  // 1. Check if first row is a table header
+  // 1. Check if first row is an explicit table header
   let headerMatchCount = 0;
   const headerKeys: (keyof Student | null)[] = firstRow.map((cell) => {
     const cleanCell = cell.toLowerCase().replace(/[\s_\-#.]/g, '');
@@ -321,62 +459,70 @@ export function parseClipboardGrid(
   if (isHeader) {
     startIndex = 1;
     columnKeys = headerKeys;
-  } else if (targetStartColKey) {
-    // User specifically selected a cell in the table (e.g. nameKh, dob, studentPhone)
-    const startColIdx = SPREADSHEET_COLUMNS.findIndex((c) => c.key === targetStartColKey);
-    if (startColIdx !== -1) {
-      columnKeys = firstRow.map((_, idx) => {
-        return SPREADSHEET_COLUMNS[startColIdx + idx]?.key || null;
-      });
-    }
-  }
+  } else {
+    // Content-aware column mapping for data without headers
+    const c0 = firstRow[0] || '';
+    const c1 = firstRow[1] || '';
+    const c2 = firstRow[2] || '';
+    const c3 = firstRow[3] || '';
 
-  // If still not determined (no header, no target column clicked)
-  if (columnKeys.length === 0) {
-    const colCount = firstRow.length;
+    const isC0Roll = !isNaN(Number(khmerToArabic(c0))) && Number(khmerToArabic(c0)) > 0 && Number(khmerToArabic(c0)) < 300;
+    const isC0Code = /^STU/i.test(c0) || /^\d{4,8}$/.test(c0);
+    const isC1Code = /^STU/i.test(c1) || /^\d{4,8}$/.test(c1);
+    const isC1Gender = c1 === 'ស្រី' || c1 === 'ប្រុស' || /^(F|M|Female|Male)$/i.test(c1);
+    const isC2Gender = c2 === 'ស្រី' || c2 === 'ប្រុស' || /^(F|M|Female|Male)$/i.test(c2);
+    const isC3Gender = c3 === 'ស្រី' || c3 === 'ប្រុស' || /^(F|M|Female|Male)$/i.test(c3);
+
+    // Case A: Single column paste (respect active target cell e.g. nameKh, dob, studentPhone)
     if (colCount === 1) {
-      const val = firstRow[0];
-      if (/^\d{8,11}$/.test(val) || /^0\d{8,9}$/.test(val)) {
+      if (targetStartColKey) {
+        columnKeys = [targetStartColKey];
+      } else if (/^\d{8,11}$/.test(c0) || /^0\d{8,9}$/.test(c0)) {
         columnKeys = ['studentPhone'];
-      } else if (/\d{1,4}[-/.]\d{1,2}[-/.]\d{1,4}/.test(val)) {
+      } else if (/\d{1,4}[-/.]\d{1,2}[-/.]\d{1,4}/.test(c0)) {
         columnKeys = ['dob'];
-      } else if (!isNaN(Number(khmerToArabic(val))) && Number(khmerToArabic(val)) < 300) {
+      } else if (isC0Roll) {
         columnKeys = ['rollNo'];
       } else {
         columnKeys = ['nameKh'];
       }
-    } else if (colCount === 2) {
-      const c1 = firstRow[1];
-      if (c1 === 'ស្រី' || c1 === 'ប្រុស' || /^(F|M|Female|Male)$/i.test(c1)) {
+    }
+    // Case B: 2 columns [Name, Gender] or [Roll, Name]
+    else if (colCount === 2) {
+      if (isC1Gender) {
         columnKeys = ['nameKh', 'gender'];
-      } else if (!isNaN(Number(khmerToArabic(firstRow[0]))) && Number(khmerToArabic(firstRow[0])) < 300) {
+      } else if (isC0Roll) {
         columnKeys = ['rollNo', 'nameKh'];
       } else {
         columnKeys = ['nameKh', 'gender'];
       }
-    } else if (colCount === 3) {
-      const c0Num = !isNaN(Number(khmerToArabic(firstRow[0]))) && Number(khmerToArabic(firstRow[0])) < 300;
-      const c2Gender = firstRow[2] === 'ស្រី' || firstRow[2] === 'ប្រុស' || /^(F|M|Female|Male)$/i.test(firstRow[2]);
-      if (c0Num && c2Gender) {
+    }
+    // Case C: 3 columns [Roll, Name, Gender] or [Roll, Code, Name] or [Name, Gender, DOB]
+    else if (colCount === 3) {
+      if (isC0Roll && isC2Gender) {
         columnKeys = ['rollNo', 'nameKh', 'gender'];
-      } else if (c0Num && (/^STU/i.test(firstRow[1]) || /^\d{4,8}$/.test(firstRow[1]))) {
+      } else if (isC0Roll && isC1Code) {
         columnKeys = ['rollNo', 'studentCode', 'nameKh'];
-      } else if (firstRow[1] === 'ស្រី' || firstRow[1] === 'ប្រុស') {
+      } else if (isC1Gender) {
         columnKeys = ['nameKh', 'gender', 'dob'];
       } else {
         columnKeys = ['rollNo', 'nameKh', 'gender'];
       }
-    } else if (colCount === 4) {
-      const c0Num = !isNaN(Number(khmerToArabic(firstRow[0]))) && Number(khmerToArabic(firstRow[0])) < 300;
-      const c2Gender = firstRow[2] === 'ស្រី' || firstRow[2] === 'ប្រុស' || /^(F|M|Female|Male)$/i.test(firstRow[2]);
-      if (c0Num && c2Gender) {
+    }
+    // Case D: 4 columns [Roll, Name, Gender, DOB] or [Roll, Code, Name, Gender]
+    else if (colCount === 4) {
+      if (isC0Roll && isC2Gender) {
         columnKeys = ['rollNo', 'nameKh', 'gender', 'dob'];
-      } else if (c0Num && (/^STU/i.test(firstRow[1]) || /^\d{4,8}$/.test(firstRow[1]))) {
+      } else if (isC0Roll && isC1Code && isC3Gender) {
         columnKeys = ['rollNo', 'studentCode', 'nameKh', 'gender'];
+      } else if (isC1Gender) {
+        columnKeys = ['nameKh', 'gender', 'dob', 'studentPhone'];
       } else {
         columnKeys = ['rollNo', 'nameKh', 'gender', 'dob'];
       }
-    } else if (colCount >= 15) {
+    }
+    // Case E: Full 15-23 columns (MoEYS)
+    else if (colCount >= 15) {
       columnKeys = [
         'rollNo',
         'studentCode',
@@ -402,10 +548,10 @@ export function parseClipboardGrid(
         'motherPhone',
         'otherNotes',
       ];
-    } else {
-      // 5 to 14 columns
-      const c0Num = !isNaN(Number(khmerToArabic(firstRow[0]))) && Number(khmerToArabic(firstRow[0])) < 300;
-      if (c0Num && (firstRow[2] === 'ស្រី' || firstRow[2] === 'ប្រុស')) {
+    }
+    // Case F: 5 to 14 columns
+    else {
+      if (isC0Roll && isC2Gender) {
         columnKeys = ['rollNo', 'nameKh', 'gender', 'dob', 'age', 'originSchool', 'pobProvince', 'addrProvince', 'studentPhone', 'fatherName', 'motherName'];
       } else {
         columnKeys = ['rollNo', 'studentCode', 'nameKh', 'gender', 'dob', 'age', 'originSchool', 'pobProvince', 'addrProvince', 'studentPhone', 'fatherName', 'motherName'];
@@ -437,7 +583,7 @@ export function parseClipboardGrid(
         }
       } else if (colKey === 'rollNo') {
         const num = Number(khmerToArabic(cellVal));
-        if (!isNaN(num)) rowObj.rollNo = num;
+        if (!isNaN(num) && num > 0) rowObj.rollNo = num;
       } else if (colKey === 'age') {
         const num = Number(khmerToArabic(cellVal));
         if (!isNaN(num)) rowObj.age = num;
@@ -446,6 +592,7 @@ export function parseClipboardGrid(
       }
     }
 
+    // Only accept row if it has at least one meaningful piece of data
     if (Object.keys(rowObj).length > 0) {
       rows.push(rowObj);
     }
@@ -456,7 +603,7 @@ export function parseClipboardGrid(
 
 /**
  * Parse tab-separated or comma-separated text copied from Excel/XLSM/Sheets
- * into full Partial<Student> objects. NEVER defaults dob to a fake date.
+ * into full Partial<Student> objects. NEVER creates fake dummy students.
  */
 export function parsePastedExcelText(
   pastedText: string,
@@ -472,11 +619,17 @@ export function parsePastedExcelText(
 
   for (let i = 0; i < parsedGrid.rows.length; i++) {
     const row = parsedGrid.rows[i];
+    const nameKh = String(row.nameKh || '').trim();
+
+    // Skip row if it doesn't have a valid student name (e.g. blank lines, stray numbers)
+    if (!nameKh || /^\d+$/.test(nameKh) || /^(ល\.?រ|អត្តលេខ|គោត្តនាម|ឈ្មោះ|name)$/i.test(nameKh)) {
+      continue;
+    }
+
     const rollNo = row.rollNo !== undefined ? Number(row.rollNo) : currentRoll;
     const studentCode = row.studentCode || `STU-${String(currentRoll).padStart(3, '0')}`;
-    const nameKh = row.nameKh || `សិស្ស ${currentRoll}`;
     const gender: Gender = row.gender === 'ស្រី' ? 'ស្រី' : 'ប្រុស';
-    const dob = row.dob || ''; // NEVER fake date!
+    const dob = row.dob || '';
     const age = row.age !== undefined ? Number(row.age) : dob ? calculateAge(dob) : 0;
 
     results.push({

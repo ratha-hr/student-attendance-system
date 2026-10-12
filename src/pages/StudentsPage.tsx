@@ -213,20 +213,31 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
         // Target row already has an existing student -> UPDATE only the pasted fields!
         const existingStudent = filteredStudents[targetIdx];
         const updates: Partial<Student> = { ...rowData };
+
+        // Never overwrite a student's name with pure numbers (e.g. roll numbers)
+        if (updates.nameKh && /^\d+$/.test(updates.nameKh)) {
+          delete updates.nameKh;
+        }
+
         if (updates.dob) {
           updates.age = calculateAge(updates.dob);
         }
         await db.students.update(existingStudent.id, updates);
         updatedCount++;
       } else {
-        // Row extends beyond existing students -> CREATE a new student!
-        const targetRollNo = targetIdx + 1;
+        // Row extends beyond existing students -> only CREATE a new student if a real name exists!
+        const studentName = String(rowData.nameKh || '').trim();
+        if (!studentName || /^\d+$/.test(studentName) || /^(ល\.?រ|អត្តលេខ|គោត្តនាម|ឈ្មោះ|name)$/i.test(studentName)) {
+          // Skip rows without genuine student names (never create fake dummy students)
+          continue;
+        }
+
+        const targetRollNo = rowData.rollNo ? Number(rowData.rollNo) : targetIdx + 1;
         const newStu: Student = {
           id: `stu-${Date.now()}-${rIdx}-${Math.random().toString(36).substring(2, 6)}`,
           classId: targetClassId,
-          rollNo: rowData.rollNo ? Number(rowData.rollNo) : targetRollNo,
+          rollNo: targetRollNo,
           studentCode: rowData.studentCode || `STU-${String(targetRollNo).padStart(3, '0')}`,
-          nameKh: rowData.nameKh || `សិស្ស ${targetRollNo}`,
           nameEn: rowData.nameEn || '',
           gender: rowData.gender === 'ស្រី' ? 'ស្រី' : 'ប្រុស',
           dob: rowData.dob || '',
@@ -251,6 +262,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
           status: 'active',
           createdAt: new Date().toISOString(),
           ...rowData,
+          nameKh: studentName,
         };
         newStudentsToAdd.push(newStu);
         addedCount++;
@@ -333,7 +345,10 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
       await db.students.clear();
       showToast('🗑️ បានលុបសិស្សទាំងអស់រួចរាល់! (អាចចុច ↶ Undo ដើម្បីយកមកវិញ)');
     } else {
-      const idsToDelete = students.filter((s) => s.classId === activeClassId).map((s) => s.id);
+      const idsToDelete = Array.from(new Set([
+        ...students.filter((s) => s.classId === activeClassId).map((s) => s.id),
+        ...filteredStudents.map((s) => s.id),
+      ]));
       await db.students.bulkDelete(idsToDelete);
       showToast(`🗑️ បានលុបសិស្សក្នុងថ្នាក់ ${currentClassName} ទាំងអស់រួចរាល់! (អាចចុច ↶ Undo បាន)`);
     }
