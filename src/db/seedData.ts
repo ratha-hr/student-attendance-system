@@ -11,6 +11,7 @@ export const initialSettings: TeacherSettings = {
   absenceWarningThreshold: 3,
   phone: '093 486 987 / 089 230 998 / 071 741 1141',
   email: 'hun.ratha@moeys.edu.kh',
+  studentAttendancePin: '1234',
 };
 
 import { generateStandardClasses } from '../utils/classUtils';

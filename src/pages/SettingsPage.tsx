@@ -11,6 +11,8 @@ import {
   Database,
   CheckCircle2,
   AlertTriangle,
+  Lock,
+  Key,
 } from 'lucide-react';
 import type { TeacherSettings } from '../types';
 import { db } from '../db/db';
@@ -31,6 +33,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ settings, onRefresh 
   const [provinceCity, setProvinceCity] = useState(settings?.provinceCity || 'ខេត្តកំពង់ឆ្នាំង');
   const [academicYear, setAcademicYear] = useState(settings?.academicYear || '២០២៤-២០២៥');
   const [absenceWarningThreshold, setAbsenceWarningThreshold] = useState(settings?.absenceWarningThreshold || 3);
+  const [studentAttendancePin, setStudentAttendancePin] = useState(settings?.studentAttendancePin || '1234');
 
   const [savedSuccess, setSavedSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -47,6 +50,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ settings, onRefresh 
       provinceCity: provinceCity.trim(),
       academicYear: academicYear.trim(),
       absenceWarningThreshold: Number(absenceWarningThreshold),
+      studentAttendancePin: studentAttendancePin.trim() || '1234',
     });
 
     setSavedSuccess(true);
@@ -274,6 +278,42 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ settings, onRefresh 
                 ដង (នៅពេលសិស្សអវត្តមានដល់ចំនួននេះ ប្រព័ន្ធនឹងជូនដំណឹងឱ្យចេញលិខិត)
               </span>
             </div>
+          </div>
+        </div>
+
+        {/* Card 4: Security & PIN Code for Student Attendance */}
+        <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
+          <h3 className="font-bold text-base text-slate-800 flex items-center border-b border-slate-100 pb-3">
+            <Lock className="w-5 h-5 text-indigo-600 mr-2" />
+            សុវត្ថិភាពទប់ស្កាត់ការលួចកែវត្តមាន (លេខសម្ងាត់ PIN)
+          </h3>
+
+          <div className="max-w-md space-y-3">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                លេខកូដសម្ងាត់ ៤ ខ្ទង់ (Security PIN) សម្រាប់ដោះសោស្រង់វត្តមាន៖
+              </label>
+              <div className="flex items-center space-x-3">
+                <div className="relative">
+                  <Key className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    maxLength={6}
+                    value={studentAttendancePin}
+                    onChange={(e) => setStudentAttendancePin(e.target.value)}
+                    placeholder="1234"
+                    className="w-36 pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono font-black text-indigo-700 tracking-widest text-center"
+                  />
+                </div>
+                <span className="text-xs text-slate-500 font-medium">
+                  (លេខសម្ងាត់លំនាំដើម៖ <strong className="font-mono text-indigo-600">1234</strong>)
+                </span>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed bg-amber-50 border border-amber-200 p-3 rounded-xl">
+              🛡️ <strong>គោលការណ៍សុវត្ថិភាព៖</strong> នៅពេលលោកគ្រូ-អ្នកគ្រូផ្ញើតំណភ្ជាប់ (Link) ទៅកាន់សិស្ស ឬមាតាបិតា ប្រព័ន្ធនឹងចាក់សោរជា <strong>Read-Only</strong> ដោយស្វ័យប្រវត្តិ (សិស្សមិនអាចកែប្រែបានឡើយ)។ លុះត្រាតែលោកគ្រូ ឬប្រធានថ្នាក់វាយលេខកូដសម្ងាត់ PIN នេះ ទើបអាចដោះសោស្រង់វត្តមានបាន។
+            </p>
           </div>
         </div>
 

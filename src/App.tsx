@@ -39,6 +39,8 @@ export function App() {
         classId: params.get('class') || undefined,
         date: params.get('date') || undefined,
         session: (params.get('session') as 'morning' | 'afternoon') || undefined,
+        readOnly: params.get('view') === 'readonly' || params.get('readonly') === 'true' || true,
+        payload: params.get('att') || params.get('data') || undefined,
       };
     }
     return {};
@@ -114,6 +116,8 @@ export function App() {
         initialClassId={studentModeParams.classId || (selectedClassId !== 'ALL' ? selectedClassId : undefined)}
         initialDate={studentModeParams.date}
         initialSession={studentModeParams.session}
+        initialReadOnly={studentModeParams.readOnly}
+        initialAttendancePayload={studentModeParams.payload}
         onExitStudentMode={() => {
           setIsStudentMode(false);
           if (typeof window !== 'undefined' && window.history) {

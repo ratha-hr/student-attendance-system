@@ -14,11 +14,15 @@ import {
   Clock,
   Sparkles,
   FileText,
+  Lock,
+  Key,
+  ShieldCheck,
 } from 'lucide-react';
 import { Modal } from './common/Modal';
 import type { Student, ClassRoom, AttendanceRecord, TeacherSettings } from '../types';
 import { formatKhmerDate, fromKhmerNum, toKhmerNum } from '../utils/dateUtils';
 import { generateStudentQRCodeSVG } from '../utils/qrCode';
+import { encodeAttendanceForUrl } from '../utils/attendanceShare';
 
 interface StudentAttendanceShareModalProps {
   isOpen: boolean;
@@ -146,14 +150,19 @@ export const StudentAttendanceShareModal: React.FC<StudentAttendanceShareModalPr
     unmarkedCount,
   ]);
 
-  // Shareable direct link
-  // Shareable direct link for students/monitor to record daily attendance
-  const studentShareUrl = useMemo(() => {
+  // Generate compact attendance payload for sharing
+  const attPayload = useMemo(() => {
+    return encodeAttendanceForUrl(classStudents, todayRecords, selectedDate, selectedSession);
+  }, [classStudents, todayRecords, selectedDate, selectedSession]);
+
+  // Read-only link for students & parents (Default & Safe):
+  const studentReadOnlyUrl = useMemo(() => {
     const origin = window.location.origin;
     const path = window.location.pathname;
     const classParam = currentClass ? encodeURIComponent(currentClass.id) : 'ALL';
-    return `${origin}${path}?mode=student&class=${classParam}&date=${selectedDate}&session=${selectedSession}`;
-  }, [currentClass, selectedDate, selectedSession]);
+    const payloadParam = attPayload ? `&att=${encodeURIComponent(attPayload)}` : '';
+    return `${origin}${path}?mode=student&class=${classParam}&date=${selectedDate}&session=${selectedSession}&view=readonly${payloadParam}`;
+  }, [currentClass, selectedDate, selectedSession, attPayload]);
 
   const handleCopyText = async () => {
     try {
@@ -175,7 +184,7 @@ export const StudentAttendanceShareModal: React.FC<StudentAttendanceShareModalPr
 
   const handleCopyLink = async () => {
     try {
-      await navigator.clipboard.writeText(studentShareUrl);
+      await navigator.clipboard.writeText(studentReadOnlyUrl);
       setCopiedLink(true);
       setTimeout(() => setCopiedLink(false), 2000);
     } catch {
@@ -187,13 +196,13 @@ export const StudentAttendanceShareModal: React.FC<StudentAttendanceShareModalPr
   const handleOpenTelegram = () => {
     // Keep message short and clean to strictly avoid Nginx 400 Bad Request URL limit
     const homeroom = currentClass?.homeroomTeacher || settings?.teacherName || 'លោកគ្រូ-អ្នកគ្រូ';
-    const shortSummary = `📋 តារាងស្រង់វត្តមានប្រចាំថ្ងៃ ${currentClass?.name || 'ថ្នាក់រៀន'} (${sessionLabel})\n📅 ${formatKhmerDate(selectedDate, true)}\n👨‍🏫 គ្រូទទួលបន្ទុក៖ ${homeroom}\n📊 ស្ថិតិ៖ សរុប ${total} នាក់ | មក ${presentCount} | ច្បាប់ ${permissionCount} | អវត្តមាន ${absentCount}\n\n👉 សូមចុចតំណភ្ជាប់ខាងក្រោមដើម្បីស្រង់វត្តមានប្រចាំថ្ងៃ៖`;
-    const tgUrl = `https://t.me/share/url?url=${encodeURIComponent(studentShareUrl)}&text=${encodeURIComponent(shortSummary)}`;
+    const shortSummary = `📋 តារាងវត្តមានប្រចាំថ្ងៃ ${currentClass?.name || 'ថ្នាក់រៀន'} (${sessionLabel})\n📅 ${formatKhmerDate(selectedDate, true)}\n👨‍🏫 គ្រូទទួលបន្ទុក៖ ${homeroom}\n📊 ស្ថិតិ៖ សរុប ${total} នាក់ | មក ${presentCount} | ច្បាប់ ${permissionCount} | អវត្តមាន ${absentCount}\n🔒 បញ្ជីវត្តមានត្រូវបានចាក់សោសុវត្ថិភាព (សិស្សមិនអាចកែប្រែបានឡើយ)\n\n👉 សូមចុចតំណភ្ជាប់ខាងក្រោមដើម្បីពិនិត្យមើលវត្តមាន៖`;
+    const tgUrl = `https://t.me/share/url?url=${encodeURIComponent(studentReadOnlyUrl)}&text=${encodeURIComponent(shortSummary)}`;
     window.open(tgUrl, '_blank', 'noopener,noreferrer');
   };
 
   const handleOpenStudentView = () => {
-    window.open(studentShareUrl, '_blank', 'noopener,noreferrer');
+    window.open(studentReadOnlyUrl, '_blank', 'noopener,noreferrer');
   };
 
   const handlePrintDailySheet = () => {
@@ -449,46 +458,61 @@ export const StudentAttendanceShareModal: React.FC<StudentAttendanceShareModalPr
             <div className="bg-white p-4 rounded-2xl shadow-md border border-slate-200 inline-block">
               <div
                 dangerouslySetInnerHTML={{
-                  __html: generateStudentQRCodeSVG(studentShareUrl, 200),
+                  __html: generateStudentQRCodeSVG(studentReadOnlyUrl, 200),
                 }}
                 className="w-48 h-48 mx-auto"
               />
             </div>
             <div>
-              <h4 className="font-bold text-slate-900 text-sm">
-                QR Code សម្រាប់សិស្សស្កេនចូលស្រង់វត្តមានប្រចាំថ្ងៃ
+              <h4 className="font-bold text-slate-900 text-sm flex items-center justify-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                <span>QR Code សម្រាប់សិស្សស្កេនមើលវត្តមាន (Read-Only)</span>
               </h4>
               <p className="text-xs text-slate-500 mt-1 max-w-md">
-                សិស្ស ឬប្រធានថ្នាក់អាចស្កេន QR Code នេះដោយទូរស័ព្ទដៃ ដើម្បីបើកមើល និងផ្ទៀងផ្ទាត់វត្តមានប្រចាំថ្ងៃនៃថ្នាក់ {currentClass?.name || 'នេះ'}
+                សិស្ស ឬមាតាបិតាអាចស្កេន QR Code នេះដោយទូរស័ព្ទដៃ ដើម្បីពិនិត្យមើលវត្តមានប្រចាំថ្ងៃនៃថ្នាក់ {currentClass?.name || 'នេះ'} ដោយមានការចាក់សោសុវត្ថិភាព (មិនអាចកែប្រែបានឡើយ)។
               </p>
             </div>
           </div>
         )}
 
-        {/* Direct Link sharing row */}
-        <div className="bg-slate-100 p-3 rounded-xl flex items-center justify-between gap-2 text-xs">
-          <div className="flex items-center space-x-2 truncate min-w-0">
-            <Link className="w-4 h-4 text-slate-500 shrink-0" />
-            <span className="text-slate-500 shrink-0 font-medium">តំណភ្ជាប់ស្រង់វត្តមាន៖</span>
-            <span className="font-mono text-indigo-700 truncate select-all">{studentShareUrl}</span>
+        {/* Direct Link sharing & PIN Security Box */}
+        <div className="space-y-2.5">
+          <div className="bg-slate-100 p-3 rounded-xl flex items-center justify-between gap-2 text-xs">
+            <div className="flex items-center space-x-2 truncate min-w-0">
+              <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span className="text-slate-700 shrink-0 font-bold">តំណភ្ជាប់សិស្សមើល (Read-Only)៖</span>
+              <span className="font-mono text-indigo-700 truncate select-all">{studentReadOnlyUrl}</span>
+            </div>
+            <button
+              type="button"
+              onClick={handleCopyLink}
+              className="inline-flex items-center px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-700 font-bold border border-slate-300 transition-colors shrink-0 cursor-pointer"
+            >
+              {copiedLink ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-600 mr-1" />
+                  <span className="text-emerald-700">ចម្លងរួច!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3.5 h-3.5 mr-1" />
+                  <span>ចម្លង Link សិស្ស</span>
+                </>
+              )}
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={handleCopyLink}
-            className="inline-flex items-center px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-700 font-bold border border-slate-300 transition-colors shrink-0 cursor-pointer"
-          >
-            {copiedLink ? (
-              <>
-                <Check className="w-3.5 h-3.5 text-emerald-600 mr-1" />
-                <span className="text-emerald-700">ចម្លងរួច!</span>
-              </>
-            ) : (
-              <>
-                <Copy className="w-3.5 h-3.5 mr-1" />
-                <span>ចម្លង Link</span>
-              </>
-            )}
-          </button>
+
+          <div className="bg-indigo-50/90 border border-indigo-200/90 rounded-xl p-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-indigo-900">
+            <div className="flex items-center space-x-2">
+              <Key className="w-4 h-4 text-indigo-600 shrink-0" />
+              <span>
+                លេខកូដសម្ងាត់ដោះសោសម្រាប់ប្រធានថ្នាក់ស្រង់វត្តមាន៖ <strong className="font-mono text-indigo-700 text-sm tracking-wider font-black">{settings?.studentAttendancePin || '1234'}</strong>
+              </span>
+            </div>
+            <span className="text-[11px] text-indigo-600 font-medium">
+              (សិស្សទូទៅមិនស្គាល់កូដនេះ មិនអាចលួចកែបានឡើយ)
+            </span>
+          </div>
         </div>
 
         {/* Modal Action Footer */}

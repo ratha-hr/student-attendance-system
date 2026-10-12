@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   CalendarCheck2,
   Calendar,
@@ -17,11 +17,20 @@ import {
   Volume2,
   VolumeX,
   Search,
+  Lock,
+  Unlock,
+  Key,
+  ShieldCheck,
+  ShieldAlert,
+  Eye,
+  AlertTriangle,
 } from 'lucide-react';
 import type { Student, ClassRoom, AttendanceRecord, AttendanceStatus, TeacherSettings } from '../types';
 import { db } from '../db/db';
 import { toKhmerNum, fromKhmerNum, formatKhmerDate, getTodayDateString } from '../utils/dateUtils';
 import { soundEffects } from '../utils/soundEffects';
+import { decodeAttendanceFromUrl, encodeAttendanceForUrl } from '../utils/attendanceShare';
+import { Modal } from './common/Modal';
 
 interface StudentDailyAttendanceViewProps {
   classes: ClassRoom[];
@@ -31,6 +40,8 @@ interface StudentDailyAttendanceViewProps {
   initialClassId?: string;
   initialDate?: string;
   initialSession?: 'morning' | 'afternoon';
+  initialReadOnly?: boolean;
+  initialAttendancePayload?: string;
   onExitStudentMode: () => void;
   onRefresh: () => void;
 }
@@ -43,6 +54,8 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
   initialClassId,
   initialDate,
   initialSession,
+  initialReadOnly = true,
+  initialAttendancePayload,
   onExitStudentMode,
   onRefresh,
 }) => {
@@ -56,8 +69,14 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
   const [statusFilter, setStatusFilter] = useState<'all' | 'present' | 'permission' | 'absent' | 'unmarked'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [soundOn, setSoundOn] = useState(true);
-  const [isSavedToast, setIsSavedToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
+
+  // Security & Lock State: Always default to Read-Only so students cannot cheat!
+  const [isEditUnlocked, setIsEditUnlocked] = useState(false);
+  const [isPinModalOpen, setIsPinModalOpen] = useState(false);
+  const [enteredPin, setEnteredPin] = useState('');
+  const [pinError, setPinError] = useState('');
 
   // Active class
   const currentClass = useMemo(() => {
@@ -72,9 +91,21 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
       .sort((a, b) => a.rollNo - b.rollNo);
   }, [students, currentClass]);
 
-  // Today's attendance map
+  // Decoded attendance map from URL payload (if shared via link with &att=1P.2L.3A...)
+  const urlPayloadMap = useMemo(() => {
+    let payload = initialAttendancePayload;
+    if (!payload && typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search);
+      payload = p.get('att') || p.get('data') || undefined;
+    }
+    return decodeAttendanceFromUrl(payload);
+  }, [initialAttendancePayload]);
+
+  // Daily attendance map: Dexie records merged with URL payload
   const dailyRecordMap = useMemo(() => {
     const map = new Map<string, AttendanceRecord>();
+
+    // 1. Records from IndexedDB
     attendanceRecords
       .filter(
         (r) =>
@@ -83,8 +114,27 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
           r.session === selectedSession
       )
       .forEach((r) => map.set(r.studentId, r));
+
+    // 2. If URL payload exists, overlay records for students without Dexie records
+    if (urlPayloadMap.size > 0 && classStudents.length > 0) {
+      classStudents.forEach((stu) => {
+        const payloadStatus = urlPayloadMap.get(stu.rollNo);
+        if (payloadStatus && !map.has(stu.id)) {
+          map.set(stu.id, {
+            id: `payload-${stu.id}`,
+            classId: selectedClassId,
+            studentId: stu.id,
+            date: selectedDate,
+            session: selectedSession,
+            status: payloadStatus,
+            createdAt: new Date().toISOString(),
+          });
+        }
+      });
+    }
+
     return map;
-  }, [attendanceRecords, selectedClassId, selectedDate, selectedSession]);
+  }, [attendanceRecords, selectedClassId, selectedDate, selectedSession, urlPayloadMap, classStudents]);
 
   // Daily statistics
   const stats = useMemo(() => {
@@ -129,9 +179,38 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
     });
   }, [classStudents, dailyRecordMap, statusFilter, searchQuery]);
 
-  // Mark single student status
+  // Handle PIN verification to unlock Edit mode
+  const handleVerifyPin = (e: React.FormEvent) => {
+    e.preventDefault();
+    const correctPin = settings?.studentAttendancePin || '1234';
+    if (enteredPin.trim() === correctPin.trim()) {
+      setIsEditUnlocked(true);
+      setIsPinModalOpen(false);
+      setEnteredPin('');
+      setPinError('');
+      if (soundOn) soundEffects.playSuccess();
+      showToast('🔓 ដោះសោជោគជ័យ! លោកគ្រូ ឬប្រធានថ្នាក់អាចកត់វត្តមានបានហើយ។');
+    } else {
+      setPinError('❌ លេខកូដសម្ងាត់មិនត្រឹមត្រូវទេ! សិស្សមិនអាចកែប្រែវត្តមានបានឡើយ។');
+      if (soundOn) soundEffects.playAbsentChime();
+    }
+  };
+
+  // Lock back into Read-Only mode
+  const handleLockEdit = () => {
+    setIsEditUnlocked(false);
+    if (soundOn) soundEffects.playClick();
+    showToast('🔒 បានចាក់សោសុវត្ថិភាពឡើងវិញជោគជ័យ! សិស្សមិនអាចលួចកែវត្តមានបានឡើយ។');
+  };
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  // Mark single student status (Available only when unlocked!)
   const handleSetStatus = async (studentId: string, status: AttendanceStatus) => {
-    if (!currentClass) return;
+    if (!currentClass || !isEditUnlocked) return;
 
     if (soundOn) {
       if (status === 'present') soundEffects.playPresentChime();
@@ -141,9 +220,8 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
     }
 
     const existing = dailyRecordMap.get(studentId);
-    if (existing) {
+    if (existing && !existing.id.startsWith('payload-')) {
       if (existing.status === status) {
-        // Toggle off if already this status
         await db.attendance.delete(existing.id);
       } else {
         await db.attendance.update(existing.id, {
@@ -166,14 +244,14 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
     onRefresh();
   };
 
-  // Mark all present
+  // Mark all present (Available only when unlocked!)
   const handleMarkAllPresent = async () => {
-    if (!currentClass || classStudents.length === 0) return;
+    if (!currentClass || classStudents.length === 0 || !isEditUnlocked) return;
     if (soundOn) soundEffects.playAllPresentChime();
 
     for (const stu of classStudents) {
       const existing = dailyRecordMap.get(stu.id);
-      if (existing) {
+      if (existing && !existing.id.startsWith('payload-')) {
         await db.attendance.update(existing.id, {
           status: 'present',
         });
@@ -191,18 +269,26 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
       }
     }
 
-    setIsSavedToast(true);
-    setTimeout(() => setIsSavedToast(false), 2500);
+    showToast('បានកត់វត្តមាន (មក) ដល់សិស្សទាំងអស់ដោយជោគជ័យ!');
     onRefresh();
   };
 
-  // Copy student attendance link
-  const handleCopyStudentLink = async () => {
+  // Generate safe Read-Only share URL with embedded attendance payload
+  const currentPayload = useMemo(() => {
+    const records = Array.from(dailyRecordMap.values());
+    return encodeAttendanceForUrl(classStudents, records, selectedDate, selectedSession);
+  }, [classStudents, dailyRecordMap, selectedDate, selectedSession]);
+
+  const studentReadOnlyUrl = useMemo(() => {
     const origin = window.location.origin;
     const path = window.location.pathname;
-    const url = `${origin}${path}?mode=student&class=${encodeURIComponent(selectedClassId)}&date=${selectedDate}&session=${selectedSession}`;
+    const payloadParam = currentPayload ? `&att=${encodeURIComponent(currentPayload)}` : '';
+    return `${origin}${path}?mode=student&class=${encodeURIComponent(selectedClassId)}&date=${selectedDate}&session=${selectedSession}&view=readonly${payloadParam}`;
+  }, [selectedClassId, selectedDate, selectedSession, currentPayload]);
+
+  const handleCopyStudentLink = async () => {
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(studentReadOnlyUrl);
       setCopiedLink(true);
       setTimeout(() => setCopiedLink(false), 2000);
     } catch {
@@ -211,25 +297,24 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
     }
   };
 
-  // Share back to Telegram (Concise text with link to avoid 400 Bad Request)
+  // Share Read-Only link to Telegram
   const handleShareToTelegram = () => {
-    const origin = window.location.origin;
-    const path = window.location.pathname;
-    const link = `${origin}${path}?mode=student&class=${encodeURIComponent(selectedClassId)}&date=${selectedDate}&session=${selectedSession}`;
-    const text = `📋 របាយការណ៍វត្តមានប្រចាំថ្ងៃ ${currentClass?.name || ''} (${selectedSession === 'morning' ? 'វេនព្រឹក' : 'វេនរសៀល'})
+    const homeroom = currentClass?.homeroomTeacher || settings?.teacherName || 'លោកគ្រូ-អ្នកគ្រូ';
+    const text = `📋 តារាងវត្តមានប្រចាំថ្ងៃ ${currentClass?.name || ''} (${selectedSession === 'morning' ? 'វេនព្រឹក' : 'វេនរសៀល'})
 📅 ${formatKhmerDate(selectedDate, true)}
-👨‍🏫 គ្រូទទួលបន្ទុក៖ ${currentClass?.homeroomTeacher || settings?.teacherName || 'លោកគ្រូ-អ្នកគ្រូ'}
-📊 សរុប៖ ${stats.total} នាក់ | មក៖ ${stats.present} | ច្បាប់៖ ${stats.permission} | អវត្តមាន៖ ${stats.absent}
+👨‍🏫 គ្រូទទួលបន្ទុក៖ ${homeroom}
+📊 ស្ថិតិ៖ សរុប ${stats.total} នាក់ | មក ${stats.present} | ច្បាប់ ${stats.permission} | អវត្តមាន ${stats.absent}
+🔒 បញ្ជីវត្តមានត្រូវបានចាក់សោសុវត្ថិភាព (សិស្សមិនអាចកែប្រែបានឡើយ)
 
-👉 ចូលមើលតារាងវត្តមានលម្អិត៖`;
+👉 ចុចតំណភ្ជាប់ខាងក្រោមដើម្បីពិនិត្យមើលវត្តមាន៖`;
 
-    const tgUrl = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`;
+    const tgUrl = `https://t.me/share/url?url=${encodeURIComponent(studentReadOnlyUrl)}&text=${encodeURIComponent(text)}`;
     window.open(tgUrl, '_blank', 'noopener,noreferrer');
   };
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col antialiased">
-      {/* Top Banner (Student Mode Header) */}
+      {/* Top Banner (Student Attendance Header) */}
       <header className="bg-linear-to-r from-violet-900 via-indigo-900 to-blue-950 text-white shadow-lg sticky top-0 z-30">
         <div className="max-w-5xl mx-auto px-3 sm:px-6 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center space-x-2.5">
@@ -241,9 +326,17 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
                 <h1 className="font-moul text-sm sm:text-base tracking-wide text-white">
                   តារាងស្រង់វត្តមានប្រចាំថ្ងៃ
                 </h1>
-                <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-violet-500/30 border border-violet-400/40 text-[10px] font-bold text-violet-200">
-                  📱 សម្រាប់សិស្ស/ប្រធានថ្នាក់
-                </span>
+                {isEditUnlocked ? (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/30 border border-emerald-400/50 text-[11px] font-bold text-emerald-200">
+                    <Unlock className="w-3 h-3 text-emerald-300" />
+                    <span>កំពុងដោះសោ (Edit Mode)</span>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-violet-500/30 border border-violet-400/40 text-[11px] font-bold text-violet-200">
+                    <Lock className="w-3 h-3 text-yellow-300" />
+                    <span>មើលវត្តមាន (Read-Only)</span>
+                  </span>
+                )}
               </div>
               <p className="text-xs text-indigo-200 truncate">
                 {settings?.schoolName || 'វិទ្យាល័យ ហ៊ុន សែន កំពង់ត្រឡាច'} • {currentClass?.name || 'ថ្នាក់រៀន'}
@@ -252,6 +345,33 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
           </div>
 
           <div className="flex items-center space-x-2">
+            {/* Lock / Unlock Toggle Button */}
+            {isEditUnlocked ? (
+              <button
+                type="button"
+                onClick={handleLockEdit}
+                className="inline-flex items-center px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer"
+                title="ចាក់សោបញ្ចប់ការស្រង់វត្តមាន"
+              >
+                <Lock className="w-3.5 h-3.5 mr-1 text-white" />
+                <span>ចាក់សោបញ្ចប់</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setEnteredPin('');
+                  setPinError('');
+                  setIsPinModalOpen(true);
+                }}
+                className="inline-flex items-center px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white border border-indigo-400/30 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer"
+                title="ដោះសោដើម្បីស្រង់វត្តមាន (សម្រាប់គ្រូ ឬប្រធានថ្នាក់)"
+              >
+                <Key className="w-3.5 h-3.5 mr-1 text-yellow-300" />
+                <span>ដោះសោស្រង់</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={() => setSoundOn(!soundOn)}
@@ -276,6 +396,59 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
 
       {/* Main Content Area */}
       <main className="max-w-5xl mx-auto w-full px-3 sm:px-6 py-4 flex-1 space-y-4">
+        {/* Security Status Info Card */}
+        {!isEditUnlocked ? (
+          <div className="bg-linear-to-r from-blue-50 to-indigo-50 border border-blue-200/90 rounded-2xl p-3.5 flex items-start sm:items-center justify-between gap-3 text-xs shadow-2xs">
+            <div className="flex items-start sm:items-center space-x-2.5">
+              <ShieldCheck className="w-5 h-5 text-blue-600 shrink-0 mt-0.5 sm:mt-0" />
+              <div>
+                <p className="font-bold text-slate-800">
+                  🔒 បញ្ជីវត្តមាននេះត្រូវបានចាក់សោសុវត្ថិភាព (Read-Only)
+                </p>
+                <p className="text-slate-600 text-[11px] mt-0.5">
+                  សិស្ស និងមាតាបិតាអាចត្រឹមតែពិនិត្យមើលវត្តមានប្រចាំថ្ងៃប៉ុណ្ណោះ មិនអាចចុចកែប្រែ ឬលួចកែវត្តមានបានឡើយ។
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setEnteredPin('');
+                setPinError('');
+                setIsPinModalOpen(true);
+              }}
+              className="shrink-0 inline-flex items-center px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
+            >
+              <Key className="w-3.5 h-3.5 mr-1" />
+              <span>ដោះសោស្រង់ (PIN)</span>
+            </button>
+          </div>
+        ) : (
+          <div className="bg-emerald-50 border border-emerald-300 rounded-2xl p-3.5 flex items-center justify-between gap-3 text-xs shadow-2xs animate-fade-in">
+            <div className="flex items-center space-x-2.5">
+              <Unlock className="w-5 h-5 text-emerald-600 shrink-0" />
+              <div>
+                <p className="font-black text-emerald-900">
+                  🔓 កំពុងបើកសិទ្ធិស្រង់វត្តមាន (សម្រាប់លោកគ្រូ-អ្នកគ្រូ ឬប្រធានថ្នាក់)
+                </p>
+                <p className="text-emerald-700 text-[11px]">
+                  អ្នកអាចចុចកត់វត្តមានបាន។ ពេលស្រង់រួច សូមចុច "ចាក់សោបញ្ចប់" ដើម្បីការពារសិស្សលួចកែ!
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleLockEdit}
+              className="shrink-0 inline-flex items-center px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
+            >
+              <Lock className="w-3.5 h-3.5 mr-1.5" />
+              <span>ចាក់សោបញ្ចប់</span>
+            </button>
+          </div>
+        )}
+
         {/* Class, Date, and Homeroom Teacher Info Card */}
         <div className="bg-white rounded-3xl p-4 sm:p-5 shadow-sm border border-slate-200/80 space-y-3">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
@@ -350,6 +523,7 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
                 type="button"
                 onClick={handleCopyStudentLink}
                 className="inline-flex items-center text-indigo-600 hover:text-indigo-800 font-bold hover:underline cursor-pointer"
+                title="ចម្លងតំណភ្ជាប់ដែលចាក់សោសុវត្ថិភាព Read-Only"
               >
                 {copiedLink ? (
                   <>
@@ -359,7 +533,7 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
                 ) : (
                   <>
                     <Copy className="w-3.5 h-3.5 mr-1" />
-                    <span>ចម្លង Link ថ្នាក់នេះ</span>
+                    <span>ចម្លង Link ថ្នាក់នេះ (Read-Only)</span>
                   </>
                 )}
               </button>
@@ -368,6 +542,7 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
                 type="button"
                 onClick={handleShareToTelegram}
                 className="inline-flex items-center text-sky-600 hover:text-sky-800 font-bold hover:underline cursor-pointer"
+                title="ចែករំលែកតារាងវត្តមានដែលចាក់សោទៅកាន់ Telegram"
               >
                 <Send className="w-3.5 h-3.5 mr-1" />
                 <span>ផ្ញើ Telegram</span>
@@ -404,7 +579,7 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
           </div>
         </div>
 
-        {/* Search & Fast Action Toolbar */}
+        {/* Search & Action Toolbar */}
         <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
           {/* Quick Filter Buttons */}
           <div className="flex flex-wrap items-center gap-1.5 text-xs font-bold">
@@ -467,25 +642,43 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
             )}
           </div>
 
-          {/* Quick Mark All Present CTA */}
+          {/* Search box & Mark All Present (CTA is ONLY visible when Unlocked!) */}
           <div className="flex items-center space-x-2">
-            <button
-              type="button"
-              onClick={handleMarkAllPresent}
-              className="inline-flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs transition-colors cursor-pointer"
-            >
-              <Sparkles className="w-4 h-4 mr-1.5" />
-              <span>កត់វត្តមាន (មក) ទាំងអស់</span>
-            </button>
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="ស្វែងរកឈ្មោះ..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8 pr-2.5 py-1 text-xs border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 w-32 sm:w-40"
+              />
+            </div>
+
+            {isEditUnlocked ? (
+              <button
+                type="button"
+                onClick={handleMarkAllPresent}
+                className="inline-flex items-center px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer shrink-0"
+              >
+                <Sparkles className="w-3.5 h-3.5 mr-1" />
+                <span>កត់វត្តមាន (មក) ទាំងអស់</span>
+              </button>
+            ) : (
+              <span className="inline-flex items-center px-2.5 py-1 text-[11px] font-bold text-slate-500 bg-slate-100 rounded-xl border border-slate-200">
+                <Lock className="w-3 h-3 mr-1 text-slate-400" />
+                <span>ចាក់សោសុវត្ថិភាព</span>
+              </span>
+            )}
           </div>
         </div>
 
-        {/* Live Saved Toast Feedback */}
-        {isSavedToast && (
-          <div className="bg-emerald-600 text-white text-xs sm:text-sm font-bold px-4 py-2.5 rounded-2xl shadow-lg flex items-center justify-between animate-fade-in">
+        {/* Live Feedback Toast */}
+        {toastMessage && (
+          <div className="bg-slate-900 text-white text-xs sm:text-sm font-bold px-4 py-2.5 rounded-2xl shadow-lg flex items-center justify-between animate-fade-in border border-slate-700">
             <span className="flex items-center">
-              <Check className="w-4 h-4 mr-2" />
-              បានកត់វត្តមាន (មក) ដល់សិស្សទាំងអស់ដោយជោគជ័យ!
+              <Check className="w-4 h-4 mr-2 text-emerald-400" />
+              {toastMessage}
             </span>
           </div>
         )}
@@ -518,7 +711,7 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
                   {/* Left: Student Identity */}
                   <div className="flex items-center space-x-3 min-w-0">
                     <span className="w-8 h-8 rounded-xl bg-slate-100 text-slate-800 font-mono font-black text-xs sm:text-sm flex items-center justify-center shrink-0">
-                      {index + 1}
+                      {stu.rollNo || index + 1}
                     </span>
 
                     <div className="min-w-0">
@@ -542,49 +735,88 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
                     </div>
                   </div>
 
-                  {/* Right: Quick Action Attendance Buttons */}
+                  {/* Right: Actions OR Read-Only Badges */}
                   <div className="flex items-center space-x-1.5 self-end sm:self-auto shrink-0">
-                    {/* មក */}
-                    <button
-                      type="button"
-                      onClick={() => handleSetStatus(stu.id, 'present')}
-                      className={`px-3 py-1.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer flex items-center space-x-1 ${
-                        currentStatus === 'present'
-                          ? 'bg-emerald-600 text-white shadow-xs ring-2 ring-emerald-500 font-black'
-                          : 'bg-slate-100 text-slate-700 hover:bg-emerald-50 hover:text-emerald-700'
-                      }`}
-                    >
-                      <CheckCircle className="w-4 h-4" />
-                      <span>មក</span>
-                    </button>
+                    {/* CASE 1: READ-ONLY MODE (Students & Parents CANNOT edit!) */}
+                    {!isEditUnlocked ? (
+                      <div className="flex items-center">
+                        {currentStatus === 'present' && (
+                          <span className="inline-flex items-center px-3.5 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-300 font-bold text-xs sm:text-sm shadow-2xs">
+                            <CheckCircle className="w-4 h-4 mr-1.5 text-emerald-600" />
+                            <span>វត្តមាន (មក)</span>
+                          </span>
+                        )}
+                        {currentStatus === 'permission' && (
+                          <span className="inline-flex items-center px-3.5 py-1.5 rounded-xl bg-amber-50 text-amber-900 border border-amber-300 font-bold text-xs sm:text-sm shadow-2xs">
+                            <AlertCircle className="w-4 h-4 mr-1.5 text-amber-600" />
+                            <span>មានច្បាប់</span>
+                          </span>
+                        )}
+                        {currentStatus === 'absent' && (
+                          <span className="inline-flex items-center px-3.5 py-1.5 rounded-xl bg-rose-50 text-rose-900 border border-rose-300 font-bold text-xs sm:text-sm shadow-2xs">
+                            <XCircle className="w-4 h-4 mr-1.5 text-rose-600" />
+                            <span>អវត្តមាន</span>
+                          </span>
+                        )}
+                        {currentStatus === 'late' && (
+                          <span className="inline-flex items-center px-3.5 py-1.5 rounded-xl bg-blue-50 text-blue-900 border border-blue-300 font-bold text-xs sm:text-sm shadow-2xs">
+                            <Clock className="w-4 h-4 mr-1.5 text-blue-600" />
+                            <span>មកយឺត</span>
+                          </span>
+                        )}
+                        {!currentStatus && (
+                          <span className="inline-flex items-center px-3 py-1.5 rounded-xl bg-slate-100 text-slate-500 border border-slate-200 font-medium text-xs sm:text-sm">
+                            <Clock className="w-3.5 h-3.5 mr-1 text-slate-400" />
+                            <span>មិនទាន់ស្រង់</span>
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      /* CASE 2: UNLOCKED EDIT MODE (Interactive Attendance Buttons) */
+                      <div className="flex items-center space-x-1.5">
+                        {/* មក */}
+                        <button
+                          type="button"
+                          onClick={() => handleSetStatus(stu.id, 'present')}
+                          className={`px-3 py-1.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer flex items-center space-x-1 ${
+                            currentStatus === 'present'
+                              ? 'bg-emerald-600 text-white shadow-xs ring-2 ring-emerald-500 font-black'
+                              : 'bg-slate-100 text-slate-700 hover:bg-emerald-50 hover:text-emerald-700'
+                          }`}
+                        >
+                          <CheckCircle className="w-4 h-4" />
+                          <span>មក</span>
+                        </button>
 
-                    {/* ច្បាប់ */}
-                    <button
-                      type="button"
-                      onClick={() => handleSetStatus(stu.id, 'permission')}
-                      className={`px-3 py-1.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer flex items-center space-x-1 ${
-                        currentStatus === 'permission'
-                          ? 'bg-amber-500 text-white shadow-xs ring-2 ring-amber-400 font-black'
-                          : 'bg-slate-100 text-slate-700 hover:bg-amber-50 hover:text-amber-700'
-                      }`}
-                    >
-                      <AlertCircle className="w-4 h-4" />
-                      <span>ច្បាប់</span>
-                    </button>
+                        {/* ច្បាប់ */}
+                        <button
+                          type="button"
+                          onClick={() => handleSetStatus(stu.id, 'permission')}
+                          className={`px-3 py-1.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer flex items-center space-x-1 ${
+                            currentStatus === 'permission'
+                              ? 'bg-amber-500 text-white shadow-xs ring-2 ring-amber-400 font-black'
+                              : 'bg-slate-100 text-slate-700 hover:bg-amber-50 hover:text-amber-700'
+                          }`}
+                        >
+                          <AlertCircle className="w-4 h-4" />
+                          <span>ច្បាប់</span>
+                        </button>
 
-                    {/* អវត្តមាន */}
-                    <button
-                      type="button"
-                      onClick={() => handleSetStatus(stu.id, 'absent')}
-                      className={`px-3 py-1.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer flex items-center space-x-1 ${
-                        currentStatus === 'absent'
-                          ? 'bg-rose-600 text-white shadow-xs ring-2 ring-rose-500 font-black'
-                          : 'bg-slate-100 text-slate-700 hover:bg-rose-50 hover:text-rose-700'
-                      }`}
-                    >
-                      <XCircle className="w-4 h-4" />
-                      <span>អវត្តមាន</span>
-                    </button>
+                        {/* អវត្តមាន */}
+                        <button
+                          type="button"
+                          onClick={() => handleSetStatus(stu.id, 'absent')}
+                          className={`px-3 py-1.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer flex items-center space-x-1 ${
+                            currentStatus === 'absent'
+                              ? 'bg-rose-600 text-white shadow-xs ring-2 ring-rose-500 font-black'
+                              : 'bg-slate-100 text-slate-700 hover:bg-rose-50 hover:text-rose-700'
+                          }`}
+                        >
+                          <XCircle className="w-4 h-4" />
+                          <span>អវត្តមាន</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -593,9 +825,86 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
         </div>
       </main>
 
+      {/* Security PIN Unlock Modal */}
+      <Modal
+        isOpen={isPinModalOpen}
+        onClose={() => {
+          setIsPinModalOpen(false);
+          setPinError('');
+          setEnteredPin('');
+        }}
+        title="ដោះសោដើម្បីស្រង់វត្តមាន"
+        subtitle="សម្រាប់តែលោកគ្រូ-អ្នកគ្រូ ឬប្រធានថ្នាក់ដែលមានការអនុញ្ញាត"
+        maxWidth="md"
+      >
+        <form onSubmit={handleVerifyPin} className="space-y-4">
+          <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-3.5 text-xs text-indigo-900 flex items-start space-x-2.5">
+            <Lock className="w-5 h-5 text-indigo-600 shrink-0 mt-0.5" />
+            <div className="leading-relaxed">
+              <p className="font-bold">ការពារសុវត្ថិភាពវត្តមាន</p>
+              <p className="text-indigo-800 text-[11px] mt-0.5">
+                ដើម្បីការពារកុំឱ្យសិស្សលួចកែវត្តមានខ្លួនឯង សូមបញ្ចូលលេខកូដសម្ងាត់ ៤ ខ្ទង់ដែលលោកគ្រូ-អ្នកគ្រូបានកំណត់។
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              លេខកូដសម្ងាត់ (Security PIN) <span className="text-rose-500">*</span>
+            </label>
+            <div className="relative">
+              <Key className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="password"
+                maxLength={6}
+                required
+                autoFocus
+                placeholder="បញ្ចូលលេខសម្ងាត់..."
+                value={enteredPin}
+                onChange={(e) => {
+                  setEnteredPin(e.target.value);
+                  setPinError('');
+                }}
+                className="w-full pl-9 pr-3 py-2.5 text-base border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono font-black text-center tracking-widest text-slate-900"
+              />
+            </div>
+            {pinError && (
+              <p className="text-xs text-rose-600 font-bold mt-1.5 flex items-center">
+                <AlertTriangle className="w-3.5 h-3.5 mr-1 shrink-0" />
+                {pinError}
+              </p>
+            )}
+            <p className="text-[11px] text-slate-400 mt-1">
+              (លេខកូដសម្ងាត់លំនាំដើម៖ <strong className="font-mono text-slate-600">1234</strong> • គ្រូអាចប្តូរក្នុង Settings)
+            </p>
+          </div>
+
+          <div className="flex items-center justify-end space-x-2 pt-2 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => {
+                setIsPinModalOpen(false);
+                setPinError('');
+                setEnteredPin('');
+              }}
+              className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 cursor-pointer"
+            >
+              បោះបង់
+            </button>
+            <button
+              type="submit"
+              className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-600/20 cursor-pointer flex items-center space-x-1.5"
+            >
+              <Key className="w-3.5 h-3.5" />
+              <span>ផ្ទៀងផ្ទាត់ & ដោះសោ</span>
+            </button>
+          </div>
+        </form>
+      </Modal>
+
       {/* Footer */}
       <footer className="bg-white border-t border-slate-200 py-3 text-center text-xs text-slate-500">
-        <p>ប្រព័ន្ធគ្រប់គ្រងវត្តមានសិស្ស • រៀបចំស្រង់វត្តមានប្រចាំថ្ងៃងាយស្រួល និងរហ័ស</p>
+        <p>ប្រព័ន្ធគ្រប់គ្រងវត្តមានសិស្ស • ការពារសុវត្ថិភាពចាក់សោរឹងមាំ (Read-Only) មិនអាចលួចកែបាន</p>
       </footer>
     </div>
   );

@@ -160,5 +160,6 @@ export interface TeacherSettings {
   absenceWarningThreshold: number; // ចំនួនថ្ងៃអវត្តមានដែលត្រូវចេញលិខិតព្រមាន (Default: 3)
   phone: string;
   email?: string;
+  studentAttendancePin?: string; // លេខកូដសម្ងាត់ PIN សម្រាប់ដោះសោស្រង់វត្តមាន (Default: 1234)
   customGradeCoefficients?: Record<string, Record<string, { maxScore: number; coefficient: number }>>;
 }
