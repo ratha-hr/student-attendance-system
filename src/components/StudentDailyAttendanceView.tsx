@@ -1,16 +1,12 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   CalendarCheck2,
-  Calendar,
   CheckCircle,
   AlertCircle,
   XCircle,
   Clock,
   Sparkles,
   Users,
-  Save,
-  ArrowLeft,
-  Share2,
   Copy,
   Check,
   Send,
@@ -21,13 +17,11 @@ import {
   Unlock,
   Key,
   ShieldCheck,
-  ShieldAlert,
-  Eye,
   AlertTriangle,
 } from 'lucide-react';
 import type { Student, ClassRoom, AttendanceRecord, AttendanceStatus, TeacherSettings } from '../types';
 import { db } from '../db/db';
-import { toKhmerNum, fromKhmerNum, formatKhmerDate, getTodayDateString } from '../utils/dateUtils';
+import { fromKhmerNum, formatKhmerDate, getTodayDateString } from '../utils/dateUtils';
 import { soundEffects } from '../utils/soundEffects';
 import { decodeAttendanceFromUrl, encodeAttendanceForUrl } from '../utils/attendanceShare';
 import { Modal } from './common/Modal';
@@ -42,7 +36,7 @@ interface StudentDailyAttendanceViewProps {
   initialSession?: 'morning' | 'afternoon';
   initialReadOnly?: boolean;
   initialAttendancePayload?: string;
-  onExitStudentMode: () => void;
+  onExitStudentMode?: () => void;
   onRefresh: () => void;
 }
 
@@ -54,9 +48,7 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
   initialClassId,
   initialDate,
   initialSession,
-  initialReadOnly = true,
   initialAttendancePayload,
-  onExitStudentMode,
   onRefresh,
 }) => {
   const [selectedClassId, setSelectedClassId] = useState<string>(
@@ -314,38 +306,48 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col antialiased">
-      {/* Top Banner (Student Attendance Header) */}
-      <header className="bg-linear-to-r from-violet-900 via-indigo-900 to-blue-950 text-white shadow-lg sticky top-0 z-30">
-        <div className="max-w-5xl mx-auto px-3 sm:px-6 py-3 flex items-center justify-between gap-3">
-          <div className="flex items-center space-x-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-yellow-300 shadow-inner">
-              <CalendarCheck2 className="w-6 h-6" />
+      {/* Top Banner (Header: Clean, Compact, Mobile-Friendly, NO "Return to Teacher Account" button) */}
+      <header className="bg-linear-to-r from-violet-900 via-indigo-900 to-blue-950 text-white shadow-md sticky top-0 z-30">
+        <div className="max-w-3xl mx-auto px-3 sm:px-4 py-2.5 flex items-center justify-between gap-2">
+          {/* Brand & Mode info */}
+          <div className="flex items-center space-x-2 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center text-yellow-300 shrink-0">
+              <CalendarCheck2 className="w-4 h-4" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="font-moul text-sm sm:text-base tracking-wide text-white">
-                  តារាងស្រង់វត្តមានប្រចាំថ្ងៃ
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <h1 className="font-moul text-xs sm:text-sm text-white truncate">
+                  តារាងវត្តមានប្រចាំថ្ងៃ
                 </h1>
                 {isEditUnlocked ? (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/30 border border-emerald-400/50 text-[11px] font-bold text-emerald-200">
-                    <Unlock className="w-3 h-3 text-emerald-300" />
-                    <span>កំពុងដោះសោ (Edit Mode)</span>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/30 border border-emerald-400/50 text-[10px] font-bold text-emerald-200">
+                    <Unlock className="w-2.5 h-2.5 text-emerald-300" />
+                    <span>កែប្រែ</span>
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-violet-500/30 border border-violet-400/40 text-[11px] font-bold text-violet-200">
-                    <Lock className="w-3 h-3 text-yellow-300" />
-                    <span>មើលវត្តមាន (Read-Only)</span>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-500/30 border border-violet-400/40 text-[10px] font-bold text-violet-200">
+                    <Lock className="w-2.5 h-2.5 text-yellow-300" />
+                    <span>Read-Only</span>
                   </span>
                 )}
               </div>
-              <p className="text-xs text-indigo-200 truncate">
-                {settings?.schoolName || 'វិទ្យាល័យ ហ៊ុន សែន កំពង់ត្រឡាច'} • {currentClass?.name || 'ថ្នាក់រៀន'}
+              <p className="text-[11px] text-indigo-200 truncate">
+                {currentClass?.name || 'ថ្នាក់រៀន'} • {settings?.schoolName || 'វិទ្យាល័យ ហ៊ុន សែន កំពង់ត្រឡាច'}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center space-x-2">
-            {/* Lock / Unlock Toggle Button */}
+          {/* Right Header Actions: Sound + Lock/Unlock (ONLY ONE BUTTON! NO "គណនីគ្រូ" button!) */}
+          <div className="flex items-center space-x-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => setSoundOn(!soundOn)}
+              className="p-1.5 text-indigo-200 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
+              title={soundOn ? 'បិទសំឡេង' : 'បើកសំឡេង'}
+            >
+              {soundOn ? <Volume2 className="w-4 h-4 text-emerald-400" /> : <VolumeX className="w-4 h-4 text-slate-400" />}
+            </button>
+
             {isEditUnlocked ? (
               <button
                 type="button"
@@ -353,7 +355,7 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
                 className="inline-flex items-center px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer"
                 title="ចាក់សោបញ្ចប់ការស្រង់វត្តមាន"
               >
-                <Lock className="w-3.5 h-3.5 mr-1 text-white" />
+                <Lock className="w-3.5 h-3.5 mr-1" />
                 <span>ចាក់សោបញ្ចប់</span>
               </button>
             ) : (
@@ -368,327 +370,197 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
                 title="ដោះសោដើម្បីស្រង់វត្តមាន (សម្រាប់គ្រូ ឬប្រធានថ្នាក់)"
               >
                 <Key className="w-3.5 h-3.5 mr-1 text-yellow-300" />
-                <span>ដោះសោស្រង់</span>
+                <span>ដោះសោ (PIN)</span>
               </button>
             )}
-
-            <button
-              type="button"
-              onClick={() => setSoundOn(!soundOn)}
-              className="p-2 text-indigo-200 hover:text-white hover:bg-white/10 rounded-xl transition-colors cursor-pointer"
-              title={soundOn ? 'បិទសំឡេង' : 'បើកសំឡេង'}
-            >
-              {soundOn ? <Volume2 className="w-5 h-5 text-emerald-400" /> : <VolumeX className="w-5 h-5 text-slate-400" />}
-            </button>
-
-            <button
-              type="button"
-              onClick={onExitStudentMode}
-              className="inline-flex items-center px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-xl text-xs font-bold transition-all cursor-pointer"
-              title="ត្រឡប់ទៅផ្ទាំងគ្រូបង្រៀន"
-            >
-              <ArrowLeft className="w-4 h-4 mr-1" />
-              <span>គណនីគ្រូ</span>
-            </button>
           </div>
         </div>
       </header>
 
-      {/* Main Content Area */}
-      <main className="max-w-5xl mx-auto w-full px-3 sm:px-6 py-4 flex-1 space-y-4">
-        {/* Security Status Info Card */}
-        {!isEditUnlocked ? (
-          <div className="bg-linear-to-r from-blue-50 to-indigo-50 border border-blue-200/90 rounded-2xl p-3.5 flex items-start sm:items-center justify-between gap-3 text-xs shadow-2xs">
-            <div className="flex items-start sm:items-center space-x-2.5">
-              <ShieldCheck className="w-5 h-5 text-blue-600 shrink-0 mt-0.5 sm:mt-0" />
-              <div>
-                <p className="font-bold text-slate-800">
-                  🔒 បញ្ជីវត្តមាននេះត្រូវបានចាក់សោសុវត្ថិភាព (Read-Only)
-                </p>
-                <p className="text-slate-600 text-[11px] mt-0.5">
-                  សិស្ស និងមាតាបិតាអាចត្រឹមតែពិនិត្យមើលវត្តមានប្រចាំថ្ងៃប៉ុណ្ណោះ មិនអាចចុចកែប្រែ ឬលួចកែវត្តមានបានឡើយ។
-                </p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                setEnteredPin('');
-                setPinError('');
-                setIsPinModalOpen(true);
-              }}
-              className="shrink-0 inline-flex items-center px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
-            >
-              <Key className="w-3.5 h-3.5 mr-1" />
-              <span>ដោះសោស្រង់ (PIN)</span>
-            </button>
+      {/* Main Content Area: Ultra-Streamlined for Mobile */}
+      <main className="max-w-3xl mx-auto w-full px-2.5 sm:px-4 py-2.5 flex-1 space-y-2">
+        {/* Status Indicator Banner (Slim, Single-line, No duplicate buttons!) */}
+        {isEditUnlocked ? (
+          <div className="bg-emerald-50 border border-emerald-300 rounded-xl px-3 py-1.5 flex items-center justify-between text-xs text-emerald-900 shadow-2xs">
+            <span className="flex items-center font-bold">
+              <Unlock className="w-3.5 h-3.5 mr-1.5 text-emerald-600 shrink-0" />
+              <span>កំពុងបើកសិទ្ធិស្រង់វត្តមាន (សម្រាប់គ្រូ/ប្រធានថ្នាក់)</span>
+            </span>
+            <span className="text-[11px] text-emerald-700 font-medium hidden sm:inline">
+              ចុច "ចាក់សោបញ្ចប់" ខាងលើពេលស្រង់រួច
+            </span>
           </div>
         ) : (
-          <div className="bg-emerald-50 border border-emerald-300 rounded-2xl p-3.5 flex items-center justify-between gap-3 text-xs shadow-2xs animate-fade-in">
-            <div className="flex items-center space-x-2.5">
-              <Unlock className="w-5 h-5 text-emerald-600 shrink-0" />
-              <div>
-                <p className="font-black text-emerald-900">
-                  🔓 កំពុងបើកសិទ្ធិស្រង់វត្តមាន (សម្រាប់លោកគ្រូ-អ្នកគ្រូ ឬប្រធានថ្នាក់)
-                </p>
-                <p className="text-emerald-700 text-[11px]">
-                  អ្នកអាចចុចកត់វត្តមានបាន។ ពេលស្រង់រួច សូមចុច "ចាក់សោបញ្ចប់" ដើម្បីការពារសិស្សលួចកែ!
-                </p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleLockEdit}
-              className="shrink-0 inline-flex items-center px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
-            >
-              <Lock className="w-3.5 h-3.5 mr-1.5" />
-              <span>ចាក់សោបញ្ចប់</span>
-            </button>
+          <div className="bg-blue-50/80 border border-blue-200/80 rounded-xl px-3 py-1.5 flex items-center justify-between text-[11px] text-blue-900 shadow-2xs">
+            <span className="flex items-center font-bold">
+              <ShieldCheck className="w-3.5 h-3.5 mr-1 text-blue-600 shrink-0" />
+              <span>បានចាក់សោសុវត្ថិភាព Read-Only (សិស្សមិនអាចលួចកែវត្តមានបានឡើយ)</span>
+            </span>
           </div>
         )}
 
-        {/* Class, Date, and Homeroom Teacher Info Card */}
-        <div className="bg-white rounded-3xl p-4 sm:p-5 shadow-sm border border-slate-200/80 space-y-3">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-            {/* Class Selector & Homeroom Teacher */}
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-              <div className="flex items-center space-x-1.5">
-                <label className="text-xs font-bold text-slate-600">ថ្នាក់៖</label>
-                <select
-                  value={selectedClassId}
-                  onChange={(e) => setSelectedClassId(e.target.value)}
-                  className="bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs sm:text-sm font-black text-slate-800 cursor-pointer shadow-2xs focus:ring-2 focus:ring-indigo-500"
-                >
-                  {classes.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} {c.homeroomTeacher ? `(${c.homeroomTeacher})` : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Homeroom Teacher Badge */}
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-50 border border-indigo-200 rounded-xl text-xs font-bold text-indigo-900">
-                <span>👨‍🏫 គ្រូទទួលបន្ទុក៖</span>
-                <span className="font-black text-indigo-950">
-                  {currentClass?.homeroomTeacher || settings?.teacherName || 'លោកគ្រូ-អ្នកគ្រូ'}
-                </span>
-              </div>
+        {/* Compact Mobile-Optimized Dashboard Card (Replaces both the bulky info card & 5 huge stat boxes!) */}
+        <div className="bg-white rounded-2xl p-2.5 sm:p-3 shadow-2xs border border-slate-200/90 space-y-2">
+          {/* Row 1: Class, Homeroom Teacher, Session, Date & Share Links */}
+          <div className="flex flex-wrap items-center justify-between gap-1.5 text-xs">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="px-2.5 py-1 bg-indigo-50 text-indigo-900 border border-indigo-200 rounded-lg font-black text-xs">
+                📚 {currentClass?.name || 'ថ្នាក់រៀន'}
+              </span>
+              <span className="px-2 py-1 bg-slate-100 text-slate-700 rounded-lg font-bold text-[11px]">
+                👨‍🏫 គ្រូ៖ {currentClass?.homeroomTeacher || settings?.teacherName || 'គ្រូទទួលបន្ទុក'}
+              </span>
+              <span className={`px-2 py-1 rounded-lg font-bold text-[11px] ${
+                selectedSession === 'morning' ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-700'
+              }`}>
+                {selectedSession === 'morning' ? '🌅 វេនព្រឹក' : '🌇 វេនរសៀល'}
+              </span>
+              <span className="text-slate-500 font-medium text-[11px]">
+                📅 {formatKhmerDate(selectedDate)}
+              </span>
             </div>
 
-            {/* Date and Session Picker */}
-            <div className="flex flex-wrap items-center gap-2">
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-1 text-xs sm:text-sm font-bold text-slate-800 cursor-pointer shadow-2xs"
-              />
-
-              <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-xl text-xs font-bold">
-                <button
-                  type="button"
-                  onClick={() => setSelectedSession('morning')}
-                  className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
-                    selectedSession === 'morning'
-                      ? 'bg-white text-blue-700 shadow-2xs font-black'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  🌅 ព្រឹក (7:00-11:00)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedSession('afternoon')}
-                  className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
-                    selectedSession === 'afternoon'
-                      ? 'bg-white text-amber-700 shadow-2xs font-black'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  🌇 រសៀល (14:00-17:00)
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
-            <span className="font-medium">
-              📅 {formatKhmerDate(selectedDate, true)}
-            </span>
-            <div className="flex items-center space-x-2">
+            {/* Quick Share Links */}
+            <div className="flex items-center space-x-1.5">
               <button
                 type="button"
                 onClick={handleCopyStudentLink}
-                className="inline-flex items-center text-indigo-600 hover:text-indigo-800 font-bold hover:underline cursor-pointer"
-                title="ចម្លងតំណភ្ជាប់ដែលចាក់សោសុវត្ថិភាព Read-Only"
+                className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 hover:underline cursor-pointer flex items-center"
+                title="ចម្លងតំណភ្ជាប់ Read-Only"
               >
-                {copiedLink ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 text-emerald-600 mr-1" />
-                    <span className="text-emerald-700">ចម្លងតំណភ្ជាប់រួច!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5 mr-1" />
-                    <span>ចម្លង Link ថ្នាក់នេះ (Read-Only)</span>
-                  </>
-                )}
+                {copiedLink ? <Check className="w-3 h-3 mr-0.5 text-emerald-600" /> : <Copy className="w-3 h-3 mr-0.5" />}
+                <span>{copiedLink ? 'ចម្លងរួច' : 'Link'}</span>
               </button>
-              <span>•</span>
+              <span className="text-slate-300">•</span>
               <button
                 type="button"
                 onClick={handleShareToTelegram}
-                className="inline-flex items-center text-sky-600 hover:text-sky-800 font-bold hover:underline cursor-pointer"
-                title="ចែករំលែកតារាងវត្តមានដែលចាក់សោទៅកាន់ Telegram"
+                className="text-[11px] font-bold text-sky-600 hover:text-sky-800 hover:underline cursor-pointer flex items-center"
+                title="ផ្ញើទៅ Telegram"
               >
-                <Send className="w-3.5 h-3.5 mr-1" />
-                <span>ផ្ញើ Telegram</span>
+                <Send className="w-3 h-3 mr-0.5" />
+                <span>Telegram</span>
               </button>
             </div>
           </div>
-        </div>
 
-        {/* Daily Stats KPI Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-center">
-          <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs">
-            <span className="text-xs text-slate-500 font-bold block">👥 សិស្សសរុប</span>
-            <span className="text-xl sm:text-2xl font-black text-slate-800 font-mono mt-0.5 block">{stats.total}</span>
-          </div>
-
-          <div className="bg-emerald-50/80 p-3 rounded-2xl border border-emerald-200 shadow-2xs">
-            <span className="text-xs text-emerald-700 font-bold block">✅ មក (Present)</span>
-            <span className="text-xl sm:text-2xl font-black text-emerald-700 font-mono mt-0.5 block">{stats.present}</span>
-          </div>
-
-          <div className="bg-amber-50/80 p-3 rounded-2xl border border-amber-200 shadow-2xs">
-            <span className="text-xs text-amber-700 font-bold block">🟡 មានច្បាប់</span>
-            <span className="text-xl sm:text-2xl font-black text-amber-700 font-mono mt-0.5 block">{stats.permission}</span>
-          </div>
-
-          <div className="bg-rose-50/80 p-3 rounded-2xl border border-rose-200 shadow-2xs">
-            <span className="text-xs text-rose-700 font-bold block">❌ ឥតច្បាប់</span>
-            <span className="text-xl sm:text-2xl font-black text-rose-700 font-mono mt-0.5 block">{stats.absent}</span>
-          </div>
-
-          <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 shadow-2xs col-span-2 sm:col-span-1">
-            <span className="text-xs text-slate-600 font-bold block">⏳ មិនទាន់ស្រង់</span>
-            <span className="text-xl sm:text-2xl font-black text-slate-700 font-mono mt-0.5 block">{stats.unmarked}</span>
-          </div>
-        </div>
-
-        {/* Search & Action Toolbar */}
-        <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-          {/* Quick Filter Buttons */}
-          <div className="flex flex-wrap items-center gap-1.5 text-xs font-bold">
+          {/* Row 2: Unified Interactive Stats Chips (Replaces 5 bulky boxes AND filter buttons!) */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 text-xs font-bold scrollbar-none">
+            {/* ទាំងអស់ */}
             <button
               type="button"
               onClick={() => setStatusFilter('all')}
-              className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
+              className={`px-2.5 py-1.5 rounded-xl transition-all cursor-pointer shrink-0 flex items-center space-x-1 ${
                 statusFilter === 'all'
                   ? 'bg-indigo-600 text-white font-black shadow-xs'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >
-              ទាំងអស់ ({stats.total})
+              <span>👥 សរុប</span>
+              <span className="font-mono font-black ml-1 px-1.5 py-0.2 bg-black/10 rounded-full">{stats.total}</span>
             </button>
+
+            {/* មក */}
             <button
               type="button"
               onClick={() => setStatusFilter('present')}
-              className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
+              className={`px-2.5 py-1.5 rounded-xl transition-all cursor-pointer shrink-0 flex items-center space-x-1 ${
                 statusFilter === 'present'
                   ? 'bg-emerald-600 text-white font-black shadow-xs'
-                  : 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100'
+                  : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
               }`}
             >
-              🟢 មក ({stats.present})
+              <span>✅ មក</span>
+              <span className="font-mono font-black ml-1 px-1.5 py-0.2 bg-black/10 rounded-full">{stats.present}</span>
             </button>
+
+            {/* ច្បាប់ */}
             <button
               type="button"
               onClick={() => setStatusFilter('permission')}
-              className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
+              className={`px-2.5 py-1.5 rounded-xl transition-all cursor-pointer shrink-0 flex items-center space-x-1 ${
                 statusFilter === 'permission'
                   ? 'bg-amber-500 text-white font-black shadow-xs'
-                  : 'text-amber-700 bg-amber-50 hover:bg-amber-100'
+                  : 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100'
               }`}
             >
-              🟡 ច្បាប់ ({stats.permission})
+              <span>🟡 ច្បាប់</span>
+              <span className="font-mono font-black ml-1 px-1.5 py-0.2 bg-black/10 rounded-full">{stats.permission}</span>
             </button>
+
+            {/* អវត្តមាន */}
             <button
               type="button"
               onClick={() => setStatusFilter('absent')}
-              className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
+              className={`px-2.5 py-1.5 rounded-xl transition-all cursor-pointer shrink-0 flex items-center space-x-1 ${
                 statusFilter === 'absent'
                   ? 'bg-rose-600 text-white font-black shadow-xs'
-                  : 'text-rose-700 bg-rose-50 hover:bg-rose-100'
+                  : 'bg-rose-50 text-rose-800 border border-rose-200 hover:bg-rose-100'
               }`}
             >
-              🔴 ឥតច្បាប់ ({stats.absent})
+              <span>❌ អវត្តមាន</span>
+              <span className="font-mono font-black ml-1 px-1.5 py-0.2 bg-black/10 rounded-full">{stats.absent}</span>
             </button>
+
+            {/* មិនទាន់ស្រង់ */}
             {stats.unmarked > 0 && (
               <button
                 type="button"
                 onClick={() => setStatusFilter('unmarked')}
-                className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
+                className={`px-2.5 py-1.5 rounded-xl transition-all cursor-pointer shrink-0 flex items-center space-x-1 ${
                   statusFilter === 'unmarked'
                     ? 'bg-slate-700 text-white font-black shadow-xs'
-                    : 'text-slate-600 bg-slate-100 hover:bg-slate-200'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
               >
-                ⚪ មិនទាន់ស្រង់ ({stats.unmarked})
+                <span>⏳ មិនទាន់</span>
+                <span className="font-mono font-black ml-1 px-1.5 py-0.2 bg-black/10 rounded-full">{stats.unmarked}</span>
               </button>
             )}
           </div>
 
-          {/* Search box & Mark All Present (CTA is ONLY visible when Unlocked!) */}
-          <div className="flex items-center space-x-2">
-            <div className="relative">
+          {/* Row 3: Quick Search + (Mark All Present if unlocked) */}
+          <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-100">
+            <div className="relative flex-1 max-w-sm">
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="ស្វែងរកឈ្មោះ..."
+                placeholder="ស្វែងរកឈ្មោះ ឬអត្តលេខ..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-8 pr-2.5 py-1 text-xs border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 w-32 sm:w-40"
+                className="w-full pl-8 pr-2.5 py-1.5 text-xs border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500"
               />
             </div>
 
-            {isEditUnlocked ? (
+            {isEditUnlocked && (
               <button
                 type="button"
                 onClick={handleMarkAllPresent}
-                className="inline-flex items-center px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer shrink-0"
+                className="inline-flex items-center px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer shrink-0"
               >
                 <Sparkles className="w-3.5 h-3.5 mr-1" />
-                <span>កត់វត្តមាន (មក) ទាំងអស់</span>
+                <span>មកទាំងអស់</span>
               </button>
-            ) : (
-              <span className="inline-flex items-center px-2.5 py-1 text-[11px] font-bold text-slate-500 bg-slate-100 rounded-xl border border-slate-200">
-                <Lock className="w-3 h-3 mr-1 text-slate-400" />
-                <span>ចាក់សោសុវត្ថិភាព</span>
-              </span>
             )}
           </div>
         </div>
 
         {/* Live Feedback Toast */}
         {toastMessage && (
-          <div className="bg-slate-900 text-white text-xs sm:text-sm font-bold px-4 py-2.5 rounded-2xl shadow-lg flex items-center justify-between animate-fade-in border border-slate-700">
+          <div className="bg-slate-900 text-white text-xs sm:text-sm font-bold px-3.5 py-2 rounded-xl shadow-lg flex items-center justify-between animate-fade-in border border-slate-700">
             <span className="flex items-center">
-              <Check className="w-4 h-4 mr-2 text-emerald-400" />
+              <Check className="w-4 h-4 mr-2 text-emerald-400 shrink-0" />
               {toastMessage}
             </span>
           </div>
         )}
 
-        {/* Student Attendance List */}
-        <div className="space-y-2">
+        {/* Student Attendance List: Compact, Mobile-First Cards */}
+        <div className="space-y-1.5">
           {filteredStudents.length === 0 ? (
-            <div className="bg-white rounded-3xl p-8 text-center text-slate-400 space-y-2 border border-slate-200">
-              <Users className="w-10 h-10 mx-auto text-slate-300" />
-              <p className="font-bold text-slate-600 text-sm">មិនមានទិន្នន័យសិស្សត្រូវតាមលក្ខខណ្ឌនេះទេ</p>
+            <div className="bg-white rounded-2xl p-6 text-center text-slate-400 space-y-1.5 border border-slate-200">
+              <Users className="w-8 h-8 mx-auto text-slate-300" />
+              <p className="font-bold text-slate-600 text-xs sm:text-sm">មិនមានទិន្នន័យសិស្សត្រូវតាមលក្ខខណ្ឌនេះទេ</p>
             </div>
           ) : (
             filteredStudents.map((stu, index) => {
@@ -698,7 +570,7 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
               return (
                 <div
                   key={stu.id}
-                  className={`bg-white rounded-2xl p-3 sm:p-4 border transition-all shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                  className={`bg-white rounded-xl p-2.5 sm:p-3 border transition-all shadow-2xs flex items-center justify-between gap-2 ${
                     currentStatus === 'present'
                       ? 'border-emerald-200 bg-emerald-50/20'
                       : currentStatus === 'permission'
@@ -708,19 +580,19 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
                       : 'border-slate-200 hover:border-slate-300'
                   }`}
                 >
-                  {/* Left: Student Identity */}
-                  <div className="flex items-center space-x-3 min-w-0">
-                    <span className="w-8 h-8 rounded-xl bg-slate-100 text-slate-800 font-mono font-black text-xs sm:text-sm flex items-center justify-center shrink-0">
+                  {/* Left: Roll No + Student Name + Gender + Code */}
+                  <div className="flex items-center space-x-2.5 min-w-0">
+                    <span className="w-7 h-7 rounded-lg bg-slate-100 text-slate-800 font-mono font-black text-xs flex items-center justify-center shrink-0">
                       {stu.rollNo || index + 1}
                     </span>
 
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-sm sm:text-base text-slate-900 truncate">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-xs sm:text-sm text-slate-900 truncate">
                           {stu.nameKh}
                         </span>
                         <span
-                          className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                          className={`px-1 py-0.2 rounded text-[9px] font-bold ${
                             stu.gender === 'ស្រី'
                               ? 'bg-pink-100 text-pink-700'
                               : 'bg-blue-100 text-blue-700'
@@ -729,90 +601,87 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
                           {stu.gender}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-400 font-mono">
+                      <p className="text-[10px] text-slate-400 font-mono">
                         {fromKhmerNum(stu.studentCode)}
                       </p>
                     </div>
                   </div>
 
-                  {/* Right: Actions OR Read-Only Badges */}
-                  <div className="flex items-center space-x-1.5 self-end sm:self-auto shrink-0">
-                    {/* CASE 1: READ-ONLY MODE (Students & Parents CANNOT edit!) */}
+                  {/* Right: Read-Only Badge OR Edit Mode Buttons */}
+                  <div className="flex items-center space-x-1 shrink-0">
                     {!isEditUnlocked ? (
-                      <div className="flex items-center">
+                      /* READ-ONLY BADGES: Clear, Beautiful, Unclickable */
+                      <div>
                         {currentStatus === 'present' && (
-                          <span className="inline-flex items-center px-3.5 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-300 font-bold text-xs sm:text-sm shadow-2xs">
-                            <CheckCircle className="w-4 h-4 mr-1.5 text-emerald-600" />
-                            <span>វត្តមាន (មក)</span>
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-300 font-bold text-xs">
+                            <CheckCircle className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+                            <span>មក</span>
                           </span>
                         )}
                         {currentStatus === 'permission' && (
-                          <span className="inline-flex items-center px-3.5 py-1.5 rounded-xl bg-amber-50 text-amber-900 border border-amber-300 font-bold text-xs sm:text-sm shadow-2xs">
-                            <AlertCircle className="w-4 h-4 mr-1.5 text-amber-600" />
-                            <span>មានច្បាប់</span>
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-amber-50 text-amber-900 border border-amber-300 font-bold text-xs">
+                            <AlertCircle className="w-3.5 h-3.5 mr-1 text-amber-600" />
+                            <span>ច្បាប់</span>
                           </span>
                         )}
                         {currentStatus === 'absent' && (
-                          <span className="inline-flex items-center px-3.5 py-1.5 rounded-xl bg-rose-50 text-rose-900 border border-rose-300 font-bold text-xs sm:text-sm shadow-2xs">
-                            <XCircle className="w-4 h-4 mr-1.5 text-rose-600" />
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-rose-50 text-rose-900 border border-rose-300 font-bold text-xs">
+                            <XCircle className="w-3.5 h-3.5 mr-1 text-rose-600" />
                             <span>អវត្តមាន</span>
                           </span>
                         )}
                         {currentStatus === 'late' && (
-                          <span className="inline-flex items-center px-3.5 py-1.5 rounded-xl bg-blue-50 text-blue-900 border border-blue-300 font-bold text-xs sm:text-sm shadow-2xs">
-                            <Clock className="w-4 h-4 mr-1.5 text-blue-600" />
-                            <span>មកយឺត</span>
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-blue-50 text-blue-900 border border-blue-300 font-bold text-xs">
+                            <Clock className="w-3.5 h-3.5 mr-1 text-blue-600" />
+                            <span>យឺត</span>
                           </span>
                         )}
                         {!currentStatus && (
-                          <span className="inline-flex items-center px-3 py-1.5 rounded-xl bg-slate-100 text-slate-500 border border-slate-200 font-medium text-xs sm:text-sm">
-                            <Clock className="w-3.5 h-3.5 mr-1 text-slate-400" />
+                          <span className="inline-flex items-center px-2 py-1 rounded-lg bg-slate-100 text-slate-500 border border-slate-200 text-xs">
+                            <Clock className="w-3 h-3 mr-1 text-slate-400" />
                             <span>មិនទាន់ស្រង់</span>
                           </span>
                         )}
                       </div>
                     ) : (
-                      /* CASE 2: UNLOCKED EDIT MODE (Interactive Attendance Buttons) */
-                      <div className="flex items-center space-x-1.5">
-                        {/* មក */}
+                      /* EDIT MODE: 3 clean touch buttons for monitor/teacher */
+                      <div className="flex items-center space-x-1">
                         <button
                           type="button"
                           onClick={() => handleSetStatus(stu.id, 'present')}
-                          className={`px-3 py-1.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer flex items-center space-x-1 ${
+                          className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center space-x-1 ${
                             currentStatus === 'present'
-                              ? 'bg-emerald-600 text-white shadow-xs ring-2 ring-emerald-500 font-black'
+                              ? 'bg-emerald-600 text-white font-black ring-2 ring-emerald-500 shadow-xs'
                               : 'bg-slate-100 text-slate-700 hover:bg-emerald-50 hover:text-emerald-700'
                           }`}
                         >
-                          <CheckCircle className="w-4 h-4" />
+                          <CheckCircle className="w-3.5 h-3.5" />
                           <span>មក</span>
                         </button>
 
-                        {/* ច្បាប់ */}
                         <button
                           type="button"
                           onClick={() => handleSetStatus(stu.id, 'permission')}
-                          className={`px-3 py-1.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer flex items-center space-x-1 ${
+                          className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center space-x-1 ${
                             currentStatus === 'permission'
-                              ? 'bg-amber-500 text-white shadow-xs ring-2 ring-amber-400 font-black'
+                              ? 'bg-amber-500 text-white font-black ring-2 ring-amber-400 shadow-xs'
                               : 'bg-slate-100 text-slate-700 hover:bg-amber-50 hover:text-amber-700'
                           }`}
                         >
-                          <AlertCircle className="w-4 h-4" />
+                          <AlertCircle className="w-3.5 h-3.5" />
                           <span>ច្បាប់</span>
                         </button>
 
-                        {/* អវត្តមាន */}
                         <button
                           type="button"
                           onClick={() => handleSetStatus(stu.id, 'absent')}
-                          className={`px-3 py-1.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer flex items-center space-x-1 ${
+                          className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center space-x-1 ${
                             currentStatus === 'absent'
-                              ? 'bg-rose-600 text-white shadow-xs ring-2 ring-rose-500 font-black'
+                              ? 'bg-rose-600 text-white font-black ring-2 ring-rose-500 shadow-xs'
                               : 'bg-slate-100 text-slate-700 hover:bg-rose-50 hover:text-rose-700'
                           }`}
                         >
-                          <XCircle className="w-4 h-4" />
+                          <XCircle className="w-3.5 h-3.5" />
                           <span>អវត្តមាន</span>
                         </button>
                       </div>
@@ -903,8 +772,8 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
       </Modal>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-slate-200 py-3 text-center text-xs text-slate-500">
-        <p>ប្រព័ន្ធគ្រប់គ្រងវត្តមានសិស្ស • ការពារសុវត្ថិភាពចាក់សោរឹងមាំ (Read-Only) មិនអាចលួចកែបាន</p>
+      <footer className="bg-white border-t border-slate-200 py-2.5 text-center text-[11px] text-slate-400">
+        <p>ប្រព័ន្ធគ្រប់គ្រងវត្តមានសិស្ស • ការពារសុវត្ថិភាពចាក់សោរឹងមាំ (Read-Only)</p>
       </footer>
     </div>
   );
