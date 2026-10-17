@@ -20,7 +20,9 @@ import {
   getAllProvinces,
   getDistrictsForProvince,
   getCommunesForDistrict,
+  getVillagesForCommune,
 } from '../utils/cambodiaGeography';
+import { SearchableAdminInput } from './common/SearchableAdminInput';
 import { formatToDMY } from '../utils/dateUtils';
 import { calculateAge } from '../utils/excelUtils';
 
@@ -203,6 +205,10 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({
     () => getCommunesForDistrict(pobProvince, pobDistrict),
     [pobProvince, pobDistrict]
   );
+  const pobVillages = useMemo(
+    () => getVillagesForCommune(pobProvince, pobDistrict, pobCommune),
+    [pobProvince, pobDistrict, pobCommune]
+  );
 
   // Cascading options for Current Address
   const addrDistricts = useMemo(() => getDistrictsForProvince(addrProvince), [addrProvince]);
@@ -210,38 +216,106 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({
     () => getCommunesForDistrict(addrProvince, addrDistrict),
     [addrProvince, addrDistrict]
   );
+  const addrVillages = useMemo(
+    () => getVillagesForCommune(addrProvince, addrDistrict, addrCommune),
+    [addrProvince, addrDistrict, addrCommune]
+  );
 
-  // Handle province change for POB
+  // Handle cascading changes for POB
   const handlePobProvinceChange = (prov: string) => {
     setPobProvince(prov);
     const dists = getDistrictsForProvince(prov);
     const firstDist = dists[0] || '';
     setPobDistrict(firstDist);
     const comms = getCommunesForDistrict(prov, firstDist);
-    setPobCommune(comms[0] || '');
+    const firstComm = comms[0] || '';
+    setPobCommune(firstComm);
+    const vills = getVillagesForCommune(prov, firstDist, firstComm);
+    setPobVillage(vills[0] || '');
   };
 
   const handlePobDistrictChange = (dist: string) => {
     setPobDistrict(dist);
     const comms = getCommunesForDistrict(pobProvince, dist);
-    setPobCommune(comms[0] || '');
+    const firstComm = comms[0] || '';
+    setPobCommune(firstComm);
+    const vills = getVillagesForCommune(pobProvince, dist, firstComm);
+    setPobVillage(vills[0] || '');
   };
 
-  // Handle province change for Current Address
+  const handlePobCommuneChange = (comm: string) => {
+    setPobCommune(comm);
+    const vills = getVillagesForCommune(pobProvince, pobDistrict, comm);
+    setPobVillage(vills[0] || '');
+  };
+
+  // Handle cascading changes for Current Address
   const handleAddrProvinceChange = (prov: string) => {
     setAddrProvince(prov);
     const dists = getDistrictsForProvince(prov);
     const firstDist = dists[0] || '';
     setAddrDistrict(firstDist);
     const comms = getCommunesForDistrict(prov, firstDist);
-    setAddrCommune(comms[0] || '');
+    const firstComm = comms[0] || '';
+    setAddrCommune(firstComm);
+    const vills = getVillagesForCommune(prov, firstDist, firstComm);
+    setAddrVillage(vills[0] || '');
   };
 
   const handleAddrDistrictChange = (dist: string) => {
     setAddrDistrict(dist);
     const comms = getCommunesForDistrict(addrProvince, dist);
-    setAddrCommune(comms[0] || '');
+    const firstComm = comms[0] || '';
+    setAddrCommune(firstComm);
+    const vills = getVillagesForCommune(addrProvince, dist, firstComm);
+    setAddrVillage(vills[0] || '');
   };
+
+  const handleAddrCommuneChange = (comm: string) => {
+    setAddrCommune(comm);
+    const vills = getVillagesForCommune(addrProvince, addrDistrict, comm);
+    setAddrVillage(vills[0] || '');
+  };
+
+  // Helper to check if parent is deceased
+  const isDeceased = (text: string) => {
+    if (!text) return false;
+    return /(ស្លាប់|មរណៈ|ទទួលមរណភាព)/i.test(text.trim());
+  };
+
+  // Auto-orphan logic when father's occupation changes
+  const handleFatherOccupationChange = (val: string) => {
+    setFatherOccupation(val);
+    const fDead = isDeceased(val);
+    const mDead = isDeceased(motherOccupation);
+    if (fDead && mDead) {
+      setOrphanStatus('both');
+    } else if (fDead) {
+      setOrphanStatus('father');
+    } else if (mDead) {
+      setOrphanStatus('mother');
+    } else if (orphanStatus === 'father' || orphanStatus === 'both') {
+      setOrphanStatus('none');
+    }
+  };
+
+  // Auto-orphan logic when mother's occupation changes
+  const handleMotherOccupationChange = (val: string) => {
+    setMotherOccupation(val);
+    const fDead = isDeceased(fatherOccupation);
+    const mDead = isDeceased(val);
+    if (fDead && mDead) {
+      setOrphanStatus('both');
+    } else if (fDead) {
+      setOrphanStatus('father');
+    } else if (mDead) {
+      setOrphanStatus('mother');
+    } else if (orphanStatus === 'mother' || orphanStatus === 'both') {
+      setOrphanStatus('none');
+    }
+  };
+
+  const COMMON_OCCUPATIONS = ['កសិករ', 'កម្មករ', 'មន្ត្រីរាជការ', 'អាជីវករ', 'គ្រូបង្រៀន', 'ស្លាប់'];
 
   // Form Validation
   const validateForm = () => {
@@ -274,10 +348,15 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({
     setIsSubmitting(true);
     try {
       const calculatedAge = dob ? calculateAge(dob) : undefined;
-      const fullPob = [pobVillage ? `ភូមិ${pobVillage}` : '', pobCommune, pobDistrict, pobProvince]
+      const formatVillage = (v: string) => {
+        if (!v) return '';
+        const trimmed = v.trim();
+        return trimmed.startsWith('ភូមិ') ? trimmed : `ភូមិ${trimmed}`;
+      };
+      const fullPob = [formatVillage(pobVillage), pobCommune, pobDistrict, pobProvince]
         .filter(Boolean)
         .join(' ');
-      const fullAddr = [addrVillage ? `ភូមិ${addrVillage}` : '', addrCommune, addrDistrict, addrProvince]
+      const fullAddr = [formatVillage(addrVillage), addrCommune, addrDistrict, addrProvince]
         .filter(Boolean)
         .join(' ');
 
@@ -376,13 +455,26 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 text-blue-200 hover:text-white hover:bg-white/15 rounded-xl transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              className={`px-3.5 py-1.5 text-white font-bold rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5 text-xs disabled:opacity-50 ${
+                studentToEdit ? 'bg-amber-500 hover:bg-amber-600' : 'bg-emerald-500 hover:bg-emerald-600'
+              }`}
+            >
+              <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+              <span>{isSubmitting ? 'រក្សាទុក...' : studentToEdit ? 'រក្សាទុកការកែប្រែ' : 'រក្សាទុកសិស្ស'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 text-blue-200 hover:text-white hover:bg-white/15 rounded-xl transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Modal Body / Scrollable Form */}
@@ -568,64 +660,46 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
               {/* ខេត្ត/រាជធានី */}
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">ខេត្ត / រាជធានី</label>
-                <select
-                  value={pobProvince}
-                  onChange={(e) => handlePobProvinceChange(e.target.value)}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 transition-all"
-                >
-                  {allProvinces.map((prov) => (
-                    <option key={prov} value={prov}>
-                      📍 {prov}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <SearchableAdminInput
+                label="ខេត្ត / រាជធានី"
+                value={pobProvince}
+                onChange={handlePobProvinceChange}
+                options={allProvinces}
+                themeColor="emerald"
+                icon="📍"
+                badge="២៥ រាជធានី-ខេត្ត"
+              />
 
               {/* ស្រុក/ខណ្ឌ/ក្រុង */}
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">ស្រុក / ខណ្ឌ / ក្រុង</label>
-                <select
-                  value={pobDistrict}
-                  onChange={(e) => handlePobDistrictChange(e.target.value)}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 transition-all"
-                >
-                  {pobDistricts.map((dist) => (
-                    <option key={dist} value={dist}>
-                      {dist}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <SearchableAdminInput
+                label="ស្រុក / ខណ្ឌ / ក្រុង"
+                value={pobDistrict}
+                onChange={handlePobDistrictChange}
+                options={pobDistricts}
+                themeColor="emerald"
+                badge={pobDistricts.length > 0 ? `${pobDistricts.length} ស្រុក/ក្រុង` : undefined}
+              />
 
               {/* ឃុំ/សង្កាត់ */}
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">ឃុំ / សង្កាត់</label>
-                <select
-                  value={pobCommune}
-                  onChange={(e) => setPobCommune(e.target.value)}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 transition-all"
-                >
-                  {pobCommunes.map((comm) => (
-                    <option key={comm} value={comm}>
-                      {comm}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <SearchableAdminInput
+                label="ឃុំ / សង្កាត់"
+                value={pobCommune}
+                onChange={handlePobCommuneChange}
+                options={pobCommunes}
+                themeColor="emerald"
+                badge={pobCommunes.length > 0 ? `${pobCommunes.length} ឃុំ/សង្កាត់` : undefined}
+              />
 
               {/* ភូមិ */}
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">ភូមិ</label>
-                <input
-                  type="text"
-                  value={pobVillage}
-                  onChange={(e) => setPobVillage(e.target.value)}
-                  placeholder="ឧ. ត្រពាំងព្រីង"
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 transition-all"
-                />
-              </div>
+              <SearchableAdminInput
+                label="ភូមិ"
+                value={pobVillage}
+                onChange={setPobVillage}
+                options={pobVillages}
+                themeColor="emerald"
+                placeholder="ជ្រើសរើស ឬវាយបញ្ចូល..."
+                badge={pobVillages.length > 0 ? `${pobVillages.length} ភូមិ` : undefined}
+              />
             </div>
           </div>
 
@@ -652,156 +726,77 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
               {/* ខេត្ត/រាជធានី */}
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">ខេត្ត / រាជធានី</label>
-                <select
-                  value={addrProvince}
-                  disabled={sameAsPob}
-                  onChange={(e) => handleAddrProvinceChange(e.target.value)}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-purple-500 disabled:opacity-60 transition-all"
-                >
-                  {allProvinces.map((prov) => (
-                    <option key={prov} value={prov}>
-                      📍 {prov}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <SearchableAdminInput
+                label="ខេត្ត / រាជធានី"
+                value={addrProvince}
+                disabled={sameAsPob}
+                onChange={handleAddrProvinceChange}
+                options={allProvinces}
+                themeColor="purple"
+                icon="📍"
+                badge="២៥ រាជធានី-ខេត្ត"
+              />
 
-              {/* ស្រុក */}
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">ស្រុក / ខណ្ឌ / ក្រុង</label>
-                <select
-                  value={addrDistrict}
-                  disabled={sameAsPob}
-                  onChange={(e) => handleAddrDistrictChange(e.target.value)}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:bg-white focus:ring-2 focus:ring-purple-500 disabled:opacity-60 transition-all"
-                >
-                  {addrDistricts.map((dist) => (
-                    <option key={dist} value={dist}>
-                      {dist}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {/* ស្រុក/ខណ្ឌ/ក្រុង */}
+              <SearchableAdminInput
+                label="ស្រុក / ខណ្ឌ / ក្រុង"
+                value={addrDistrict}
+                disabled={sameAsPob}
+                onChange={handleAddrDistrictChange}
+                options={addrDistricts}
+                themeColor="purple"
+                badge={addrDistricts.length > 0 ? `${addrDistricts.length} ស្រុក/ក្រុង` : undefined}
+              />
 
-              {/* ឃុំ */}
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">ឃុំ / សង្កាត់</label>
-                <select
-                  value={addrCommune}
-                  disabled={sameAsPob}
-                  onChange={(e) => setAddrCommune(e.target.value)}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:bg-white focus:ring-2 focus:ring-purple-500 disabled:opacity-60 transition-all"
-                >
-                  {addrCommunes.map((comm) => (
-                    <option key={comm} value={comm}>
-                      {comm}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {/* ឃុំ/សង្កាត់ */}
+              <SearchableAdminInput
+                label="ឃុំ / សង្កាត់"
+                value={addrCommune}
+                disabled={sameAsPob}
+                onChange={handleAddrCommuneChange}
+                options={addrCommunes}
+                themeColor="purple"
+                badge={addrCommunes.length > 0 ? `${addrCommunes.length} ឃុំ/សង្កាត់` : undefined}
+              />
 
               {/* ភូមិ */}
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">ភូមិ</label>
-                <input
-                  type="text"
-                  value={addrVillage}
-                  disabled={sameAsPob}
-                  onChange={(e) => setAddrVillage(e.target.value)}
-                  placeholder="ឧ. ត្រពាំងព្រីង"
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:bg-white focus:ring-2 focus:ring-purple-500 disabled:opacity-60 transition-all"
-                />
-              </div>
+              <SearchableAdminInput
+                label="ភូមិ"
+                value={addrVillage}
+                disabled={sameAsPob}
+                onChange={setAddrVillage}
+                options={addrVillages}
+                themeColor="purple"
+                placeholder="ជ្រើសរើស ឬវាយបញ្ចូល..."
+                badge={addrVillages.length > 0 ? `${addrVillages.length} ភូមិ` : undefined}
+              />
             </div>
           </div>
 
-          {/* Section 4: ស្ថានភាពសិស្ស (Student Status) */}
-          <div className="border border-slate-200 rounded-2xl p-4 sm:p-5 bg-white shadow-2xs space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <h4 className="font-black text-slate-800 text-sm flex items-center gap-2">
-                <Heart className="w-4 h-4 text-rose-500" />
-                ៤. ស្ថានភាពសិស្ស (៧ ជួរឈរតាមក្បាលតារាង)
-              </h4>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-              {/* កំព្រា */}
-              <div className="lg:col-span-2">
-                <label className="block font-bold text-slate-700 mb-1">ស្ថានភាពកំព្រា</label>
-                <select
-                  value={orphanStatus}
-                  onChange={(e) => setOrphanStatus(e.target.value as any)}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-rose-500 transition-all"
-                >
-                  <option value="none">✨ មិនកំព្រា</option>
-                  <option value="father">⚠️ កំព្រាឪពុក</option>
-                  <option value="mother">⚠️ កំព្រាម្តាយ</option>
-                  <option value="both">🚨 កំព្រាទាំងឪពុកម្តាយ</option>
-                </select>
-              </div>
-
-              {/* ពិការ */}
-              <label className="flex items-center gap-2.5 p-3 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-slate-50 cursor-pointer transition-colors">
-                <input
-                  type="checkbox"
-                  checked={isDisabled}
-                  onChange={(e) => setIsDisabled(e.target.checked)}
-                  className="w-4 h-4 text-rose-600 rounded"
-                />
-                <span className="font-bold text-slate-800 text-xs">♿ ពិការ</span>
-              </label>
-
-              {/* ក្រីក្រ */}
-              <label className="flex items-center gap-2.5 p-3 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-slate-50 cursor-pointer transition-colors">
-                <input
-                  type="checkbox"
-                  checked={isPoor}
-                  onChange={(e) => setIsPoor(e.target.checked)}
-                  className="w-4 h-4 text-amber-600 rounded"
-                />
-                <span className="font-bold text-slate-800 text-xs">🏷️ សិស្សក្រីក្រ</span>
-              </label>
-
-              {/* អាហារូបករណ៍ */}
-              <label className="flex items-center gap-2.5 p-3 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-slate-50 cursor-pointer transition-colors">
-                <input
-                  type="checkbox"
-                  checked={hasScholarship}
-                  onChange={(e) => setHasScholarship(e.target.checked)}
-                  className="w-4 h-4 text-emerald-600 rounded"
-                />
-                <span className="font-bold text-slate-800 text-xs">🎓 អាហារូបករណ៍</span>
-              </label>
-
-              {/* ស្នាក់នៅវត្ត */}
-              <label className="flex items-center gap-2.5 p-3 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-slate-50 cursor-pointer transition-colors lg:col-span-2">
-                <input
-                  type="checkbox"
-                  checked={stayInPagoda}
-                  onChange={(e) => setStayInPagoda(e.target.checked)}
-                  className="w-4 h-4 text-orange-600 rounded"
-                />
-                <span className="font-bold text-slate-800 text-xs">🏛️ ស្នាក់នៅវត្ត (ក្មេងវត្ត)</span>
-              </label>
-            </div>
-          </div>
-
-          {/* Section 5: ព័ត៌មានឪពុកម្តាយ & អាណាព្យាបាល (Parents Info) */}
+          {/* Section 4: ព័ត៌មានឪពុកម្តាយ & អាណាព្យាបាល (Parents Info - Reordered to Section 4) */}
           <div className="border border-slate-200 rounded-2xl p-4 sm:p-5 bg-white shadow-2xs space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <h4 className="font-black text-slate-800 text-sm flex items-center gap-2">
                 <Users className="w-4 h-4 text-amber-600" />
-                ៥. ព័ត៌មានឪពុកម្តាយ និងអាណាព្យាបាល
+                ៤. ព័ត៌មានឪពុកម្តាយ និងអាណាព្យាបាល
               </h4>
+              <span className="text-[11px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200 font-bold hidden sm:inline">
+                មុខរបរ «ស្លាប់» កំណត់ស្ថានភាពកំព្រាស្វ័យប្រវត្តិ
+              </span>
             </div>
 
             {/* ព័ត៌មានឪពុក */}
             <div className="p-3.5 bg-blue-50/40 rounded-xl border border-blue-100 space-y-2.5">
-              <h5 className="font-black text-blue-950 text-xs flex items-center gap-1.5">
-                <span>👨</span> ព័ត៌មានឪពុក
-              </h5>
+              <div className="flex items-center justify-between">
+                <h5 className="font-black text-blue-950 text-xs flex items-center gap-1.5">
+                  <span>👨</span> ព័ត៌មានឪពុក
+                </h5>
+                {isDeceased(fatherOccupation) && (
+                  <span className="text-[10px] bg-rose-100 text-rose-700 border border-rose-200 px-2 py-0.5 rounded-full font-bold">
+                    ⚠️ ឪពុកស្លាប់ (កំព្រាឪពុក)
+                  </span>
+                )}
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-[11px] font-bold text-slate-600 mb-1">ឈ្មោះឪពុក</label>
@@ -814,14 +809,45 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">មុខរបរ</label>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                    មុខរបរឪពុក {isDeceased(fatherOccupation) && <span className="text-rose-600 font-bold">⚠️</span>}
+                  </label>
                   <input
                     type="text"
                     value={fatherOccupation}
-                    onChange={(e) => setFatherOccupation(e.target.value)}
-                    placeholder="ឧ. កសិករ"
-                    className="w-full p-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500"
+                    onChange={(e) => handleFatherOccupationChange(e.target.value)}
+                    placeholder="ឧ. កសិករ ឬ ស្លាប់"
+                    className={`w-full p-2 bg-white border rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500 ${
+                      isDeceased(fatherOccupation)
+                        ? 'border-rose-400 bg-rose-50/30 font-bold text-rose-700'
+                        : 'border-slate-200'
+                    }`}
                   />
+                  {/* Quick Occupation Chips */}
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {COMMON_OCCUPATIONS.map((occ) => {
+                      const isSel = fatherOccupation.trim() === occ;
+                      const isDeadChip = occ === 'ស្លាប់';
+                      return (
+                        <button
+                          key={occ}
+                          type="button"
+                          onClick={() => handleFatherOccupationChange(isSel ? '' : occ)}
+                          className={`text-[10px] px-2 py-0.5 rounded-md border transition-all cursor-pointer ${
+                            isSel
+                              ? isDeadChip
+                                ? 'bg-rose-600 text-white border-rose-600 font-bold shadow-xs'
+                                : 'bg-blue-600 text-white border-blue-600 font-bold shadow-xs'
+                              : isDeadChip
+                              ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100 font-bold'
+                              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          {isDeadChip ? '⚠️ ' : ''}{occ}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
                 <div>
                   <label className="block text-[11px] font-bold text-slate-600 mb-1">លេខទូរស័ព្ទ</label>
@@ -838,9 +864,16 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({
 
             {/* ព័ត៌មានម្តាយ */}
             <div className="p-3.5 bg-pink-50/40 rounded-xl border border-pink-100 space-y-2.5">
-              <h5 className="font-black text-pink-950 text-xs flex items-center gap-1.5">
-                <span>👩</span> ព័ត៌មានម្តាយ
-              </h5>
+              <div className="flex items-center justify-between">
+                <h5 className="font-black text-pink-950 text-xs flex items-center gap-1.5">
+                  <span>👩</span> ព័ត៌មានម្តាយ
+                </h5>
+                {isDeceased(motherOccupation) && (
+                  <span className="text-[10px] bg-rose-100 text-rose-700 border border-rose-200 px-2 py-0.5 rounded-full font-bold">
+                    ⚠️ ម្តាយស្លាប់ (កំព្រាម្តាយ)
+                  </span>
+                )}
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-[11px] font-bold text-slate-600 mb-1">ឈ្មោះម្តាយ</label>
@@ -853,14 +886,45 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">មុខរបរ</label>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                    មុខរបរម្តាយ {isDeceased(motherOccupation) && <span className="text-rose-600 font-bold">⚠️</span>}
+                  </label>
                   <input
                     type="text"
                     value={motherOccupation}
-                    onChange={(e) => setMotherOccupation(e.target.value)}
-                    placeholder="ឧ. មេផ្ទះ / អាជីវករ"
-                    className="w-full p-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-pink-500"
+                    onChange={(e) => handleMotherOccupationChange(e.target.value)}
+                    placeholder="ឧ. មេផ្ទះ / អាជីវករ ឬ ស្លាប់"
+                    className={`w-full p-2 bg-white border rounded-xl text-slate-800 focus:ring-2 focus:ring-pink-500 ${
+                      isDeceased(motherOccupation)
+                        ? 'border-rose-400 bg-rose-50/30 font-bold text-rose-700'
+                        : 'border-slate-200'
+                    }`}
                   />
+                  {/* Quick Occupation Chips */}
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {COMMON_OCCUPATIONS.map((occ) => {
+                      const isSel = motherOccupation.trim() === occ;
+                      const isDeadChip = occ === 'ស្លាប់';
+                      return (
+                        <button
+                          key={occ}
+                          type="button"
+                          onClick={() => handleMotherOccupationChange(isSel ? '' : occ)}
+                          className={`text-[10px] px-2 py-0.5 rounded-md border transition-all cursor-pointer ${
+                            isSel
+                              ? isDeadChip
+                                ? 'bg-rose-600 text-white border-rose-600 font-bold shadow-xs'
+                                : 'bg-pink-600 text-white border-pink-600 font-bold shadow-xs'
+                              : isDeadChip
+                              ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100 font-bold'
+                              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          {isDeadChip ? '⚠️ ' : ''}{occ}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
                 <div>
                   <label className="block text-[11px] font-bold text-slate-600 mb-1">លេខទូរស័ព្ទ</label>
@@ -922,6 +986,97 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({
                   />
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Section 5: ស្ថានភាពសិស្ស (Student Status - Moved to Section 5) */}
+          <div className="border border-slate-200 rounded-2xl p-4 sm:p-5 bg-white shadow-2xs space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <h4 className="font-black text-slate-800 text-sm flex items-center gap-2">
+                <Heart className="w-4 h-4 text-rose-500" />
+                ៥. ស្ថានភាពសិស្ស (៧ ជួរឈរតាមក្បាលតារាង)
+              </h4>
+              {orphanStatus !== 'none' && (
+                <span className="text-[11px] font-bold text-rose-700 bg-rose-50 px-2.5 py-0.5 rounded-lg border border-rose-200">
+                  {orphanStatus === 'both'
+                    ? '🚨 កំព្រាទាំងឪពុកម្តាយ'
+                    : orphanStatus === 'father'
+                    ? '⚠️ កំព្រាឪពុក'
+                    : '⚠️ កំព្រាម្តាយ'}
+                </span>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+              {/* កំព្រា */}
+              <div className="lg:col-span-2">
+                <label className="block font-bold text-slate-700 mb-1 flex items-center justify-between">
+                  <span>ស្ថានភាពកំព្រា</span>
+                  {(isDeceased(fatherOccupation) || isDeceased(motherOccupation)) && (
+                    <span className="text-[10px] text-rose-600 font-bold">
+                      (ភ្ជាប់ស្វ័យប្រវត្តិតាមមុខរបរ)
+                    </span>
+                  )}
+                </label>
+                <select
+                  value={orphanStatus}
+                  onChange={(e) => setOrphanStatus(e.target.value as any)}
+                  className={`w-full p-2.5 bg-slate-50 border rounded-xl font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-rose-500 transition-all ${
+                    orphanStatus !== 'none'
+                      ? 'border-rose-400 bg-rose-50/20 text-rose-900 ring-1 ring-rose-200'
+                      : 'border-slate-200'
+                  }`}
+                >
+                  <option value="none">✨ មិនកំព្រា</option>
+                  <option value="father">⚠️ កំព្រាឪពុក</option>
+                  <option value="mother">⚠️ កំព្រាម្តាយ</option>
+                  <option value="both">🚨 កំព្រាទាំងឪពុកម្តាយ</option>
+                </select>
+              </div>
+
+              {/* ពិការ */}
+              <label className="flex items-center gap-2.5 p-3 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-slate-50 cursor-pointer transition-colors">
+                <input
+                  type="checkbox"
+                  checked={isDisabled}
+                  onChange={(e) => setIsDisabled(e.target.checked)}
+                  className="w-4 h-4 text-rose-600 rounded"
+                />
+                <span className="font-bold text-slate-800 text-xs">♿ ពិការ</span>
+              </label>
+
+              {/* ក្រីក្រ */}
+              <label className="flex items-center gap-2.5 p-3 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-slate-50 cursor-pointer transition-colors">
+                <input
+                  type="checkbox"
+                  checked={isPoor}
+                  onChange={(e) => setIsPoor(e.target.checked)}
+                  className="w-4 h-4 text-amber-600 rounded"
+                />
+                <span className="font-bold text-slate-800 text-xs">🏷️ សិស្សក្រីក្រ</span>
+              </label>
+
+              {/* អាហារូបករណ៍ */}
+              <label className="flex items-center gap-2.5 p-3 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-slate-50 cursor-pointer transition-colors">
+                <input
+                  type="checkbox"
+                  checked={hasScholarship}
+                  onChange={(e) => setHasScholarship(e.target.checked)}
+                  className="w-4 h-4 text-emerald-600 rounded"
+                />
+                <span className="font-bold text-slate-800 text-xs">🎓 អាហារូបករណ៍</span>
+              </label>
+
+              {/* ស្នាក់នៅវត្ត */}
+              <label className="flex items-center gap-2.5 p-3 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-slate-50 cursor-pointer transition-colors lg:col-span-2">
+                <input
+                  type="checkbox"
+                  checked={stayInPagoda}
+                  onChange={(e) => setStayInPagoda(e.target.checked)}
+                  className="w-4 h-4 text-orange-600 rounded"
+                />
+                <span className="font-bold text-slate-800 text-xs">🏛️ ស្នាក់នៅវត្ត (ក្មេងវត្ត)</span>
+              </label>
             </div>
           </div>
 
