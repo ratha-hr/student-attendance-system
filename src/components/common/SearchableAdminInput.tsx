@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { ChevronDown, Check, X, Search, PlusCircle } from 'lucide-react';
+import { ChevronDown, Check, X, Search, PlusCircle, Sparkles, RotateCcw } from 'lucide-react';
 import { cleanAdminPrefix } from '../../utils/cambodiaGeography';
 
 interface SearchableAdminInputProps {
@@ -13,6 +13,59 @@ interface SearchableAdminInputProps {
   badge?: string;
   themeColor?: 'emerald' | 'purple' | 'blue';
   icon?: string;
+}
+
+/**
+ * Normalizes Khmer characters for fuzzy keyword matching
+ * (Handles vowel variations like ឬ / ប្ញ, ឫ / ប្ឫ, and zero-width spaces)
+ */
+function normalizeKhmer(str: string): string {
+  if (!str) return '';
+  return str
+    .trim()
+    .toLowerCase()
+    .replace(/[\u200B-\u200D\uFEFF]/g, '') // remove zero-width spaces
+    .replace(/ប្ញ/g, 'ឬ') // normalize ប្ញ to ឬ
+    .replace(/ប្ឫ/g, 'ឫ'); // normalize ប្ឫ to ឫ
+}
+
+/**
+ * Highlights matching letters in the search results
+ */
+function highlightMatch(text: string, query: string): React.ReactNode {
+  if (!query.trim()) return text;
+  const qClean = cleanAdminPrefix(query.trim());
+  const searchTerms = [query.trim(), qClean].filter(Boolean);
+
+  // Find first matching term
+  let foundTerm = '';
+  let foundIdx = -1;
+  for (const t of searchTerms) {
+    const idx = text.toLowerCase().indexOf(t.toLowerCase());
+    if (idx !== -1) {
+      foundTerm = text.slice(idx, idx + t.length);
+      foundIdx = idx;
+      break;
+    }
+  }
+
+  if (foundIdx === -1 || !foundTerm) {
+    return text;
+  }
+
+  const before = text.slice(0, foundIdx);
+  const match = text.slice(foundIdx, foundIdx + foundTerm.length);
+  const after = text.slice(foundIdx + foundTerm.length);
+
+  return (
+    <>
+      {before}
+      <mark className="bg-amber-200 text-amber-950 font-bold px-0.5 rounded shadow-2xs">
+        {match}
+      </mark>
+      {after}
+    </>
+  );
 }
 
 export const SearchableAdminInput: React.FC<SearchableAdminInputProps> = ({
@@ -29,8 +82,12 @@ export const SearchableAdminInput: React.FC<SearchableAdminInputProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState(value || '');
+  const [showAllExplicitly, setShowAllExplicitly] = useState(false);
+  const [activeIndex, setActiveIndex] = useState<number>(-1);
+
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   // Sync external value changes
   useEffect(() => {
@@ -42,6 +99,8 @@ export const SearchableAdminInput: React.FC<SearchableAdminInputProps> = ({
     const handleClickOutside = (event: MouseEvent | TouchEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setIsOpen(false);
+        setShowAllExplicitly(false);
+        setActiveIndex(-1);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -52,41 +111,105 @@ export const SearchableAdminInput: React.FC<SearchableAdminInputProps> = ({
     };
   }, []);
 
-  // Filtered options based on user input
+  // Filter options strictly according to user query
   const filteredOptions = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    // If query matches current value exactly or is empty, show all options
-    if (!q || q === (value || '').trim().toLowerCase()) {
+    const qRaw = query.trim();
+    if (!qRaw || showAllExplicitly) {
       return options;
     }
-    const cleanQ = cleanAdminPrefix(q).toLowerCase();
-    return options.filter((opt) => {
-      const oLower = opt.toLowerCase();
-      const cleanO = cleanAdminPrefix(opt).toLowerCase();
-      return oLower.includes(q) || cleanO.includes(cleanQ) || oLower.includes(cleanQ);
-    });
-  }, [options, query, value]);
 
+    const qNorm = normalizeKhmer(qRaw);
+    const qClean = normalizeKhmer(cleanAdminPrefix(qRaw));
+    const keywords = qNorm.split(/\s+/).filter(Boolean);
+
+    return options.filter((opt) => {
+      const optNorm = normalizeKhmer(opt);
+      const optClean = normalizeKhmer(cleanAdminPrefix(opt));
+
+      // Direct substring match
+      if (optNorm.includes(qNorm) || optClean.includes(qClean) || optNorm.includes(qClean)) {
+        return true;
+      }
+
+      // Multi-word keyword match
+      if (keywords.length > 1 && keywords.every((kw) => optNorm.includes(kw) || optClean.includes(kw))) {
+        return true;
+      }
+
+      return false;
+    });
+  }, [options, query, showAllExplicitly]);
+
+  // Handle select option
   const handleSelectOption = (opt: string) => {
     setQuery(opt);
     onChange(opt);
     setIsOpen(false);
+    setShowAllExplicitly(false);
+    setActiveIndex(-1);
   };
 
+  // User typing in input
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setQuery(val);
     onChange(val);
+    setShowAllExplicitly(false);
+    setActiveIndex(0);
     if (!isOpen) setIsOpen(true);
   };
 
+  // Clear query button
   const handleClear = (e: React.MouseEvent) => {
     e.stopPropagation();
     setQuery('');
     onChange('');
+    setShowAllExplicitly(true);
+    setActiveIndex(-1);
     inputRef.current?.focus();
     setIsOpen(true);
   };
+
+  // Keyboard navigation
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!isOpen) {
+      if (e.key === 'ArrowDown' || e.key === 'Enter') {
+        setIsOpen(true);
+        e.preventDefault();
+      }
+      return;
+    }
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveIndex((prev) => (prev < filteredOptions.length - 1 ? prev + 1 : 0));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveIndex((prev) => (prev > 0 ? prev - 1 : filteredOptions.length - 1));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (activeIndex >= 0 && activeIndex < filteredOptions.length) {
+        handleSelectOption(filteredOptions[activeIndex]);
+      } else if (query.trim()) {
+        handleSelectOption(query.trim());
+      }
+    } else if (e.key === 'Escape') {
+      setIsOpen(false);
+      setShowAllExplicitly(false);
+      setActiveIndex(-1);
+    }
+  };
+
+  // Scroll active item into view
+  useEffect(() => {
+    if (activeIndex >= 0 && listRef.current) {
+      const items = listRef.current.querySelectorAll('[data-list-item]');
+      const activeEl = items[activeIndex] as HTMLElement | undefined;
+      if (activeEl) {
+        activeEl.scrollIntoView({ block: 'nearest' });
+      }
+    }
+  }, [activeIndex]);
 
   // Color theme classes
   const themeClasses = {
@@ -149,12 +272,16 @@ export const SearchableAdminInput: React.FC<SearchableAdminInputProps> = ({
           value={query}
           disabled={disabled}
           onChange={handleInputChange}
-          onFocus={() => {
-            if (!disabled) setIsOpen(true);
+          onKeyDown={handleKeyDown}
+          onFocus={(e) => {
+            if (!disabled) {
+              setIsOpen(true);
+              e.target.select();
+            }
           }}
           placeholder={placeholder}
           className={`w-full py-2.5 ${icon ? 'pl-8' : 'pl-3'} pr-16 bg-slate-50 border rounded-xl text-slate-800 text-xs sm:text-sm font-medium transition-all ${
-            isOpen ? `${themeClasses.activeBorder} bg-white` : 'border-slate-200 hover:border-slate-300'
+            isOpen ? `${themeClasses.activeBorder} bg-white shadow-xs` : 'border-slate-200 hover:border-slate-300'
           } ${disabled ? 'opacity-60 cursor-not-allowed bg-slate-100' : 'focus:bg-white'} ${
             themeClasses.ring
           }`}
@@ -166,8 +293,8 @@ export const SearchableAdminInput: React.FC<SearchableAdminInputProps> = ({
             <button
               type="button"
               onClick={handleClear}
-              className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200 transition-colors"
-              title="លុបអក្សរ"
+              className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200 transition-colors cursor-pointer"
+              title="លុបអក្សរស្វែងរក"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -177,60 +304,104 @@ export const SearchableAdminInput: React.FC<SearchableAdminInputProps> = ({
             disabled={disabled}
             onClick={() => {
               if (!disabled) {
-                setIsOpen(!isOpen);
-                inputRef.current?.focus();
+                const nextState = !isOpen;
+                setIsOpen(nextState);
+                if (nextState) {
+                  setShowAllExplicitly(true);
+                  inputRef.current?.focus();
+                }
               }
             }}
-            className={`p-1.5 text-slate-400 hover:text-slate-600 rounded-lg transition-transform ${
+            className={`p-1.5 text-slate-400 hover:text-slate-600 rounded-lg transition-transform cursor-pointer ${
               isOpen ? 'rotate-180 text-slate-700' : ''
             }`}
-            title="បង្ហាញបញ្ជី"
+            title="បង្ហាញជម្រើសទាំងអស់"
           >
             <ChevronDown className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
 
-      {/* Dropdown Suggestions Panel */}
+      {/* Modern Filtered Suggestions Panel */}
       {isOpen && !disabled && (
-        <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white rounded-xl shadow-xl border border-slate-200 max-h-60 overflow-y-auto overflow-x-hidden divide-y divide-slate-100 animate-in fade-in zoom-in-95 duration-100">
-          {/* Header count info */}
-          <div className="px-3 py-1.5 bg-slate-50 flex items-center justify-between text-[11px] font-bold text-slate-500 sticky top-0 z-10 border-b border-slate-100">
-            <span className="flex items-center gap-1">
-              <Search className="w-3 h-3 text-slate-400" />
-              <span>បញ្ជី ({filteredOptions.length})</span>
+        <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white rounded-2xl shadow-xl border border-slate-200 max-h-64 overflow-y-auto overflow-x-hidden divide-y divide-slate-100 animate-in fade-in zoom-in-95 duration-100">
+          {/* Header count info: Shows exact filtered count for easy reading */}
+          <div className="px-3 py-1.5 bg-slate-50 flex items-center justify-between text-[11px] font-bold text-slate-600 sticky top-0 z-10 border-b border-slate-100 backdrop-blur-xs">
+            <span className="flex items-center gap-1.5">
+              {query.trim() && !showAllExplicitly ? (
+                <>
+                  <Sparkles className="w-3 h-3 text-emerald-600 shrink-0" />
+                  <span className="text-emerald-800">
+                    ស្រង់បាន ({filteredOptions.length})
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Search className="w-3 h-3 text-slate-400 shrink-0" />
+                  <span>បញ្ជីទាំងអស់ ({filteredOptions.length})</span>
+                </>
+              )}
             </span>
-            {query && (
-              <span className="text-[10px] text-slate-400 font-normal truncate max-w-[140px]">
-                ស្វែងរក: "{query}"
-              </span>
+
+            {/* Quick Toggle Show All vs Filtered */}
+            {query.trim() && (
+              <button
+                type="button"
+                onClick={() => setShowAllExplicitly(!showAllExplicitly)}
+                className="text-[10px] text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1 font-bold cursor-pointer"
+              >
+                {showAllExplicitly ? (
+                  <span>ត្រឡប់ទៅស្រង់តាមអក្សរ</span>
+                ) : (
+                  <span>បង្ហាញទាំងអស់ ({options.length})</span>
+                )}
+              </button>
             )}
           </div>
 
           {/* List Items */}
-          <div className="py-1">
+          <div ref={listRef} className="py-1">
             {filteredOptions.length > 0 ? (
-              filteredOptions.map((opt) => {
+              filteredOptions.map((opt, idx) => {
                 const isSelected =
                   opt.trim().toLowerCase() === (value || '').trim().toLowerCase() ||
                   cleanAdminPrefix(opt).toLowerCase() === cleanAdminPrefix(value || '').toLowerCase();
+                const isHighlighted = idx === activeIndex;
+
                 return (
                   <button
                     key={opt}
+                    data-list-item
                     type="button"
                     onClick={() => handleSelectOption(opt)}
-                    className={`w-full px-3 py-2 text-left text-xs sm:text-sm flex items-center justify-between hover:bg-slate-50 transition-colors cursor-pointer ${
-                      isSelected ? themeClasses.itemActive : 'text-slate-700'
+                    className={`w-full px-3 py-2 text-left text-xs sm:text-sm flex items-center justify-between transition-colors cursor-pointer ${
+                      isHighlighted
+                        ? 'bg-blue-50 text-blue-900 font-bold'
+                        : isSelected
+                        ? themeClasses.itemActive
+                        : 'text-slate-700 hover:bg-slate-50'
                     }`}
                   >
-                    <span className="truncate">{opt}</span>
+                    <span className="truncate pr-2">
+                      {highlightMatch(opt, showAllExplicitly ? '' : query)}
+                    </span>
                     {isSelected && <Check className={`w-4 h-4 shrink-0 ${themeClasses.check}`} />}
                   </button>
                 );
               })
             ) : (
-              <div className="px-3 py-3 text-center text-xs text-slate-400">
-                មិនមានក្នុងបញ្ជីផ្លូវការ
+              <div className="px-3 py-4 text-center text-xs text-slate-500 space-y-1">
+                <p>
+                  មិនមានទិន្នន័យត្រូវគ្នានឹងពាក្យគន្លឹះ <strong>«{query}»</strong> ឡើយ
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowAllExplicitly(true)}
+                  className="text-blue-600 hover:underline text-[11px] font-bold inline-flex items-center gap-1 mt-1 cursor-pointer"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>បង្ហាញបញ្ជីទាំងអស់ ({options.length})</span>
+                </button>
               </div>
             )}
 
@@ -239,11 +410,11 @@ export const SearchableAdminInput: React.FC<SearchableAdminInputProps> = ({
               <button
                 type="button"
                 onClick={() => handleSelectOption(query.trim())}
-                className="w-full px-3 py-2.5 text-left text-xs text-emerald-700 bg-emerald-50/60 hover:bg-emerald-100 border-t border-emerald-100 flex items-center gap-1.5 transition-colors font-medium"
+                className="w-full px-3 py-2.5 text-left text-xs text-emerald-700 bg-emerald-50/70 hover:bg-emerald-100 border-t border-emerald-100 flex items-center gap-1.5 transition-colors font-medium cursor-pointer"
               >
                 <PlusCircle className="w-3.5 h-3.5 shrink-0 text-emerald-600" />
                 <span className="truncate">
-                  ប្រើពាក្យផ្ទាល់ខ្លួន: <strong>"{query.trim()}"</strong>
+                  ប្រើឈ្មោះផ្ទាល់ខ្លួន: <strong>«{query.trim()}»</strong>
                 </span>
               </button>
             )}

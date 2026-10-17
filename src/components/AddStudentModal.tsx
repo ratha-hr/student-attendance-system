@@ -458,19 +458,28 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({
           <div className="flex items-center gap-2">
             <button
               type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-blue-100 hover:text-white font-bold rounded-xl border border-white/20 transition-all cursor-pointer text-xs"
+            >
+              បោះបង់
+            </button>
+            <button
+              type="button"
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className={`px-3.5 py-1.5 text-white font-bold rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5 text-xs disabled:opacity-50 ${
-                studentToEdit ? 'bg-amber-500 hover:bg-amber-600' : 'bg-emerald-500 hover:bg-emerald-600'
+              className={`px-4 py-1.5 text-white font-bold rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5 text-xs disabled:opacity-50 ${
+                studentToEdit ? 'bg-amber-500 hover:bg-amber-600 ring-2 ring-amber-300/40' : 'bg-emerald-500 hover:bg-emerald-600 ring-2 ring-emerald-300/40'
               }`}
             >
-              <CheckCircle2 className="w-3.5 h-3.5 text-white" />
-              <span>{isSubmitting ? 'រក្សាទុក...' : studentToEdit ? 'រក្សាទុកការកែប្រែ' : 'រក្សាទុកសិស្ស'}</span>
+              <CheckCircle2 className="w-4 h-4 text-white" />
+              <span>{isSubmitting ? 'កំពុងរក្សាទុក...' : studentToEdit ? 'រក្សាទុកការកែប្រែ' : 'រក្សាទុកសិស្ស'}</span>
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 text-blue-200 hover:text-white hover:bg-white/15 rounded-xl transition-colors cursor-pointer"
+              className="p-1.5 text-blue-200 hover:text-white hover:bg-white/15 rounded-xl transition-colors cursor-pointer ml-1"
+              title="បិទ"
             >
               <X className="w-5 h-5" />
             </button>

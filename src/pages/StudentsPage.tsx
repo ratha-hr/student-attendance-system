@@ -2566,44 +2566,61 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
       >
         {viewingStudent && (
           <div className="space-y-4">
-            <div className="flex items-center space-x-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-              <div className="w-16 h-16 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-2xl font-black shadow-md">
-                {viewingStudent.nameKh.charAt(0)}
-              </div>
-              <div>
-                <h4 className="text-lg font-bold text-slate-900">{viewingStudent.nameKh}</h4>
-                <p className="text-xs text-slate-500 font-medium">{viewingStudent.nameEn || '-'}</p>
-                <div className="mt-1 flex items-center gap-2">
-                  <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-md font-bold font-mono">
-                    {fromKhmerNum(viewingStudent.studentCode)}
-                  </span>
-                  <div className="flex items-center gap-1.5 bg-blue-50 border border-blue-200 rounded-md px-2 py-0.5">
-                    <span className="text-[11px] font-bold text-blue-900">ថ្នាក់៖</span>
-                    <select
-                      value={viewingStudent.classId}
-                      onChange={async (e) => {
-                        const newClassId = e.target.value;
-                        await db.students.update(viewingStudent.id, { classId: newClassId });
-                        setViewingStudent({ ...viewingStudent, classId: newClassId });
-                        onRefresh();
-                        const targetClass = classes.find((c) => c.id === newClassId);
-                        showToast(`បានកំណត់ ${viewingStudent.nameKh} ទៅកាន់ ${targetClass?.name || 'ថ្នាក់ថ្មី'} ដោយជោគជ័យ!`);
-                      }}
-                      className="bg-transparent text-xs font-black text-blue-900 cursor-pointer outline-none font-sans"
-                      title="ជ្រើសរើសដើម្បីប្តូរថ្នាក់សិស្ស (ឧ. 7A, 7B, 7C...)"
-                    >
-                      {classes.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name} {c.stream && c.stream !== 'general' ? `(${c.stream === 'science' ? 'វិទ្យាសាស្ត្រ' : 'សង្គម'})` : ''}
-                        </option>
-                      ))}
-                    </select>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 gap-3">
+              <div className="flex items-center space-x-4">
+                <div className="w-16 h-16 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-2xl font-black shadow-md shrink-0">
+                  {viewingStudent.nameKh.charAt(0)}
+                </div>
+                <div>
+                  <h4 className="text-lg font-bold text-slate-900">{viewingStudent.nameKh}</h4>
+                  <p className="text-xs text-slate-500 font-medium">{viewingStudent.nameEn || '-'}</p>
+                  <div className="mt-1 flex items-center gap-2">
+                    <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-md font-bold font-mono">
+                      {fromKhmerNum(viewingStudent.studentCode)}
+                    </span>
+                    <div className="flex items-center gap-1.5 bg-blue-50 border border-blue-200 rounded-md px-2 py-0.5">
+                      <span className="text-[11px] font-bold text-blue-900">ថ្នាក់៖</span>
+                      <select
+                        value={viewingStudent.classId}
+                        onChange={async (e) => {
+                          const newClassId = e.target.value;
+                          await db.students.update(viewingStudent.id, { classId: newClassId });
+                          setViewingStudent({ ...viewingStudent, classId: newClassId });
+                          onRefresh();
+                          const targetClass = classes.find((c) => c.id === newClassId);
+                          showToast(`បានកំណត់ ${viewingStudent.nameKh} ទៅកាន់ ${targetClass?.name || 'ថ្នាក់ថ្មី'} ដោយជោគជ័យ!`);
+                        }}
+                        className="bg-transparent text-xs font-black text-blue-900 cursor-pointer outline-none font-sans"
+                        title="ជ្រើសរើសដើម្បីប្តូរថ្នាក់សិស្ស (ឧ. 7A, 7B, 7C...)"
+                      >
+                        {classes.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name} {c.stream && c.stream !== 'general' ? `(${c.stream === 'science' ? 'វិទ្យាសាស្ត្រ' : 'សង្គម'})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-xs rounded-md font-bold">
+                      លេខរៀង៖ {viewingStudent.rollNo}
+                    </span>
                   </div>
-                  <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-xs rounded-md font-bold">
-                    លេខរៀង៖ {viewingStudent.rollNo}
-                  </span>
                 </div>
               </div>
+
+              {/* Action button at the top: Edit student data directly */}
+              <button
+                type="button"
+                onClick={() => {
+                  const target = viewingStudent;
+                  setViewingStudent(null);
+                  setEditingStudent(target);
+                }}
+                className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 shrink-0 self-start sm:self-auto"
+                title="កែប្រែព័ត៌មានសិស្សនេះ"
+              >
+                <Pencil className="w-4 h-4 mr-0.5" />
+                <span>កែប្រែទិន្នន័យ</span>
+              </button>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
