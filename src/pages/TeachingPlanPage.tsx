@@ -35,6 +35,7 @@ import {
   balancePctList,
   createDefaultTeachingPlan,
   calculateTotals,
+  calculateBalancedPercentages,
   exportTeachingPlanToExcel,
   type MonthColDef,
   KHMER_MONTH_LIST,
@@ -184,20 +185,15 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
     }
   };
 
-  // Cell change handler for Baseline Count
+  // Cell change handler for Baseline Count (auto-balance percentages to 100%)
   const handleBaselineCountChange = (grade: string, count: number) => {
     setPlan((prev) => {
       const total = prev.totalStudents || 1;
-      const pct = Math.round((count / total) * 100);
-      const newRows = prev.rows.map((r) => {
-        if (r.grade === grade) {
-          return {
-            ...r,
-            baselineCount: count,
-            baselinePct: pct,
-          };
-        }
-        return r;
+      const newRows = prev.rows.map((r) => (r.grade === grade ? { ...r, baselineCount: count } : r));
+      const allCounts = newRows.map((r) => r.baselineCount || 0);
+      const balancedPcts = calculateBalancedPercentages(allCounts, total);
+      newRows.forEach((r, idx) => {
+        r.baselinePct = balancedPcts[idx];
       });
       const updated = { ...prev, rows: newRows };
       handleSave(updated);
@@ -215,7 +211,7 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
     });
   };
 
-  // Cell change handler for Month columns (plan / actual)
+  // Cell change handler for Month columns (plan / actual with auto-balanced percentages)
   const handleMonthCellChange = (
     grade: string,
     monthKey: string,
@@ -232,25 +228,31 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
             actualCount: 0,
             actualPct: 0,
           };
-          const updatedMonthly = { ...currentMonthly, [field]: val };
-
-          // Auto-calculate percentage if count changed
-          if (field === 'planCount') {
-            updatedMonthly.planPct = Math.round((val / total) * 100);
-          } else if (field === 'actualCount') {
-            updatedMonthly.actualPct = Math.round((val / total) * 100);
-          }
-
           return {
             ...r,
             monthly: {
               ...r.monthly,
-              [monthKey]: updatedMonthly,
+              [monthKey]: { ...currentMonthly, [field]: val },
             },
           };
         }
         return r;
       });
+
+      // Auto-calculate and balance percentages across the 6 grades if count changed
+      if (field === 'planCount') {
+        const counts = newRows.map((r) => r.monthly[monthKey]?.planCount || 0);
+        const balanced = calculateBalancedPercentages(counts, total);
+        newRows.forEach((r, idx) => {
+          r.monthly[monthKey].planPct = balanced[idx];
+        });
+      } else if (field === 'actualCount') {
+        const counts = newRows.map((r) => r.monthly[monthKey]?.actualCount || 0);
+        const balanced = calculateBalancedPercentages(counts, total);
+        newRows.forEach((r, idx) => {
+          r.monthly[monthKey].actualPct = balanced[idx];
+        });
+      }
 
       const updated = { ...prev, rows: newRows };
       handleSave(updated);
@@ -371,17 +373,17 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
     showToast(`បានកំណត់លំដាប់ខែចាប់ពី ${startMonth} ដោយជោគជ័យ!`);
   };
 
-  // Clear all plan and month-end counts to 0
+  // Clear all baseline, plan and month-end counts to 0
   const handleClearPlanAndActual = () => {
     if (
       window.confirm(
-        'តើលោកគ្រូ-អ្នកគ្រូពិតជាចង់សម្អាតទិន្នន័យចំនួន និងភាគរយនៃ «ផែនការ» និង «ចុងខែ» ទាំងអស់ឱ្យទៅជា ០ ឬទេ?'
+        'តើលោកគ្រូ-អ្នកគ្រូពិតជាចង់សម្អាតទិន្នន័យចំនួន និងភាគរយនៃ «ទិន្នន័យមូលដ្ឋាន», «ផែនការ» និង «ចុងខែ» ទាំងអស់ឱ្យទៅជា ០ ឬទេ?'
       )
     ) {
       const cleared = clearPlanAndActualData(plan);
       setPlan(cleared);
       handleSave(cleared);
-      showToast('បានសម្អាតទិន្នន័យផែនការ និងចុងខែទាំងអស់រួចរាល់ (០)!');
+      showToast('បានសម្អាតទិន្នន័យមូលដ្ឋាន ផែនការ និងចុងខែទាំងអស់រួចរាល់ (០)!');
     }
   };
 
@@ -588,7 +590,7 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
     prevWarningNamesRef.current = currentNames;
   }, [warningColumns]);
 
-  // Auto-fill from actual student grades in db.grades
+  // Auto-fill from actual student grades in db.grades (including beginning-of-year diagnostic test for baseline)
   const handleAutoFillFromGrades = async () => {
     if (!activeClass) return;
     try {
@@ -598,33 +600,70 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
         return;
       }
 
-      // Map month names in grades to our keys
-      const monthMap: Record<string, string> = {
-        'ធ្នូ': 'dec',
-        'មករា': 'jan',
-        'កុម្ភៈ': 'feb',
-        'មីនា': 'mar',
-        'មេសា': 'apr',
-        'ឧសភា': 'may',
-        'មិថុនា': 'jun',
-        'កក្កដា': 'jul',
-      };
-
       let filledCount = 0;
+      let pulledBaseline = false;
+
       setPlan((prev) => {
         const total = prev.totalStudents || 1;
         const newRows = [...prev.rows];
 
-        Object.entries(monthMap).forEach(([khMonth, mKey]) => {
-          const monthRecords = allGrades.filter(
-            (g) => g.month?.includes(khMonth) || g.month === khMonth
-          );
+        // 1. Pull Baseline from 'តេស្តដើមឆ្នាំ' (Beginning of Year Diagnostic Test)
+        const diagRecords = allGrades.filter(
+          (g) =>
+            g.month === 'តេស្តដើមឆ្នាំ' ||
+            g.month?.includes('តេស្តដើមឆ្នាំ') ||
+            g.month?.includes('ដើមឆ្នាំ')
+        );
+
+        if (diagRecords.length > 0) {
+          pulledBaseline = true;
+          const diagCounts: Record<string, number> = { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 };
+          diagRecords.forEach((rec) => {
+            const score =
+              rec.scores?.[selectedSubject] ??
+              rec.scores?.[selectedSubject.toLowerCase()] ??
+              rec.finalTotal100 ??
+              0;
+
+            if (score >= 90) diagCounts.A++;
+            else if (score >= 80) diagCounts.B++;
+            else if (score >= 71) diagCounts.C++;
+            else if (score >= 61) diagCounts.D++;
+            else if (score >= 51) diagCounts.E++;
+            else diagCounts.F++;
+          });
+
+          const diagCountArr = newRows.map((r) => diagCounts[r.grade] || 0);
+          const diagPctArr = calculateBalancedPercentages(diagCountArr, total);
+          newRows.forEach((r, idx) => {
+            r.baselineCount = diagCountArr[idx];
+            r.baselinePct = diagPctArr[idx];
+          });
+        }
+
+        // 2. Pull Monthly Actuals for each month column in plan
+        const allCols = [
+          ...(prev.monthCols?.table1 || TABLE_1_MONTHS),
+          ...(prev.monthCols?.table2 || TABLE_2_MONTHS),
+          ...(prev.monthCols?.table3 || TABLE_3_MONTHS),
+        ];
+
+        allCols.forEach((col) => {
+          const cleanColMonth = col.monthName.replace(/^ខែ\s*/, '').trim();
+          const monthRecords = allGrades.filter((g) => {
+            if (!g.month || g.month.includes('តេស្តដើមឆ្នាំ')) return false;
+            const cleanGMonth = g.month.replace(/^ខែ\s*/, '').trim();
+            return (
+              cleanGMonth === cleanColMonth ||
+              g.month === col.monthName ||
+              g.month.includes(cleanColMonth)
+            );
+          });
+
           if (monthRecords.length > 0) {
             filledCount++;
             const counts: Record<string, number> = { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 };
-
             monthRecords.forEach((rec) => {
-              // Get score for selected subject or finalTotal100
               const score =
                 rec.scores?.[selectedSubject] ??
                 rec.scores?.[selectedSubject.toLowerCase()] ??
@@ -639,13 +678,14 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
               else counts.F++;
             });
 
-            newRows.forEach((r) => {
-              const c = counts[r.grade] || 0;
-              const p = Math.round((c / total) * 100);
-              r.monthly[mKey] = {
-                ...(r.monthly[mKey] || { planCount: 0, planPct: 0 }),
-                actualCount: c,
-                actualPct: p,
+            const mCountArr = newRows.map((r) => counts[r.grade] || 0);
+            const mPctArr = calculateBalancedPercentages(mCountArr, total);
+
+            newRows.forEach((r, idx) => {
+              r.monthly[col.key] = {
+                ...(r.monthly[col.key] || { planCount: 0, planPct: 0 }),
+                actualCount: mCountArr[idx],
+                actualPct: mPctArr[idx],
               };
             });
           }
@@ -656,10 +696,13 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
         return updated;
       });
 
-      if (filledCount > 0) {
-        showToast(`បានទាញយកទិន្នន័យជាក់ស្តែងចំនួន ${filledCount} ខែរួចរាល់!`);
+      if (pulledBaseline || filledCount > 0) {
+        const parts = [];
+        if (pulledBaseline) parts.push('ទិន្នន័យមូលដ្ឋានពី «តេស្តដើមឆ្នាំ»');
+        if (filledCount > 0) parts.push(`ទិន្នន័យជាក់ស្តែងចំនួន ${filledCount} ខែ`);
+        showToast(`បានទាញយក${parts.join(' និង')} រួចរាល់!`);
       } else {
-        alert('មិនមានខែណាត្រូវគ្នានឹងតារាងផែនការឡើយ។');
+        alert('មិនទាន់មានពិន្ទុដែលត្រូវគ្នានឹងតេស្តដើមឆ្នាំ ឬខែក្នុងតារាងផែនការឡើយ។');
       }
     } catch (err) {
       console.error(err);

@@ -23,6 +23,7 @@ interface NavbarProps {
   onOpenSettings: () => void;
   onOpenManageClasses?: () => void;
   onOpenSync?: () => void;
+  hideClassSelector?: boolean;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -34,6 +35,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenSettings,
   onOpenManageClasses,
   onOpenSync,
+  hideClassSelector,
 }) => {
   const { canUndo, canRedo, undo, redo, showToast } = useUndoRedo();
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
@@ -130,40 +132,44 @@ export const Navbar: React.FC<NavbarProps> = ({
             <Menu className="w-5 h-5" />
           </button>
 
-          <label htmlFor="class-select" className="hidden sm:inline-block text-xs font-bold text-slate-600 whitespace-nowrap">
-            ជ្រើសរើសថ្នាក់៖
-          </label>
-          <div className="relative flex items-center space-x-1.5">
-            <select
-              id="class-select"
-              value={selectedClassId}
-              onChange={(e) => onSelectClass(e.target.value)}
-              className="bg-slate-50 border border-slate-300 hover:border-blue-500 text-slate-800 text-xs sm:text-sm font-bold rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block px-3 py-1.5 sm:py-2 transition-all cursor-pointer shadow-xs max-w-[210px] sm:max-w-xs truncate"
-            >
-              <option value="ALL">🌟 ថ្នាក់ទាំងអស់ ({toKhmerNum(classes.length)})</option>
-              {gradeGroups.map((group) => (
-                <optgroup key={group.grade} label={`── ${group.label} (${group.classes.length}) ──`}>
-                  {group.classes.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      📚 {c.name} {c.stream && c.stream !== 'general' ? `(${c.stream === 'science' ? 'វិទ្យាសាស្ត្រ' : 'សង្គម'})` : ''} {c.homeroomTeacher ? `• គ្រូ៖ ${c.homeroomTeacher}` : ''}
-                    </option>
+          {!hideClassSelector && (
+            <>
+              <label htmlFor="class-select" className="hidden sm:inline-block text-xs font-bold text-slate-600 whitespace-nowrap">
+                ជ្រើសរើសថ្នាក់៖
+              </label>
+              <div className="relative flex items-center space-x-1.5">
+                <select
+                  id="class-select"
+                  value={selectedClassId}
+                  onChange={(e) => onSelectClass(e.target.value)}
+                  className="bg-slate-50 border border-slate-300 hover:border-blue-500 text-slate-800 text-xs sm:text-sm font-bold rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block px-3 py-1.5 sm:py-2 transition-all cursor-pointer shadow-xs max-w-[210px] sm:max-w-xs truncate"
+                >
+                  <option value="ALL">🌟 ថ្នាក់ទាំងអស់ ({toKhmerNum(classes.length)})</option>
+                  {gradeGroups.map((group) => (
+                    <optgroup key={group.grade} label={`── ${group.label} (${group.classes.length}) ──`}>
+                      {group.classes.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          📚 {c.name} {c.stream && c.stream !== 'general' ? `(${c.stream === 'science' ? 'វិទ្យាសាស្ត្រ' : 'សង្គម'})` : ''} {c.homeroomTeacher ? `• គ្រូ៖ ${c.homeroomTeacher}` : ''}
+                        </option>
+                      ))}
+                    </optgroup>
                   ))}
-                </optgroup>
-              ))}
-            </select>
-            {onOpenManageClasses && (
-              <button
-                type="button"
-                onClick={onOpenManageClasses}
-                className="inline-flex items-center space-x-1 px-2.5 py-1.5 sm:py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs sm:text-sm rounded-xl border border-blue-200 transition-colors cursor-pointer shadow-2xs shrink-0"
-                title="គ្រប់គ្រងថ្នាក់ (បន្ថែម បន្ថយ ឬកែប្រែថ្នាក់)"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">គ្រប់គ្រងថ្នាក់</span>
-                <span className="sm:hidden">ថ្នាក់</span>
-              </button>
-            )}
-          </div>
+                </select>
+                {onOpenManageClasses && (
+                  <button
+                    type="button"
+                    onClick={onOpenManageClasses}
+                    className="inline-flex items-center space-x-1 px-2.5 py-1.5 sm:py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs sm:text-sm rounded-xl border border-blue-200 transition-colors cursor-pointer shadow-2xs shrink-0"
+                    title="គ្រប់គ្រងថ្នាក់ (បន្ថែម បន្ថយ ឬកែប្រែថ្នាក់)"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">គ្រប់គ្រងថ្នាក់</span>
+                    <span className="sm:hidden">ថ្នាក់</span>
+                  </button>
+                )}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Right side: Global Undo / Redo & Settings Profile */}

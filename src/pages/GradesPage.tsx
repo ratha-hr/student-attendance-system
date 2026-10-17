@@ -18,6 +18,9 @@ import {
   RotateCcw,
   Undo2,
   Redo2,
+  CalendarDays,
+  Plus,
+  Trash2,
 } from 'lucide-react';
 import type { Student, ClassRoom, TeacherSettings, StudentGrade, AttendanceRecord } from '../types';
 import { db } from '../db/db';
@@ -33,7 +36,23 @@ import {
 import { ContinuousAssessmentTable, type ContinuousScoreData } from '../components/ContinuousAssessmentTable';
 import * as XLSX from 'xlsx';
 
-export type GradesViewMode = 'subjects' | 'continuous' | 'combined';
+export type GradesViewMode = 'monthly-subject' | 'subjects' | 'continuous' | 'combined';
+
+export const MONTH_OPTIONS = [
+  'តុលា',
+  'វិច្ឆិកា',
+  'ធ្នូ',
+  'មករា',
+  'ឆមាសទី១',
+  'កុម្ភៈ',
+  'មីនា',
+  'មេសា',
+  'ឧសភា',
+  'មិថុនា',
+  'កក្កដា',
+  'ឆមាសទី២',
+  'ប្រឡងប្រចាំឆ្នាំ',
+];
 
 interface GradesPageProps {
   students: Student[];
@@ -56,7 +75,7 @@ export const GradesPage: React.FC<GradesPageProps> = ({
   onSelectClass,
   onRefresh,
   onOpenGradeConfig,
-  initialViewMode = 'subjects',
+  initialViewMode = 'monthly-subject',
 }) => {
   const [viewMode, setViewMode] = useState<GradesViewMode>(initialViewMode);
   const [selectedMonth, setSelectedMonth] = useState<string>('តុលា');
@@ -424,22 +443,354 @@ export const GradesPage: React.FC<GradesPageProps> = ({
     XLSX.writeFile(workbook, fileName);
   };
 
+  // --- Monthly Subject Progress View State & Handlers ---
+  const [selectedSubject, setSelectedSubject] = useState<string>(
+    settings?.specialtySubject || 'គណិតវិទ្យា'
+  );
+
+  // Month columns for monthly tracking view (Column 0 is fixed as 'តេស្តដើមឆ្នាំ')
+  const [monthColumns, setMonthColumns] = useState<string[]>(() => {
+    const saved = localStorage.getItem(`monthly_subj_cols_${activeClassId}`);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch (e) {
+        // fallback
+      }
+    }
+    return ['តុលា', 'វិច្ឆិកា', 'ធ្នូ', 'មករា', 'ឆមាសទី១', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា', 'ឆមាសទី២'];
+  });
+
+  const handleUpdateMonthColumn = (idx: number, newMonth: string) => {
+    setMonthColumns((prev) => {
+      const copy = [...prev];
+      copy[idx] = newMonth;
+      localStorage.setItem(`monthly_subj_cols_${activeClassId}`, JSON.stringify(copy));
+      return copy;
+    });
+  };
+
+  const handleAddMonthColumn = () => {
+    setMonthColumns((prev) => {
+      const nextMonth = MONTH_OPTIONS[prev.length % MONTH_OPTIONS.length] || 'ខែថ្មី';
+      const updated = [...prev, nextMonth];
+      localStorage.setItem(`monthly_subj_cols_${activeClassId}`, JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const handleRemoveMonthColumn = (idx: number) => {
+    if (monthColumns.length <= 1) return;
+    setMonthColumns((prev) => {
+      const updated = prev.filter((_, i) => i !== idx);
+      localStorage.setItem(`monthly_subj_cols_${activeClassId}`, JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  // State for monthly scores: studentId -> monthName -> score
+  const [subjectMonthlyScores, setSubjectMonthlyScores] = useState<Record<string, Record<string, number>>>({});
+
+  // Active Subject definition and max score
+  const currentSubjectObj = useMemo(() => {
+    return (
+      subjects.find((s) => s.name === selectedSubject || s.id === selectedSubject) || {
+        id: 'math',
+        name: selectedSubject,
+        maxScore: 100,
+        coefficient: 1,
+      }
+    );
+  }, [subjects, selectedSubject]);
+
+  const selectedSubjectId = currentSubjectObj.id;
+  const currentMaxScore = currentSubjectObj.maxScore || 100;
+
+  // Load scores for monthly-subject view from IndexedDB
+  useEffect(() => {
+    if (!activeClassId) return;
+    db.grades
+      .where({ classId: activeClassId })
+      .toArray()
+      .then((records) => {
+        const map: Record<string, Record<string, number>> = {};
+        records.forEach((r) => {
+          if (!map[r.studentId]) map[r.studentId] = {};
+          const sc =
+            r.scores?.[selectedSubject] ??
+            r.scores?.[selectedSubjectId] ??
+            r.scores?.[selectedSubject.toLowerCase()];
+          if (sc !== undefined) {
+            map[r.studentId][r.month] = sc;
+          }
+        });
+        setSubjectMonthlyScores(map);
+      })
+      .catch(console.error);
+  }, [activeClassId, selectedSubject, selectedSubjectId]);
+
+  const handleSubjectScoreChange = (studentId: string, month: string, value: string) => {
+    const val = value === '' ? undefined : Math.min(currentMaxScore, Math.max(0, Number(value)));
+    setSubjectMonthlyScores((prev) => {
+      const studentMap = { ...(prev[studentId] || {}) };
+      if (val === undefined) {
+        delete studentMap[month];
+      } else {
+        studentMap[month] = val;
+      }
+      return {
+        ...prev,
+        [studentId]: studentMap,
+      };
+    });
+  };
+
+  const handleSaveSubjectScores = async () => {
+    await pushSnapshot(`រក្សាទុកពិន្ទុមុខវិជ្ជា ${selectedSubject} ថ្នាក់ ${currentClass?.name || ''}`);
+    const allMonths = ['តេស្តដើមឆ្នាំ', ...monthColumns];
+    const existingRecords = await db.grades.where({ classId: activeClassId }).toArray();
+    const existingMap = new Map<string, StudentGrade>();
+    existingRecords.forEach((r) => {
+      existingMap.set(`${r.studentId}_${r.month}`, r);
+    });
+
+    const recordsToPut: StudentGrade[] = [];
+
+    classStudents.forEach((stu) => {
+      const stuScores = subjectMonthlyScores[stu.id] || {};
+      allMonths.forEach((m) => {
+        const val = stuScores[m];
+        if (val !== undefined) {
+          const key = `${stu.id}_${m}`;
+          const existing = existingMap.get(key);
+          const updatedScores = {
+            ...(existing?.scores || {}),
+            [selectedSubject]: val,
+            [selectedSubjectId]: val,
+          };
+          recordsToPut.push({
+            id: existing?.id || `grade-${activeClassId}-${m}-${stu.id}`,
+            classId: activeClassId,
+            studentId: stu.id,
+            month: m,
+            academicYear: settings?.academicYear || '២០២៤-២០២៥',
+            scores: updatedScores,
+            conduct: existing?.conduct || 'ល្អ',
+            absentCount: existing?.absentCount,
+            attendanceScore: existing?.attendanceScore,
+            quiz15mScore: existing?.quiz15mScore,
+            appScore: existing?.appScore,
+            assessmentTotal: existing?.assessmentTotal,
+            examScore70: existing?.examScore70,
+            finalTotal100: val,
+          });
+        }
+      });
+    });
+
+    if (recordsToPut.length > 0) {
+      await db.grades.bulkPut(recordsToPut);
+    }
+    setSavedSuccess(true);
+    setTimeout(() => setSavedSuccess(false), 2500);
+    onRefresh();
+  };
+
+  const handleFillSampleSubjectScores = async () => {
+    await pushSnapshot(`បំពេញពិន្ទុសាកល្បងមុខវិជ្ជា ${selectedSubject} ថ្នាក់ ${currentClass?.name || ''}`);
+    const newMap: Record<string, Record<string, number>> = {};
+    const allMonths = ['តេស្តដើមឆ្នាំ', ...monthColumns];
+
+    classStudents.forEach((stu, sIdx) => {
+      newMap[stu.id] = {};
+      const baseRatio = 0.48 + ((sIdx * 19 + stu.nameKh.length * 7) % 48) / 100;
+
+      allMonths.forEach((m, mIdx) => {
+        const monthBonus = mIdx === 0 ? 0 : Math.min(0.12, mIdx * 0.015);
+        const variance = (((sIdx * 13 + mIdx * 17) % 15) - 7) / 100;
+        const finalRatio = Math.min(0.98, Math.max(0.35, baseRatio + monthBonus + variance));
+        newMap[stu.id][m] = Math.round(currentMaxScore * finalRatio);
+      });
+    });
+
+    setSubjectMonthlyScores(newMap);
+  };
+
+  const handleClearSubjectScores = async () => {
+    if (window.confirm(`តើលោកគ្រូ-អ្នកគ្រូពិតជាចង់សម្អាតពិន្ទុមុខវិជ្ជា «${selectedSubject}» ទាំងអស់ឬទេ?`)) {
+      await pushSnapshot(`សម្អាតពិន្ទុមុខវិជ្ជា ${selectedSubject}`);
+      setSubjectMonthlyScores({});
+    }
+  };
+
+  const calculatedMonthlySubjectResults = useMemo(() => {
+    const allMonths = ['តេស្តដើមឆ្នាំ', ...monthColumns];
+
+    const list = classStudents.map((stu) => {
+      const stuScores = subjectMonthlyScores[stu.id] || {};
+      let total = 0;
+      let enteredCount = 0;
+
+      allMonths.forEach((m) => {
+        const val = stuScores[m];
+        if (val !== undefined && val !== null) {
+          total += val;
+          enteredCount++;
+        }
+      });
+
+      const average = enteredCount > 0 ? Number((total / enteredCount).toFixed(2)) : 0;
+      const percentage = currentMaxScore > 0 ? Number(((average / currentMaxScore) * 100).toFixed(2)) : average;
+      const mention = calculateLetterMention(percentage);
+
+      return {
+        student: stu,
+        scores: stuScores,
+        total,
+        enteredCount,
+        average,
+        percentage,
+        mention,
+      };
+    });
+
+    const sorted = [...list].sort((a, b) => b.average - a.average);
+    const rankMap = new Map<string, number>();
+    sorted.forEach((item, index) => {
+      rankMap.set(item.student.id, index + 1);
+    });
+
+    return list.map((item) => ({
+      ...item,
+      rank: rankMap.get(item.student.id) || 1,
+    }));
+  }, [classStudents, subjectMonthlyScores, monthColumns, currentMaxScore]);
+
+  const columnStats = useMemo(() => {
+    const allMonths = ['តេស្តដើមឆ្នាំ', ...monthColumns];
+    const stats: Record<
+      string,
+      {
+        total: number;
+        count: number;
+        average: number;
+        passedCount: number;
+        passedPct: number;
+        failedCount: number;
+        failedPct: number;
+        counts: Record<'A' | 'B' | 'C' | 'D' | 'E' | 'F', number>;
+      }
+    > = {};
+
+    allMonths.forEach((m) => {
+      let total = 0;
+      let count = 0;
+      let passedCount = 0;
+      let failedCount = 0;
+      const counts: Record<'A' | 'B' | 'C' | 'D' | 'E' | 'F', number> = {
+        A: 0,
+        B: 0,
+        C: 0,
+        D: 0,
+        E: 0,
+        F: 0,
+      };
+
+      classStudents.forEach((stu) => {
+        const sc = subjectMonthlyScores[stu.id]?.[m];
+        if (sc !== undefined && sc !== null) {
+          total += sc;
+          count++;
+          const pct = currentMaxScore > 0 ? (sc / currentMaxScore) * 100 : sc;
+          if (pct >= 50) passedCount++;
+          else failedCount++;
+
+          if (pct >= 90) counts.A++;
+          else if (pct >= 80) counts.B++;
+          else if (pct >= 70) counts.C++;
+          else if (pct >= 60) counts.D++;
+          else if (pct >= 50) counts.E++;
+          else counts.F++;
+        }
+      });
+
+      const average = count > 0 ? Number((total / count).toFixed(2)) : 0;
+      const passedPct = count > 0 ? Number(((passedCount / count) * 100).toFixed(1)) : 0;
+      const failedPct = count > 0 ? Number(((failedCount / count) * 100).toFixed(1)) : 0;
+
+      stats[m] = {
+        total,
+        count,
+        average,
+        passedCount,
+        passedPct,
+        failedCount,
+        failedPct,
+        counts,
+      };
+    });
+
+    return stats;
+  }, [classStudents, subjectMonthlyScores, monthColumns, currentMaxScore]);
+
+  const handleExportMonthlySubjectExcel = () => {
+    const data = calculatedMonthlySubjectResults.map((item) => {
+      const row: Record<string, any> = {
+        'លេខរៀង': item.student.rollNo,
+        'អត្តលេខ': item.student.studentCode,
+        'គោត្តនាម-នាម': item.student.nameKh,
+        'ភេទ': item.student.gender,
+        'តេស្តដើមឆ្នាំ': item.scores['តេស្តដើមឆ្នាំ'] ?? '-',
+      };
+
+      monthColumns.forEach((m) => {
+        row[`ខែ ${m}`] = item.scores[m] ?? '-';
+      });
+
+      row['មធ្យមភាគ'] = item.average;
+      row['និទ្ទេស'] = item.mention.khmerLabel;
+      row['ចំណាត់ថ្នាក់'] = item.rank;
+
+      return row;
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, `ពិន្ទុ_${selectedSubject}`);
+    const fileName = `តារាងពិន្ទុ_${selectedSubject}_${currentClass?.name || 'ថ្នាក់'}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
+  };
+
   return (
     <div className="space-y-4">
-      {/* 3-View Mode Switcher Banner */}
+      {/* 4-View Mode Switcher Banner */}
       <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3 no-print">
         {/* Mode Selector Buttons */}
         <div className="flex flex-wrap items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-bold gap-1 shadow-2xs">
           <button
             type="button"
+            onClick={() => setViewMode('monthly-subject')}
+            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center space-x-1.5 ${
+              viewMode === 'monthly-subject'
+                ? 'bg-blue-600 text-white shadow-xs font-black ring-1 ring-blue-700'
+                : 'text-slate-700 hover:text-slate-900 hover:bg-white/60'
+            }`}
+          >
+            <CalendarDays className="w-4 h-4" />
+            <span>តារាងពិន្ទុតាមខែ (ចាប់ផ្តើមពីតេស្តដើមឆ្នាំ)</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setViewMode('subjects')}
             className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center space-x-1.5 ${
               viewMode === 'subjects'
-                ? 'bg-white text-blue-700 shadow-xs border border-slate-200 ring-1 ring-blue-300 font-black'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                ? 'bg-blue-600 text-white shadow-xs font-black ring-1 ring-blue-700'
+                : 'text-slate-700 hover:text-slate-900 hover:bg-white/60'
             }`}
           >
-            <GraduationCap className="w-4 h-4 text-blue-600" />
+            <GraduationCap className="w-4 h-4" />
             <span>តារាងពិន្ទុគ្រប់មុខវិជ្ជា (MoEYS)</span>
           </button>
 
@@ -477,6 +828,540 @@ export const GradesPage: React.FC<GradesPageProps> = ({
           </span>
         </div>
       </div>
+
+      {/* VIEW MODE 0: Monthly Subject Assessment (ចាប់ផ្តើមពីតេស្តដើមឆ្នាំ + ជម្រើសតាមខែ) */}
+      {viewMode === 'monthly-subject' && (
+        <div className="space-y-4">
+          {/* Top Banner and Controls */}
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col xl:flex-row xl:items-center justify-between gap-3 no-print">
+            <div>
+              <div className="flex items-center space-x-2 flex-wrap">
+                <h2 className="text-lg sm:text-xl font-black text-slate-800 flex items-center shrink-0">
+                  <CalendarDays className="w-6 h-6 text-blue-600 mr-2 shrink-0" />
+                  <span className="whitespace-nowrap">ពិន្ទុសិស្សប្រចាំខែ (តាមដានការរីកចម្រើន)</span>
+                </h2>
+                <span className="px-2.5 py-0.5 bg-blue-50 text-blue-700 text-xs font-bold rounded-lg border border-blue-200 shrink-0">
+                  📚 {currentClass?.name || 'ថ្នាក់រៀន'}
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                ចាប់ផ្តើមពីតេស្តដើមឆ្នាំ និងតាមដានពិន្ទុតាមខែនីមួយៗ គណនាមធ្យមភាគ និទ្ទេស (A-F) និងចំណាត់ថ្នាក់ស្វ័យប្រវត្តិ
+              </p>
+            </div>
+
+            {/* Action Buttons & Selectors */}
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Subject Selector */}
+              <div className="flex items-center space-x-1.5 bg-slate-100 p-0.5 rounded-xl border border-slate-200 px-2.5 py-1">
+                <label className="text-xs font-bold text-slate-700 whitespace-nowrap">មុខវិជ្ជា៖</label>
+                <select
+                  value={selectedSubject}
+                  onChange={(e) => setSelectedSubject(e.target.value)}
+                  className="bg-white border border-slate-300 font-bold text-xs rounded-lg px-2.5 py-1 text-blue-800 cursor-pointer shadow-2xs outline-none"
+                >
+                  {subjects.map((sub) => (
+                    <option key={sub.id} value={sub.name}>
+                      {sub.name} (×{sub.coefficient})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Add Month Column Button */}
+              <button
+                type="button"
+                onClick={handleAddMonthColumn}
+                className="inline-flex items-center px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded-xl border border-blue-200 transition-colors cursor-pointer shadow-2xs"
+                title="បន្ថែមជួរឈរខែថ្មី"
+              >
+                <Plus className="w-3.5 h-3.5 mr-1" />
+                បន្ថែមខែ
+              </button>
+
+              {/* Fill Sample Scores Button */}
+              <button
+                type="button"
+                onClick={handleFillSampleSubjectScores}
+                className="inline-flex items-center px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl border border-indigo-200 transition-colors cursor-pointer shadow-2xs"
+                title="បំពេញពិន្ទុសាកល្បងដោយស្វ័យប្រវត្តិ"
+              >
+                <Sparkles className="w-3.5 h-3.5 mr-1" />
+                បំពេញពិន្ទុសាកល្បង
+              </button>
+
+              {/* Export Excel */}
+              <button
+                type="button"
+                onClick={handleExportMonthlySubjectExcel}
+                className="inline-flex items-center px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold rounded-xl border border-emerald-200 transition-colors cursor-pointer shadow-2xs"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 mr-1" />
+                Excel
+              </button>
+
+              {/* Print with Orientation Selector */}
+              <PrintButton defaultOrientation="landscape" label="បោះពុម្ព" />
+
+              {/* Undo / Redo */}
+              <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs font-bold shadow-2xs">
+                <button
+                  type="button"
+                  onClick={undo}
+                  disabled={!canUndo}
+                  className="inline-flex items-center px-2 py-1 rounded-lg text-slate-700 hover:bg-white hover:text-indigo-600 disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-slate-400 transition-colors cursor-pointer"
+                  title="ត្រឡប់ក្រោយ (Ctrl+Z)"
+                >
+                  <Undo2 className="w-3.5 h-3.5 mr-1 text-slate-600" />
+                  Undo
+                </button>
+                <button
+                  type="button"
+                  onClick={redo}
+                  disabled={!canRedo}
+                  className="inline-flex items-center px-2 py-1 rounded-lg text-slate-700 hover:bg-white hover:text-indigo-600 disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-slate-400 transition-colors cursor-pointer"
+                  title="ធ្វើឡើងវិញ (Ctrl+Y)"
+                >
+                  <Redo2 className="w-3.5 h-3.5 mr-1 text-slate-600" />
+                  Redo
+                </button>
+              </div>
+
+              {/* Clear button */}
+              <button
+                type="button"
+                onClick={handleClearSubjectScores}
+                className="inline-flex items-center px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold rounded-xl border border-rose-200 transition-colors cursor-pointer shadow-2xs"
+                title="សម្អាតពិន្ទុទាំងអស់"
+              >
+                <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                សម្អាត
+              </button>
+
+              {/* Save Scores */}
+              <button
+                type="button"
+                onClick={handleSaveSubjectScores}
+                className="inline-flex items-center px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer"
+              >
+                <Save className="w-3.5 h-3.5 mr-1" />
+                {savedSuccess ? 'បានរក្សាទុក!' : 'រក្សាទុក'}
+              </button>
+            </div>
+          </div>
+
+          {/* Subject & Track Info Badge */}
+          <div className="bg-blue-50/70 border border-blue-200/80 rounded-2xl p-3 no-print flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center space-x-2 text-xs font-bold text-blue-900">
+              <Calculator className="w-4 h-4 text-blue-600" />
+              <span>
+                មុខវិជ្ជា៖ <strong className="text-blue-800 text-sm font-black">{selectedSubject}</strong> | ថ្នាក់៖ <strong>{currentClass?.name || 'ថ្នាក់'}</strong> ({currentTrackDef?.label})
+              </span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="text-[11px] font-bold text-slate-600 bg-white px-2.5 py-1 rounded-lg border border-blue-200 shadow-2xs">
+                ពិន្ទុអតិបរមា៖ <span className="font-mono text-blue-700">{currentMaxScore}</span>
+              </span>
+              <span className="text-[11px] font-bold text-slate-600 bg-white px-2.5 py-1 rounded-lg border border-blue-200 shadow-2xs">
+                មេគុណ៖ <span className="font-mono text-red-600">×{currentSubjectObj.coefficient}</span>
+              </span>
+            </div>
+          </div>
+
+          {/* Official Header on Print */}
+          <div className="hidden print:block text-center mb-6">
+            <h3 className="font-moul text-base">ព្រះរាជាណាចក្រកម្ពុជា</h3>
+            <h4 className="font-moul text-sm">ជាតិ សាសនា ព្រះមហាក្សត្រ</h4>
+            <div className="w-24 h-0.5 bg-black mx-auto my-2" />
+            <div className="flex justify-between items-start text-left mt-2 text-xs">
+              <div>
+                <p className="font-bold">{settings?.schoolName || 'វិទ្យាល័យ ហ៊ុន សែន កំពង់ត្រឡាច'}</p>
+                <p>ឆ្នាំសិក្សា៖ {settings?.academicYear || '២០២៤-២០២៥'}</p>
+                <p>មុខវិជ្ជា៖ <strong>{selectedSubject}</strong></p>
+              </div>
+              <div className="text-right">
+                <p className="font-bold">គ្រូបង្រៀន៖ {settings?.teacherName || 'ហ៊ុន រដ្ឋា'}</p>
+                <p>ថ្នាក់៖ {currentClass?.name}</p>
+              </div>
+            </div>
+            <h2 className="font-moul text-base mt-4">
+              តារាងស្រង់ និងតាមដានពិន្ទុសិស្សប្រចាំខែ មុខវិជ្ជា «{selectedSubject}» {currentClass?.name}
+            </h2>
+          </div>
+
+          {/* Main Monthly Score Table */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+            <div className="overflow-auto max-h-[72vh] table-scrollbar">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead className="sticky top-0 z-20 shadow-xs print:static print:table-header-group">
+                  <tr className="bg-slate-800 text-white font-bold text-center">
+                    <th className="py-2.5 px-2 border border-slate-700 w-10">ល.រ</th>
+                    <th className="py-2.5 px-2 border border-slate-700 w-24">អត្តលេខ</th>
+                    <th className="py-2.5 px-3 border border-slate-700 text-left min-w-[130px]">គោត្តនាម-នាម</th>
+                    <th className="py-2.5 px-2 border border-slate-700 w-14">ភេទ</th>
+
+                    {/* Column 0: Fixed Starting Column 'តេស្តដើមឆ្នាំ' */}
+                    <th className="py-2 px-2 border border-slate-700 bg-blue-900/95 min-w-[95px]">
+                      <div className="font-black text-amber-200">តេស្តដើមឆ្នាំ</div>
+                      <div className="text-[10px] text-blue-200 font-mono mt-0.5">
+                        មូលដ្ឋាន ({currentMaxScore}ពិន្ទុ)
+                      </div>
+                    </th>
+
+                    {/* Subsequent Month Columns with Header Selector */}
+                    {monthColumns.map((m, idx) => (
+                      <th
+                        key={`mcol-${idx}`}
+                        className="py-1.5 px-1 border border-slate-700 min-w-[95px] bg-slate-800"
+                      >
+                        <div className="flex items-center justify-center space-x-1 no-print">
+                          <select
+                            value={m}
+                            onChange={(e) => handleUpdateMonthColumn(idx, e.target.value)}
+                            className="bg-slate-700 text-white text-[11px] font-bold rounded px-1.5 py-0.5 border border-slate-600 outline-none cursor-pointer hover:bg-slate-600 transition-colors"
+                          >
+                            {MONTH_OPTIONS.map((opt) => (
+                              <option key={opt} value={opt} className="bg-slate-800 text-white">
+                                {opt.startsWith('ឆមាស') || opt.startsWith('ប្រឡង') ? opt : `ខែ ${opt}`}
+                              </option>
+                            ))}
+                          </select>
+                          {monthColumns.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveMonthColumn(idx)}
+                              className="text-slate-400 hover:text-rose-400 p-0.5 transition-colors cursor-pointer"
+                              title="លុបខែនេះ"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                        {/* Print Only Header Display */}
+                        <div className="hidden print:block font-bold">
+                          {m.startsWith('ឆមាស') || m.startsWith('ប្រឡង') ? m : `ខែ ${m}`}
+                        </div>
+                        <div className="text-[10px] text-amber-300 font-mono mt-0.5">
+                          ({currentMaxScore}ពិន្ទុ)
+                        </div>
+                      </th>
+                    ))}
+
+                    {/* Add Column Header Button */}
+                    <th className="py-1 px-1 border border-slate-700 bg-slate-900 w-9 no-print">
+                      <button
+                        type="button"
+                        onClick={handleAddMonthColumn}
+                        className="p-1 hover:bg-slate-700 rounded text-emerald-400 hover:text-emerald-300 cursor-pointer transition-colors"
+                        title="បន្ថែមជួរឈរខែ"
+                      >
+                        <Plus className="w-4 h-4 mx-auto" />
+                      </button>
+                    </th>
+
+                    {/* Calculated Results */}
+                    <th className="py-2.5 px-2 border border-slate-700 bg-blue-900/80 min-w-[70px]">មធ្យមភាគ</th>
+                    <th className="py-2.5 px-2 border border-slate-700 bg-indigo-900/80 min-w-[95px]">និទ្ទេស</th>
+                    <th className="py-2.5 px-2 border border-slate-700 bg-amber-900/80 min-w-[65px]">ចំណាត់ថ្នាក់</th>
+                  </tr>
+                </thead>
+
+                <tbody className="divide-y divide-slate-200 text-slate-800">
+                  {calculatedMonthlySubjectResults.length === 0 ? (
+                    <tr>
+                      <td colSpan={monthColumns.length + 8} className="py-12 text-center text-slate-400">
+                        <Users className="w-10 h-10 mx-auto text-slate-300 mb-2" />
+                        មិនមានសិស្សក្នុងថ្នាក់នេះទេ
+                      </td>
+                    </tr>
+                  ) : (
+                    calculatedMonthlySubjectResults.map((item, idx) => {
+                      const stu = item.student;
+                      const isTopRank = item.rank <= 3 && item.enteredCount > 0;
+                      const diagScore = item.scores['តេស្តដើមឆ្នាំ'];
+
+                      return (
+                        <tr
+                          key={stu.id}
+                          className={`hover:bg-blue-50/40 transition-colors ${
+                            isTopRank ? 'bg-amber-50/20' : ''
+                          }`}
+                        >
+                          {/* ល.រ */}
+                          <td className="py-2 px-2 text-center font-bold text-slate-700 border border-slate-200 bg-slate-50">
+                            {toKhmerNum(idx + 1)}
+                          </td>
+
+                          {/* អត្តលេខ */}
+                          <td className="py-2 px-2 font-mono text-[11px] font-bold text-slate-700 border border-slate-200 text-center">
+                            {stu.studentCode}
+                          </td>
+
+                          {/* ឈ្មោះសិស្ស */}
+                          <td className="py-2 px-3 border border-slate-200 font-bold text-slate-900 whitespace-nowrap">
+                            {stu.nameKh}
+                          </td>
+
+                          {/* ភេទ */}
+                          <td className="py-2 px-1 text-center border border-slate-200">
+                            <span
+                              className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                stu.gender === 'ស្រី'
+                                  ? 'bg-pink-100 text-pink-700'
+                                  : 'bg-blue-100 text-blue-700'
+                              }`}
+                            >
+                              {stu.gender}
+                            </span>
+                          </td>
+
+                          {/* Col 0: តេស្តដើមឆ្នាំ */}
+                          <td className="p-1 border border-slate-200 text-center bg-blue-50/30 font-mono">
+                            <input
+                              type="number"
+                              min="0"
+                              max={currentMaxScore}
+                              step="0.5"
+                              value={diagScore !== undefined ? diagScore : ''}
+                              placeholder="-"
+                              onChange={(e) =>
+                                handleSubjectScoreChange(stu.id, 'តេស្តដើមឆ្នាំ', e.target.value)
+                              }
+                              className={`w-full text-center font-mono py-1 px-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 bg-transparent text-xs font-bold ${
+                                diagScore !== undefined && diagScore < (currentMaxScore * 0.5)
+                                  ? 'text-rose-600'
+                                  : diagScore !== undefined && diagScore >= (currentMaxScore * 0.8)
+                                  ? 'text-emerald-700'
+                                  : 'text-slate-800'
+                              }`}
+                            />
+                          </td>
+
+                          {/* Month Columns */}
+                          {monthColumns.map((m) => {
+                            const sc = item.scores[m];
+                            return (
+                              <td key={m} className="p-1 border border-slate-200 text-center font-mono">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max={currentMaxScore}
+                                  step="0.5"
+                                  value={sc !== undefined ? sc : ''}
+                                  placeholder="-"
+                                  onChange={(e) => handleSubjectScoreChange(stu.id, m, e.target.value)}
+                                  className={`w-full text-center font-mono py-1 px-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 bg-transparent text-xs ${
+                                    sc !== undefined && sc < (currentMaxScore * 0.5)
+                                      ? 'text-rose-600 font-bold'
+                                      : sc !== undefined && sc >= (currentMaxScore * 0.8)
+                                      ? 'text-emerald-700 font-bold'
+                                      : 'text-slate-800'
+                                  }`}
+                                />
+                              </td>
+                            );
+                          })}
+
+                          {/* Empty spacer for + column */}
+                          <td className="p-1 border border-slate-200 bg-slate-50 no-print" />
+
+                          {/* Average */}
+                          <td className="py-2 px-2 text-center font-mono font-black text-slate-800 border border-slate-200 bg-blue-50/40">
+                            {item.enteredCount > 0 ? item.average : '-'}
+                          </td>
+
+                          {/* Mention */}
+                          <td className="py-2 px-2 text-center border border-slate-200 whitespace-nowrap">
+                            {item.enteredCount > 0 ? (
+                              <span
+                                className={`inline-block px-2 py-0.5 rounded-md text-[11px] font-bold border ${item.mention.badgeClass}`}
+                              >
+                                {item.mention.khmerLabel}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400">-</span>
+                            )}
+                          </td>
+
+                          {/* Rank */}
+                          <td className="py-2 px-2 text-center font-black border border-slate-200 bg-slate-50">
+                            {item.enteredCount === 0 ? (
+                              <span className="text-slate-400">-</span>
+                            ) : isTopRank ? (
+                              <span className="inline-flex items-center text-amber-700 font-black">
+                                🏆 {toKhmerNum(item.rank)}
+                              </span>
+                            ) : (
+                              <span className="text-slate-700">{toKhmerNum(item.rank)}</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+
+                {/* Table Footer: MoEYS & Teaching Plan Statistical Analysis */}
+                {calculatedMonthlySubjectResults.length > 0 && (
+                  <tfoot className="bg-slate-50 font-bold text-slate-700 border-t-2 border-slate-300">
+                    {/* Class Average Row */}
+                    <tr className="bg-blue-50/60 font-black text-blue-900 border-b border-slate-200">
+                      <td colSpan={4} className="py-2 px-3 text-right border border-slate-200">
+                        មធ្យមភាគថ្នាក់៖
+                      </td>
+                      <td className="py-2 px-1 text-center border border-slate-200 font-mono text-blue-800">
+                        {columnStats['តេស្តដើមឆ្នាំ']?.count > 0 ? columnStats['តេស្តដើមឆ្នាំ'].average : '-'}
+                      </td>
+                      {monthColumns.map((m) => (
+                        <td key={`avg-${m}`} className="py-2 px-1 text-center border border-slate-200 font-mono text-blue-800">
+                          {columnStats[m]?.count > 0 ? columnStats[m].average : '-'}
+                        </td>
+                      ))}
+                      <td className="no-print border border-slate-200" />
+                      <td colSpan={3} className="border border-slate-200" />
+                    </tr>
+
+                    {/* Passed Row */}
+                    <tr className="text-emerald-800 border-b border-slate-200">
+                      <td colSpan={4} className="py-1.5 px-3 text-right border border-slate-200">
+                        សិស្សជាប់ (≥៥០%)៖
+                      </td>
+                      <td className="py-1.5 px-1 text-center border border-slate-200 font-mono text-[11px]">
+                        {columnStats['តេស្តដើមឆ្នាំ']?.count > 0 ? `${columnStats['តេស្តដើមឆ្នាំ'].passedCount} (${columnStats['តេស្តដើមឆ្នាំ'].passedPct}%)` : '-'}
+                      </td>
+                      {monthColumns.map((m) => (
+                        <td key={`pass-${m}`} className="py-1.5 px-1 text-center border border-slate-200 font-mono text-[11px]">
+                          {columnStats[m]?.count > 0 ? `${columnStats[m].passedCount} (${columnStats[m].passedPct}%)` : '-'}
+                        </td>
+                      ))}
+                      <td className="no-print border border-slate-200" />
+                      <td colSpan={3} className="border border-slate-200" />
+                    </tr>
+
+                    {/* Failed Row */}
+                    <tr className="text-rose-800 border-b border-slate-200">
+                      <td colSpan={4} className="py-1.5 px-3 text-right border border-slate-200">
+                        សិស្សធ្លាក់ (&lt;៥០%)៖
+                      </td>
+                      <td className="py-1.5 px-1 text-center border border-slate-200 font-mono text-[11px]">
+                        {columnStats['តេស្តដើមឆ្នាំ']?.count > 0 ? `${columnStats['តេស្តដើមឆ្នាំ'].failedCount} (${columnStats['តេស្តដើមឆ្នាំ'].failedPct}%)` : '-'}
+                      </td>
+                      {monthColumns.map((m) => (
+                        <td key={`fail-${m}`} className="py-1.5 px-1 text-center border border-slate-200 font-mono text-[11px]">
+                          {columnStats[m]?.count > 0 ? `${columnStats[m].failedCount} (${columnStats[m].failedPct}%)` : '-'}
+                        </td>
+                      ))}
+                      <td className="no-print border border-slate-200" />
+                      <td colSpan={3} className="border border-slate-200" />
+                    </tr>
+
+                    {/* Mention A Row */}
+                    <tr className="text-emerald-700 text-[11px] border-b border-slate-200">
+                      <td colSpan={4} className="py-1 px-3 text-right border border-slate-200">
+                        និទ្ទេស A (≥៩០%)៖
+                      </td>
+                      <td className="py-1 px-1 text-center border border-slate-200 font-mono">
+                        {columnStats['តេស្តដើមឆ្នាំ']?.count > 0 ? columnStats['តេស្តដើមឆ្នាំ'].counts.A : '-'}
+                      </td>
+                      {monthColumns.map((m) => (
+                        <td key={`a-${m}`} className="py-1 px-1 text-center border border-slate-200 font-mono">
+                          {columnStats[m]?.count > 0 ? columnStats[m].counts.A : '-'}
+                        </td>
+                      ))}
+                      <td className="no-print border border-slate-200" />
+                      <td colSpan={3} className="border border-slate-200" />
+                    </tr>
+
+                    {/* Mention B Row */}
+                    <tr className="text-blue-700 text-[11px] border-b border-slate-200">
+                      <td colSpan={4} className="py-1 px-3 text-right border border-slate-200">
+                        និទ្ទេស B (៨០-៨៩%)៖
+                      </td>
+                      <td className="py-1 px-1 text-center border border-slate-200 font-mono">
+                        {columnStats['តេស្តដើមឆ្នាំ']?.count > 0 ? columnStats['តេស្តដើមឆ្នាំ'].counts.B : '-'}
+                      </td>
+                      {monthColumns.map((m) => (
+                        <td key={`b-${m}`} className="py-1 px-1 text-center border border-slate-200 font-mono">
+                          {columnStats[m]?.count > 0 ? columnStats[m].counts.B : '-'}
+                        </td>
+                      ))}
+                      <td className="no-print border border-slate-200" />
+                      <td colSpan={3} className="border border-slate-200" />
+                    </tr>
+
+                    {/* Mention C Row */}
+                    <tr className="text-indigo-700 text-[11px] border-b border-slate-200">
+                      <td colSpan={4} className="py-1 px-3 text-right border border-slate-200">
+                        និទ្ទេស C (៧០-៧៩%)៖
+                      </td>
+                      <td className="py-1 px-1 text-center border border-slate-200 font-mono">
+                        {columnStats['តេស្តដើមឆ្នាំ']?.count > 0 ? columnStats['តេស្តដើមឆ្នាំ'].counts.C : '-'}
+                      </td>
+                      {monthColumns.map((m) => (
+                        <td key={`c-${m}`} className="py-1 px-1 text-center border border-slate-200 font-mono">
+                          {columnStats[m]?.count > 0 ? columnStats[m].counts.C : '-'}
+                        </td>
+                      ))}
+                      <td className="no-print border border-slate-200" />
+                      <td colSpan={3} className="border border-slate-200" />
+                    </tr>
+
+                    {/* Mention D Row */}
+                    <tr className="text-amber-700 text-[11px] border-b border-slate-200">
+                      <td colSpan={4} className="py-1 px-3 text-right border border-slate-200">
+                        និទ្ទេស D (៦០-៦៩%)៖
+                      </td>
+                      <td className="py-1 px-1 text-center border border-slate-200 font-mono">
+                        {columnStats['តេស្តដើមឆ្នាំ']?.count > 0 ? columnStats['តេស្តដើមឆ្នាំ'].counts.D : '-'}
+                      </td>
+                      {monthColumns.map((m) => (
+                        <td key={`d-${m}`} className="py-1 px-1 text-center border border-slate-200 font-mono">
+                          {columnStats[m]?.count > 0 ? columnStats[m].counts.D : '-'}
+                        </td>
+                      ))}
+                      <td className="no-print border border-slate-200" />
+                      <td colSpan={3} className="border border-slate-200" />
+                    </tr>
+
+                    {/* Mention E Row */}
+                    <tr className="text-orange-700 text-[11px] border-b border-slate-200">
+                      <td colSpan={4} className="py-1 px-3 text-right border border-slate-200">
+                        និទ្ទេស E (៥០-៥៩%)៖
+                      </td>
+                      <td className="py-1 px-1 text-center border border-slate-200 font-mono">
+                        {columnStats['តេស្តដើមឆ្នាំ']?.count > 0 ? columnStats['តេស្តដើមឆ្នាំ'].counts.E : '-'}
+                      </td>
+                      {monthColumns.map((m) => (
+                        <td key={`e-${m}`} className="py-1 px-1 text-center border border-slate-200 font-mono">
+                          {columnStats[m]?.count > 0 ? columnStats[m].counts.E : '-'}
+                        </td>
+                      ))}
+                      <td className="no-print border border-slate-200" />
+                      <td colSpan={3} className="border border-slate-200" />
+                    </tr>
+
+                    {/* Mention F Row */}
+                    <tr className="text-rose-700 text-[11px]">
+                      <td colSpan={4} className="py-1 px-3 text-right border border-slate-200">
+                        និទ្ទេស F (&lt;៥០%)៖
+                      </td>
+                      <td className="py-1 px-1 text-center border border-slate-200 font-mono">
+                        {columnStats['តេស្តដើមឆ្នាំ']?.count > 0 ? columnStats['តេស្តដើមឆ្នាំ'].counts.F : '-'}
+                      </td>
+                      {monthColumns.map((m) => (
+                        <td key={`f-${m}`} className="py-1 px-1 text-center border border-slate-200 font-mono">
+                          {columnStats[m]?.count > 0 ? columnStats[m].counts.F : '-'}
+                        </td>
+                      ))}
+                      <td className="no-print border border-slate-200" />
+                      <td colSpan={3} className="border border-slate-200" />
+                    </tr>
+                  </tfoot>
+                )}
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* VIEW MODE 2: Continuous Assessment (ពិន្ទុវត្តមាន [-2] + ១៥នាទី + App + សរុប ៣០%) */}
       {viewMode === 'continuous' && (

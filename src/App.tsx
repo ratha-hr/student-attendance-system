@@ -249,6 +249,7 @@ export function App() {
           onOpenSettings={() => setIsSettingsOpen(true)}
           onOpenManageClasses={() => setIsManageClassesOpen(true)}
           onOpenSync={() => setIsSyncModalOpen(true)}
+          hideClassSelector={currentTab === 'teaching-plan'}
         />
 
         {/* Content Body - Full Width Screen Layout */}
@@ -319,7 +320,7 @@ export function App() {
               onSelectClass={setSelectedClassId}
               onRefresh={handleRefresh}
               onOpenGradeConfig={() => setCurrentTab('grade-config')}
-              initialViewMode="subjects"
+              initialViewMode="monthly-subject"
             />
           )}
 

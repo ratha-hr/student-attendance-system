@@ -71,6 +71,28 @@ export function generateMonthSequence(startMonthName: string): {
   };
 }
 
+export function calculateBalancedPercentages(counts: number[], total: number): number[] {
+  if (total <= 0) return counts.map(() => 0);
+  const sumCounts = counts.reduce((a, b) => a + b, 0);
+  if (sumCounts === 0) return counts.map(() => 0);
+
+  // Unrounded percentages
+  const rawPcts = counts.map((c) => Math.round((c / total) * 100));
+
+  // If the sum of counts matches total, auto-balance so percentage sum is exactly 100%
+  if (sumCounts === total) {
+    return balancePctList(rawPcts);
+  }
+
+  // If sum of counts > 0 and raw percentage sum is slightly off (e.g. 99% or 101%)
+  const pctSum = rawPcts.reduce((a, b) => a + b, 0);
+  if (pctSum > 0 && Math.abs(100 - pctSum) <= 2 && sumCounts === total) {
+    return balancePctList(rawPcts);
+  }
+
+  return rawPcts;
+}
+
 export function clearPlanAndActualData(plan: TeachingPlan): TeachingPlan {
   const clearedRows = plan.rows.map((row) => {
     const newMonthly: Record<
@@ -86,6 +108,8 @@ export function clearPlanAndActualData(plan: TeachingPlan): TeachingPlan {
     });
     return {
       ...row,
+      baselineCount: 0,
+      baselinePct: 0,
       monthly: newMonthly,
       yearEndActualCount: 0,
       yearEndActualPct: 0,
@@ -101,9 +125,13 @@ export function clearPlanAndActualData(plan: TeachingPlan): TeachingPlan {
 
 export function isOldDummyPlan(plan: TeachingPlan): boolean {
   const rowA = plan.rows.find((r) => r.grade === 'A');
-  if (!rowA || !rowA.monthly) return false;
+  if (!rowA) return false;
   // If dec or jan actualCount has the initial sample numbers 4 or 26
-  return rowA.monthly.dec?.actualCount === 4 || rowA.monthly.jan?.actualCount === 26;
+  const hasDummyMonthly = rowA.monthly?.dec?.actualCount === 4 || rowA.monthly?.jan?.actualCount === 26;
+  // If baseline count has old mock numbers (e.g. A=3 or 1, or total baseline counts = 23 or 61 while monthly is 0)
+  const baseCountSum = plan.rows.reduce((sum, r) => sum + (r.baselineCount || 0), 0);
+  const hasDummyBaseline = baseCountSum === 61 || baseCountSum === 23;
+  return hasDummyMonthly || hasDummyBaseline;
 }
 
 export const ALL_MONTH_KEYS = [
@@ -263,43 +291,43 @@ export function createDefaultTeachingPlan(
   const defaultRows: TeachingPlanGradeRow[] = [
     {
       grade: 'A',
-      baselineCount: 3,
-      baselinePct: 5,
+      baselineCount: 0,
+      baselinePct: 0,
       monthly: { ...emptyMonthly },
       yearEndTargetPct: 8,
     },
     {
       grade: 'B',
-      baselineCount: 4,
-      baselinePct: 7,
+      baselineCount: 0,
+      baselinePct: 0,
       monthly: { ...emptyMonthly },
       yearEndTargetPct: 15,
     },
     {
       grade: 'C',
-      baselineCount: 4,
-      baselinePct: 7,
+      baselineCount: 0,
+      baselinePct: 0,
       monthly: { ...emptyMonthly },
       yearEndTargetPct: 17,
     },
     {
       grade: 'D',
-      baselineCount: 8,
-      baselinePct: 13,
+      baselineCount: 0,
+      baselinePct: 0,
       monthly: { ...emptyMonthly },
       yearEndTargetPct: 30,
     },
     {
       grade: 'E',
-      baselineCount: 16,
-      baselinePct: 26,
+      baselineCount: 0,
+      baselinePct: 0,
       monthly: { ...emptyMonthly },
       yearEndTargetPct: 20,
     },
     {
       grade: 'F',
-      baselineCount: 26,
-      baselinePct: 42,
+      baselineCount: 0,
+      baselinePct: 0,
       monthly: { ...emptyMonthly },
       yearEndTargetPct: 10,
     },
