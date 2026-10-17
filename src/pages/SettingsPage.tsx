@@ -130,28 +130,37 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ settings, onRefresh 
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-extrabold text-slate-800 flex items-center">
-            <Settings className="w-6 h-6 text-blue-600 mr-2" />
-            ការកំណត់ & Backup ទិន្នន័យ
-          </h2>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            គ្រប់គ្រងព័ត៌មានគ្រូបង្រៀន សាលារៀន និងការរក្សាទុកទិន្នន័យ
-          </p>
-        </div>
-
-        {savedSuccess && (
-          <div className="flex items-center px-3 py-1.5 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-xl animate-fade-in">
-            <CheckCircle2 className="w-4 h-4 mr-1.5 text-emerald-600" />
-            បានរក្សាទុកជោគជ័យ!
-          </div>
-        )}
-      </div>
-
       {/* Main Settings Form */}
       <form onSubmit={handleSaveSettings} className="space-y-6">
+        {/* Header with Save Button right on top */}
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 sticky top-0 z-20 backdrop-blur-xs">
+          <div>
+            <h2 className="text-lg sm:text-xl font-extrabold text-slate-800 flex items-center">
+              <Settings className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 mr-2 shrink-0" />
+              <span>ការកំណត់ & Backup ទិន្នន័យ</span>
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-500 mt-1">
+              គ្រប់គ្រងព័ត៌មានគ្រូបង្រៀន សាលារៀន និងការរក្សាទុកទិន្នន័យ
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3 shrink-0">
+            {savedSuccess && (
+              <div className="flex items-center px-3 py-1.5 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-xl animate-fade-in">
+                <CheckCircle2 className="w-4 h-4 mr-1.5 text-emerald-600" />
+                <span>បានរក្សាទុកជោគជ័យ!</span>
+              </div>
+            )}
+            <button
+              type="submit"
+              className="inline-flex items-center px-6 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-blue-500/20 transition-all cursor-pointer"
+            >
+              <Save className="w-4 h-4 mr-2" />
+              <span>រក្សាទុកការកំណត់</span>
+            </button>
+          </div>
+        </div>
+
         {/* Card 1: Teacher Profile */}
         <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
           <h3 className="font-bold text-base text-slate-800 flex items-center border-b border-slate-100 pb-3">
@@ -439,17 +448,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ settings, onRefresh 
             </div>
           </div>
         </div>
-
-        {/* Save button */}
-        <div className="flex justify-end">
-          <button
-            type="submit"
-            className="inline-flex items-center px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-blue-500/20 transition-all cursor-pointer"
-          >
-            <Save className="w-4 h-4 mr-2" />
-            រក្សាទុកការកំណត់
-          </button>
-        </div>
       </form>
 
       {/* Card 4: Backup & Restore & Reset Data */}
@@ -465,6 +463,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ settings, onRefresh 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
           {/* Backup Button */}
           <button
+            type="button"
             onClick={handleBackupDownload}
             className="flex items-center justify-center p-4 rounded-xl border border-blue-200 bg-blue-50/50 hover:bg-blue-100/60 text-blue-700 font-bold text-xs transition-colors cursor-pointer"
           >
