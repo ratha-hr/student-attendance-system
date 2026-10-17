@@ -138,6 +138,15 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
       .sort((a, b) => a.rollNo - b.rollNo);
   }, [students, currentClass]);
 
+  // Sequential roll number starting from 1 (ដើម្បីឱ្យដូចផ្ទាំងគ្រូ ចាប់ផ្តើមពីលេខរៀងទី ១)
+  const classRollNoMap = useMemo(() => {
+    const map = new Map<string, number>();
+    classStudents.forEach((stu, idx) => {
+      map.set(stu.id, idx + 1);
+    });
+    return map;
+  }, [classStudents]);
+
   // Decoded attendance map from URL payload (if shared via link with &att=1P.2L.3A...)
   const urlPayloadMap = useMemo(() => {
     let payload = initialAttendancePayload;
@@ -164,8 +173,9 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
 
     // 2. If URL payload exists, overlay records for students without Dexie records
     if (urlPayloadMap.size > 0 && classStudents.length > 0) {
-      classStudents.forEach((stu) => {
-        const payloadItem = urlPayloadMap.get(stu.rollNo);
+      classStudents.forEach((stu, idx) => {
+        const classRoll = idx + 1;
+        const payloadItem = urlPayloadMap.get(classRoll) || urlPayloadMap.get(stu.rollNo);
         if (payloadItem && !map.has(stu.id)) {
           map.set(stu.id, {
             id: `payload-${stu.id}`,
@@ -218,15 +228,17 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
       else if (statusFilter === 'unmarked') matchesStatus = !status;
 
       const q = searchQuery.trim().toLowerCase();
+      const classRoll = classRollNoMap.get(stu.id) || 0;
       const matchesSearch =
         !q ||
         stu.nameKh.toLowerCase().includes(q) ||
         stu.studentCode.toLowerCase().includes(q) ||
+        String(classRoll).includes(q) ||
         String(stu.rollNo).includes(q);
 
       return matchesStatus && matchesSearch;
     });
-  }, [classStudents, dailyRecordMap, statusFilter, searchQuery]);
+  }, [classStudents, classRollNoMap, dailyRecordMap, statusFilter, searchQuery]);
 
   // Handle PIN verification to unlock Edit mode with brute-force defense
   const handleVerifyPin = (e: React.FormEvent) => {
@@ -711,11 +723,25 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
                   }`}
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    {/* Left: Roll No + Student Name + Gender + Code */}
-                    <div className="flex items-center space-x-2.5 min-w-0">
-                      <span className="w-7 h-7 rounded-lg bg-slate-100 text-slate-800 font-mono font-black text-xs flex items-center justify-center shrink-0">
-                        {stu.rollNo || index + 1}
+                    {/* Left: Roll No (1, 2, 3...) + Student Code (STU-020) + Student Name + Gender */}
+                    <div className="flex items-center space-x-2 sm:space-x-2.5 min-w-0">
+                      {/* លេខរៀង ចាប់ផ្តើមពីលេខរៀងទី ១ (ដូចផ្ទាំងគ្រូ) */}
+                      <span
+                        className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-slate-100 text-slate-800 font-mono font-black text-xs sm:text-sm flex items-center justify-center shrink-0 border border-slate-200"
+                        title="លេខរៀងសិស្ស"
+                      >
+                        {classRollNoMap.get(stu.id) || index + 1}
                       </span>
+
+                      {/* អត្តលេខសិស្ស (ដូចផ្ទាំងគ្រូ) */}
+                      {stu.studentCode && (
+                        <span
+                          className="px-2 py-1 rounded-lg bg-slate-100 text-slate-700 font-mono font-bold text-xs border border-slate-200 shrink-0"
+                          title="អត្តលេខសិស្ស"
+                        >
+                          {fromKhmerNum(stu.studentCode)}
+                        </span>
+                      )}
 
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
@@ -723,7 +749,7 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
                             {stu.nameKh}
                           </span>
                           <span
-                            className={`px-1 py-0.2 rounded text-[9px] font-bold ${
+                            className={`px-1.5 py-0.2 rounded text-[9px] font-bold shrink-0 ${
                               stu.gender === 'ស្រី'
                                 ? 'bg-pink-100 text-pink-700'
                                 : 'bg-blue-100 text-blue-700'
@@ -732,9 +758,6 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
                             {stu.gender}
                           </span>
                         </div>
-                        <p className="text-[10px] text-slate-400 font-mono">
-                          {fromKhmerNum(stu.studentCode)}
-                        </p>
                       </div>
                     </div>
 

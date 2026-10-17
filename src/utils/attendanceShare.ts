@@ -28,7 +28,7 @@ export function encodeAttendanceForUrl(
   const recordMap = new Map(sessionRecords.map((r) => [r.studentId, r]));
 
   const chunks: string[] = [];
-  students.forEach((stu) => {
+  students.forEach((stu, idx) => {
     const rec = recordMap.get(stu.id);
     if (rec && rec.status) {
       const code =
@@ -42,10 +42,11 @@ export function encodeAttendanceForUrl(
           ? 'T'
           : '';
       if (code) {
+        const roll = idx + 1;
         if (rec.reason && rec.reason.trim()) {
-          chunks.push(`${stu.rollNo}${code}~${encodeURIComponent(rec.reason.trim())}`);
+          chunks.push(`${roll}${code}~${encodeURIComponent(rec.reason.trim())}`);
         } else {
-          chunks.push(`${stu.rollNo}${code}`);
+          chunks.push(`${roll}${code}`);
         }
       }
     }
