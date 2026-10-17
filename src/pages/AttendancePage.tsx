@@ -82,6 +82,9 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
   const [isTelegramOpen, setIsTelegramOpen] = useState(false);
   const [isStudentShareOpen, setIsStudentShareOpen] = useState(false);
   const [isSavedFeedback, setIsSavedFeedback] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [lastSavedTime, setLastSavedTime] = useState<string>('');
+  const [saveSuccessMessage, setSaveSuccessMessage] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'present' | 'permission' | 'absent' | 'late' | 'notRecorded'>('all');
   const [soundOn, setSoundOn] = useState(true);
 
@@ -247,8 +250,12 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
     });
 
     await db.attendance.bulkPut(recordsToPut);
+    const now = new Date();
+    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+    setLastSavedTime(timeStr);
+    setSaveSuccessMessage(`✨ បានកត់វត្តមានគ្រប់គ្នា (${toKhmerNum(classStudents.length)} នាក់)!`);
     setIsSavedFeedback(true);
-    setTimeout(() => setIsSavedFeedback(false), 2000);
+    setTimeout(() => setIsSavedFeedback(false), 3000);
     onRefresh();
   };
 
@@ -271,6 +278,62 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
 
     return { present, permission, absent, late, notRecorded, total: classStudents.length };
   }, [classStudents, dailyRecordMap]);
+
+  // Explicit Save Attendance Handler (រក្សាទុកវត្តមាន)
+  const handleSaveAttendance = async () => {
+    setIsSaving(true);
+    await pushSnapshot(
+      isAllClasses
+        ? 'រក្សាទុកវត្តមានសិស្សគ្រប់ថ្នាក់'
+        : `រក្សាទុកវត្តមាន ថ្នាក់ ${currentClass?.name || ''}`
+    );
+
+    const timeSlotStr = `${checkInTime} - ${checkOutTime}`;
+    const recordsToPut: AttendanceRecord[] = [];
+
+    classStudents.forEach((s) => {
+      const existing = dailyRecordMap.get(s.id);
+      if (existing) {
+        recordsToPut.push({
+          ...existing,
+          timeSlot: timeSlotStr,
+        });
+      }
+    });
+
+    if (recordsToPut.length > 0) {
+      await db.attendance.bulkPut(recordsToPut);
+    }
+
+    if (soundOn) soundEffects.playSuccess();
+    const now = new Date();
+    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+    setLastSavedTime(timeStr);
+
+    const recordedCount = dailyStats.total - dailyStats.notRecorded;
+    if (recordedCount > 0) {
+      setSaveSuccessMessage(`💾 បានរក្សាទុកវត្តមាន (${toKhmerNum(recordedCount)}/${toKhmerNum(dailyStats.total)} នាក់) ដោយជោគជ័យ!`);
+    } else {
+      setSaveSuccessMessage('💾 បានរក្សាទុកទិន្នន័យវត្តមានរួចរាល់!');
+    }
+
+    setIsSavedFeedback(true);
+    setTimeout(() => setIsSavedFeedback(false), 3000);
+    setIsSaving(false);
+    onRefresh();
+  };
+
+  // Global Ctrl+S keyboard shortcut to save attendance
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        handleSaveAttendance();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [classStudents, dailyRecordMap, checkInTime, checkOutTime, selectedDate, selectedSession, soundOn, isAllClasses, currentClass, dailyStats]);
 
   return (
     <div className="space-y-6">
@@ -319,14 +382,28 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
               </span>
             )}
             {isSavedFeedback && (
-              <span className="inline-flex items-center text-xs sm:text-sm text-emerald-600 font-bold bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-300 animate-pulse">
-                ✨ បានកត់វត្តមានគ្រប់គ្នា!
+              <span className="inline-flex items-center text-xs sm:text-sm text-emerald-800 font-bold bg-emerald-50 px-3 py-1 rounded-xl border border-emerald-300 shadow-xs animate-bounce">
+                <CheckCircle className="w-4 h-4 mr-1.5 text-emerald-600" />
+                {saveSuccessMessage || 'បានរក្សាទុកវត្តមានដោយជោគជ័យ!'} {lastSavedTime && `(ម៉ោង ${lastSavedTime})`}
               </span>
             )}
           </div>
 
           {/* Right: Primary Actions */}
           <div className="flex flex-wrap items-center gap-2.5">
+            {/* 1. Explicit Save Attendance Button */}
+            <button
+              type="button"
+              onClick={handleSaveAttendance}
+              disabled={isSaving}
+              className="inline-flex items-center px-4 py-2 bg-linear-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 active:scale-95 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md hover:shadow-lg transition-all cursor-pointer border border-blue-400/30 shrink-0"
+              title="ចុចដើម្បីរក្សាទុកវត្តមាន (Ctrl+S)"
+            >
+              <Save className="w-4 h-4 mr-1.5 text-amber-300" />
+              <span>{isSaving ? 'កំពុងរក្សាទុក...' : 'រក្សាទុកវត្តមាន'}</span>
+            </button>
+
+            {/* 2. Mark All Present Button */}
             <button
               onClick={handleMarkAllPresent}
               className="inline-flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-xs transition-colors cursor-pointer"
@@ -808,6 +885,25 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
         checkOutTime={checkOutTime}
         settings={settings}
       />
+
+      {/* Floating Quick Save Button on Bottom-Right */}
+      <div className="fixed bottom-20 lg:bottom-6 right-4 sm:right-6 z-30 no-print animate-fade-in">
+        <button
+          type="button"
+          onClick={handleSaveAttendance}
+          disabled={isSaving}
+          className="inline-flex items-center px-4 py-2.5 bg-linear-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 text-white font-bold text-xs sm:text-sm rounded-full shadow-2xl hover:scale-105 active:scale-95 border-2 border-white/50 transition-all cursor-pointer group"
+          title="ចុចដើម្បីរក្សាទុកវត្តមាន (Ctrl+S)"
+        >
+          <Save className="w-4 h-4 mr-1.5 text-amber-300 group-hover:rotate-12 transition-transform" />
+          <span>{isSaving ? 'កំពុងរក្សាទុក...' : 'រក្សាទុកវត្តមាន'}</span>
+          {lastSavedTime && (
+            <span className="ml-1.5 pl-1.5 border-l border-white/30 text-[11px] text-blue-100 font-mono">
+              {lastSavedTime}
+            </span>
+          )}
+        </button>
+      </div>
     </div>
   );
 };
