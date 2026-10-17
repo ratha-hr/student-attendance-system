@@ -198,27 +198,112 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
   return (
     <div className="space-y-4 sm:space-y-5 animate-fade-in">
-      {/* Modern Hero Welcome Banner with School Branding & Integrated KPIs (រូបទី២ លើកដាក់ជាមួយរបារខៀវ) */}
-      <div className="bg-linear-to-r from-blue-900 via-indigo-900 to-slate-900 text-white p-4 sm:p-5 rounded-3xl shadow-xl relative overflow-hidden space-y-3.5">
+      {/* Modern Hero KPI Bar - Compact Single Row (ដកផ្នែកក្បាលលើចេញ និងរៀបតែមួយជួរ) */}
+      <div className="bg-linear-to-r from-blue-900 via-indigo-900 to-slate-900 text-white p-2.5 sm:p-3 rounded-2xl sm:rounded-3xl shadow-xl relative overflow-hidden">
         <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-linear-to-l from-white/10 to-transparent pointer-events-none" />
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="inline-flex items-center space-x-2 px-3 py-0.5 bg-white/10 backdrop-blur-md rounded-full text-xs text-blue-200 border border-white/10">
-              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-              <span>ប្រព័ន្ធគ្រប់គ្រងសិស្ស & វត្តមានជំនាន់ថ្មី v2.0</span>
+        <div className="relative z-10 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-2.5">
+          {/* KPI 1: សិស្សសរុប */}
+          <div
+            onClick={() => onNavigateTab('students')}
+            className="flex items-center space-x-2.5 px-3 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-2xl border border-white/15 transition-all cursor-pointer group"
+            title="ចុចដើម្បីមើលបញ្ជីសិស្ស"
+          >
+            <div className="w-9 h-9 rounded-xl bg-blue-500/30 text-blue-200 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <Users className="w-4 h-4 text-blue-200" />
             </div>
-            <h1 className="font-moul text-base sm:text-2xl text-white tracking-wide">
-              {settings?.schoolName || 'វិទ្យាល័យ ហ៊ុន សែន កំពង់ត្រឡាច'}
-            </h1>
-            <p className="text-xs sm:text-sm text-blue-100 max-w-xl">
-              គ្រូបង្រៀន៖ <span className="font-bold text-white">{settings?.teacherName || 'ហ៊ុន រដ្ឋា'}</span> (មុខវិជ្ជា {settings?.specialtySubject || 'គណិតវិទ្យា'}) | ឆ្នាំសិក្សា {settings?.academicYear || '២០២៤-២០២៥'}
-            </p>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-baseline space-x-1.5 flex-wrap">
+                <span className="text-xs font-bold text-blue-200 whitespace-nowrap">សិស្សសរុប៖</span>
+                <span className="text-base sm:text-lg font-black text-white">
+                  {toKhmerNum(stats.totalStudents)}
+                </span>
+                <span className="text-xs text-blue-300">នាក់</span>
+              </div>
+              <p className="text-xs text-blue-100 font-medium truncate">
+                ស្រី <strong className="text-pink-300">{toKhmerNum(stats.femaleStudents)}</strong> • ប្រុស <strong className="text-blue-300">{toKhmerNum(stats.maleStudents)}</strong>
+              </p>
+            </div>
           </div>
 
-          {/* Overall Attendance Rate Circular Ring Gauge */}
-          <div className="flex items-center space-x-3 bg-white/10 backdrop-blur-md p-3 rounded-2xl border border-white/10 shrink-0 self-start md:self-auto">
-            <div className="relative w-14 h-14 flex items-center justify-center">
-              <svg className="w-14 h-14 transform -rotate-90" viewBox="0 0 36 36">
+          {/* KPI 2: ថ្នាក់រៀន */}
+          <div
+            onClick={() => onNavigateTab('timetable-class')}
+            className="flex items-center space-x-2.5 px-3 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-2xl border border-white/15 transition-all cursor-pointer group"
+            title="ចុចដើម្បីមើលថ្នាក់រៀន"
+          >
+            <div className="w-9 h-9 rounded-xl bg-purple-500/30 text-purple-200 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <GraduationCap className="w-4 h-4 text-purple-200" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-baseline space-x-1.5 flex-wrap">
+                <span className="text-xs font-bold text-purple-200 whitespace-nowrap">ថ្នាក់រៀន៖</span>
+                <span className="text-base sm:text-lg font-black text-purple-200">
+                  {toKhmerNum(activeClasses.length)}
+                </span>
+                <span className="text-xs text-purple-300">ថ្នាក់</span>
+              </div>
+              <p className="text-xs text-purple-100 font-medium truncate">
+                {activeClass ? activeClass.name : 'ថ្នាក់ទាំងអស់'}
+              </p>
+            </div>
+          </div>
+
+          {/* KPI 3: វត្តមានថ្ងៃនេះ */}
+          <div
+            onClick={() => onNavigateTab('attendance')}
+            className="flex items-center space-x-2.5 px-3 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-2xl border border-white/15 transition-all cursor-pointer group"
+            title="ចុចដើម្បីកត់វត្តមាន"
+          >
+            <div className="w-9 h-9 rounded-xl bg-emerald-500/30 text-emerald-200 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-baseline space-x-1.5 flex-wrap">
+                <span className="text-xs font-bold text-emerald-200 whitespace-nowrap">
+                  {selectedDate === today ? 'វត្តមានថ្ងៃនេះ៖' : 'វត្តមានសរុប៖'}
+                </span>
+                <span className="text-base sm:text-lg font-black text-emerald-300">
+                  {toKhmerNum(stats.presentToday + stats.lateToday)}
+                </span>
+                <span className="text-xs text-emerald-200/80">នាក់</span>
+              </div>
+              <p className="text-xs text-emerald-100 font-medium truncate">
+                ច្បាប់ <strong className="text-amber-300">{toKhmerNum(stats.permissionToday)}</strong> • យឺត <strong className="text-blue-300">{toKhmerNum(stats.lateToday)}</strong>
+              </p>
+            </div>
+          </div>
+
+          {/* KPI 4: អវត្តមានឥតច្បាប់ */}
+          <div
+            onClick={() => onNavigateTab('attendance')}
+            className="flex items-center space-x-2.5 px-3 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-2xl border border-white/15 transition-all cursor-pointer group"
+            title="ចុចដើម្បីពិនិត្យអវត្តមាន"
+          >
+            <div className="w-9 h-9 rounded-xl bg-rose-500/30 text-rose-200 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <AlertTriangle className="w-4 h-4 text-rose-300" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-baseline space-x-1.5 flex-wrap">
+                <span className="text-xs font-bold text-rose-200 whitespace-nowrap">អវត្តមានឥតច្បាប់៖</span>
+                <span className="text-base sm:text-lg font-black text-rose-300">
+                  {toKhmerNum(stats.absentToday)}
+                </span>
+                <span className="text-xs text-rose-200/80">នាក់</span>
+              </div>
+              <p className="text-xs text-rose-100 font-medium truncate">
+                {stats.absentToday > 0 ? 'ទាមទារតាមដាន' : 'គ្មានសិស្សអវត្តមាន'}
+              </p>
+            </div>
+          </div>
+
+          {/* KPI 5: អត្រាវត្តមានសរុប Circular Ring Gauge Card */}
+          <div
+            onClick={() => onNavigateTab('attendance')}
+            className="flex items-center space-x-2.5 px-3 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-2xl border border-white/15 transition-all cursor-pointer group"
+            title="ចុចដើម្បីពិនិត្យអត្រាវត្តមាន"
+          >
+            <div className="relative w-10 h-10 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <svg className="w-10 h-10 transform -rotate-90" viewBox="0 0 36 36">
                 <path
                   className="text-white/20"
                   strokeWidth="3.5"
@@ -236,114 +321,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                 />
               </svg>
-              <span className="absolute font-black text-xs sm:text-sm text-white">
+              <span className="absolute font-black text-[11px] text-white">
                 {toKhmerNum(stats.rate)}%
               </span>
             </div>
-            <div>
-              <p className="text-xs font-bold text-blue-200">អត្រាវត្តមានសរុប</p>
-              <p className="text-[11px] text-emerald-300 font-semibold mt-0.5">
-                ● ស្ថិតក្នុងកម្រិតល្អប្រសើរ
+            <div className="min-w-0 flex-1">
+              <div className="flex items-baseline space-x-1.5 flex-wrap">
+                <span className="text-xs font-bold text-blue-200 whitespace-nowrap">អត្រាវត្តមានសរុប</span>
+              </div>
+              <p className="text-[11px] text-emerald-300 font-semibold truncate mt-0.5">
+                ● {stats.rate >= 85 ? 'កម្រិតល្អប្រសើរ' : stats.rate >= 70 ? 'កម្រិតមធ្យម' : 'កម្រិតប្រុងប្រយ័ត្ន'}
               </p>
-            </div>
-          </div>
-        </div>
-
-        {/* 🌟 រូបទី២៖ លើកផ្នែកស្ថិតិសង្ខេបដាក់ក្នុងរបារខៀវ (Integrated Glassmorphism KPI Grid) */}
-        <div className="relative z-10 pt-3 border-t border-white/15">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-2.5">
-            {/* KPI 1: សិស្សសរុប */}
-            <div
-              onClick={() => onNavigateTab('students')}
-              className="flex items-center space-x-2.5 px-3 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-2xl border border-white/15 transition-all cursor-pointer group"
-              title="ចុចដើម្បីមើលបញ្ជីសិស្ស"
-            >
-              <div className="w-9 h-9 rounded-xl bg-blue-500/30 text-blue-200 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                <Users className="w-4 h-4 text-blue-200" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-baseline space-x-1.5 flex-wrap">
-                  <span className="text-xs font-bold text-blue-200 whitespace-nowrap">សិស្សសរុប៖</span>
-                  <span className="text-base sm:text-lg font-black text-white">
-                    {toKhmerNum(stats.totalStudents)}
-                  </span>
-                  <span className="text-xs text-blue-300">នាក់</span>
-                </div>
-                <p className="text-xs text-blue-100 font-medium">
-                  ស្រី <strong className="text-pink-300">{toKhmerNum(stats.femaleStudents)}</strong> • ប្រុស <strong className="text-blue-300">{toKhmerNum(stats.maleStudents)}</strong>
-                </p>
-              </div>
-            </div>
-
-            {/* KPI 2: ថ្នាក់រៀន */}
-            <div
-              onClick={() => onNavigateTab('timetable-class')}
-              className="flex items-center space-x-2.5 px-3 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-2xl border border-white/15 transition-all cursor-pointer group"
-              title="ចុចដើម្បីមើលថ្នាក់រៀន"
-            >
-              <div className="w-9 h-9 rounded-xl bg-purple-500/30 text-purple-200 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                <GraduationCap className="w-4 h-4 text-purple-200" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-baseline space-x-1.5 flex-wrap">
-                  <span className="text-xs font-bold text-blue-200 whitespace-nowrap">ថ្នាក់រៀន៖</span>
-                  <span className="text-base sm:text-lg font-black text-purple-200">
-                    {toKhmerNum(activeClasses.length)}
-                  </span>
-                  <span className="text-xs text-blue-300">ថ្នាក់</span>
-                </div>
-                <p className="text-xs text-purple-100 font-medium truncate">
-                  {activeClass ? activeClass.name : 'ថ្នាក់ទី ៧ ដល់ ទី ១២'}
-                </p>
-              </div>
-            </div>
-
-            {/* KPI 3: វត្តមានថ្ងៃនេះ */}
-            <div
-              onClick={() => onNavigateTab('attendance')}
-              className="flex items-center space-x-2.5 px-3 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-2xl border border-white/15 transition-all cursor-pointer group"
-              title="ចុចដើម្បីកត់វត្តមាន"
-            >
-              <div className="w-9 h-9 rounded-xl bg-emerald-500/30 text-emerald-200 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                <CheckCircle2 className="w-4 h-4 text-emerald-300" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-baseline space-x-1.5 flex-wrap">
-                  <span className="text-xs font-bold text-emerald-200 whitespace-nowrap">
-                    {selectedDate === today ? 'វត្តមានថ្ងៃនេះ៖' : 'វត្តមានសរុប៖'}
-                  </span>
-                  <span className="text-base sm:text-lg font-black text-emerald-300">
-                    {toKhmerNum(stats.presentToday + stats.lateToday)}
-                  </span>
-                  <span className="text-xs text-emerald-200/80">នាក់</span>
-                </div>
-                <p className="text-xs text-emerald-100 font-medium">
-                  ច្បាប់ <strong className="text-amber-300">{toKhmerNum(stats.permissionToday)}</strong> • យឺត <strong className="text-blue-300">{toKhmerNum(stats.lateToday)}</strong>
-                </p>
-              </div>
-            </div>
-
-            {/* KPI 4: អវត្តមានឥតច្បាប់ */}
-            <div
-              onClick={() => onNavigateTab('attendance')}
-              className="flex items-center space-x-2.5 px-3 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-2xl border border-white/15 transition-all cursor-pointer group"
-              title="ចុចដើម្បីពិនិត្យអវត្តមាន"
-            >
-              <div className="w-9 h-9 rounded-xl bg-rose-500/30 text-rose-200 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                <AlertTriangle className="w-4 h-4 text-rose-300" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-baseline space-x-1.5 flex-wrap">
-                  <span className="text-xs font-bold text-rose-200 whitespace-nowrap">អវត្តមានឥតច្បាប់៖</span>
-                  <span className="text-base sm:text-lg font-black text-rose-300">
-                    {toKhmerNum(stats.absentToday)}
-                  </span>
-                  <span className="text-xs text-rose-200/80">នាក់</span>
-                </div>
-                <p className="text-xs text-rose-100 font-medium truncate">
-                  {stats.absentToday > 0 ? 'ទាមទារតាមដានមូលហេតុ' : 'គ្មានសិស្សអវត្តមាន'}
-                </p>
-              </div>
             </div>
           </div>
         </div>
