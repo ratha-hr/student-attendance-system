@@ -213,7 +213,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-baseline space-x-1.5 flex-wrap">
-                <span className="text-xs font-bold text-blue-200 whitespace-nowrap">សិស្សសរុប៖</span>
+                <span className="text-xs font-bold text-blue-200 whitespace-nowrap">
+                  <span className="hidden sm:inline">សិស្សសរុប៖</span>
+                  <span className="sm:hidden">សិស្ស៖</span>
+                </span>
                 <span className="text-base sm:text-lg font-black text-white">
                   {toKhmerNum(stats.totalStudents)}
                 </span>
@@ -236,7 +239,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-baseline space-x-1.5 flex-wrap">
-                <span className="text-xs font-bold text-purple-200 whitespace-nowrap">ថ្នាក់រៀន៖</span>
+                <span className="text-xs font-bold text-purple-200 whitespace-nowrap">
+                  <span className="hidden sm:inline">ថ្នាក់រៀន៖</span>
+                  <span className="sm:hidden">ថ្នាក់៖</span>
+                </span>
                 <span className="text-base sm:text-lg font-black text-purple-200">
                   {toKhmerNum(activeClasses.length)}
                 </span>
@@ -260,7 +266,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             <div className="min-w-0 flex-1">
               <div className="flex items-baseline space-x-1.5 flex-wrap">
                 <span className="text-xs font-bold text-emerald-200 whitespace-nowrap">
-                  {selectedDate === today ? 'វត្តមានថ្ងៃនេះ៖' : 'វត្តមានសរុប៖'}
+                  <span className="hidden sm:inline">{selectedDate === today ? 'វត្តមានថ្ងៃនេះ៖' : 'វត្តមានសរុប៖'}</span>
+                  <span className="sm:hidden">វត្តមាន៖</span>
                 </span>
                 <span className="text-base sm:text-lg font-black text-emerald-300">
                   {toKhmerNum(stats.presentToday + stats.lateToday)}
@@ -284,7 +291,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-baseline space-x-1.5 flex-wrap">
-                <span className="text-xs font-bold text-rose-200 whitespace-nowrap">អវត្តមានឥតច្បាប់៖</span>
+                <span className="text-xs font-bold text-rose-200 whitespace-nowrap">
+                  <span className="hidden sm:inline">អវត្តមានឥតច្បាប់៖</span>
+                  <span className="sm:hidden">ឥតច្បាប់៖</span>
+                </span>
                 <span className="text-base sm:text-lg font-black text-rose-300">
                   {toKhmerNum(stats.absentToday)}
                 </span>
@@ -327,7 +337,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-baseline space-x-1.5 flex-wrap">
-                <span className="text-xs font-bold text-blue-200 whitespace-nowrap">អត្រាវត្តមានសរុប</span>
+                <span className="text-xs font-bold text-blue-200 whitespace-nowrap">
+                  <span className="hidden sm:inline">អត្រាវត្តមានសរុប</span>
+                  <span className="sm:hidden">អត្រាវត្តមាន</span>
+                </span>
               </div>
               <p className="text-[11px] text-emerald-300 font-semibold truncate mt-0.5">
                 ● {stats.rate >= 85 ? 'កម្រិតល្អប្រសើរ' : stats.rate >= 70 ? 'កម្រិតមធ្យម' : 'កម្រិតប្រុងប្រយ័ត្ន'}
@@ -359,7 +372,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               onClick={() => setSelectedDate(today)}
               className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-bold transition-colors cursor-pointer"
             >
-              📅 ត្រឡប់មកថ្ងៃនេះ
+              <span className="hidden sm:inline">📅 ត្រឡប់មកថ្ងៃនេះ</span>
+              <span className="sm:hidden">📅 ថ្ងៃនេះ</span>
             </button>
           )}
           <span className="text-xs text-slate-500 font-semibold hidden md:inline">
@@ -374,35 +388,35 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             <button
               type="button"
               onClick={() => setSelectedSession('morning')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 selectedSession === 'morning'
                   ? 'bg-blue-600 text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              ☀️ ពេលព្រឹក
+              <span>☀️</span> <span className="hidden sm:inline">ពេលព្រឹក</span><span className="sm:hidden">ព្រឹក</span>
             </button>
             <button
               type="button"
               onClick={() => setSelectedSession('afternoon')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 selectedSession === 'afternoon'
                   ? 'bg-blue-600 text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              🌤️ ពេលរសៀល
+              <span>🌤️</span> <span className="hidden sm:inline">ពេលរសៀល</span><span className="sm:hidden">រសៀល</span>
             </button>
             <button
               type="button"
               onClick={() => setSelectedSession('all')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 selectedSession === 'all'
                   ? 'bg-blue-600 text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              📅 ពេញមួយថ្ងៃ
+              <span>📅</span> <span className="hidden sm:inline">ពេញមួយថ្ងៃ</span><span className="sm:hidden">ទាំងពីរ</span>
             </button>
           </div>
         </div>

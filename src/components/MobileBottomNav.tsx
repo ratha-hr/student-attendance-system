@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  LayoutDashboard,
   CalendarCheck2,
   FileSpreadsheet,
   GraduationCap,
@@ -22,29 +23,34 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
 }) => {
   const tabs = [
     {
+      id: 'dashboard' as NavTab,
+      label: 'ផ្ទាំងដើម',
+      icon: LayoutDashboard,
+      color: 'text-indigo-600',
+    },
+    {
       id: 'attendance' as NavTab,
       label: 'វត្តមាន',
       icon: CalendarCheck2,
+      color: 'text-emerald-600',
     },
     {
       id: 'students' as NavTab,
       label: 'សិស្ស',
       icon: FileSpreadsheet,
-    },
-    {
-      id: 'continuous-assessment' as NavTab,
-      label: 'ពិន្ទុ ៣០%',
-      icon: BookOpenCheck,
+      color: 'text-blue-600',
     },
     {
       id: 'grades' as NavTab,
       label: 'ពិន្ទុ',
       icon: GraduationCap,
+      color: 'text-purple-600',
     },
     {
       id: 'timetable-class' as NavTab,
       label: 'កាលវិភាគ',
       icon: Calendar,
+      color: 'text-amber-600',
     },
   ];
 
@@ -57,20 +63,20 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           <button
             key={tab.id}
             onClick={() => onSelectTab(tab.id)}
-            className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all cursor-pointer ${
+            className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all cursor-pointer active:scale-95 ${
               isActive
-                ? 'text-blue-600 font-bold scale-105'
-                : 'text-slate-500 hover:text-slate-900 font-medium'
+                ? `${tab.color} font-black scale-105`
+                : 'text-slate-500 hover:text-slate-800 font-medium'
             }`}
           >
             <div
-              className={`p-1 rounded-xl transition-colors ${
-                isActive ? 'bg-blue-50 text-blue-600' : 'text-slate-500'
+              className={`p-1.5 rounded-xl transition-all ${
+                isActive ? 'bg-slate-100 shadow-2xs' : 'text-slate-500'
               }`}
             >
               <Icon className="w-5 h-5" />
             </div>
-            <span className="text-xs font-bold mt-0.5">{tab.label}</span>
+            <span className="text-[11px] font-bold mt-0.5 tracking-tight">{tab.label}</span>
           </button>
         );
       })}

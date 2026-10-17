@@ -158,6 +158,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">គ្រប់គ្រងថ្នាក់</span>
+                <span className="sm:hidden">ថ្នាក់</span>
               </button>
             )}
           </div>
@@ -199,6 +200,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <RotateCw className="w-3.5 h-3.5 text-amber-300" />
               <span className="hidden sm:inline">Sync ទូរស័ព្ទ</span>
+              <span className="sm:hidden">Sync</span>
             </button>
           )}
 
@@ -221,7 +223,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               window.location.href = window.location.pathname + '?v=' + Date.now();
             }}
             className="p-2 bg-slate-100 hover:bg-blue-50 text-blue-600 hover:text-blue-700 rounded-xl border border-slate-200 transition-all cursor-pointer shadow-2xs flex items-center justify-center hover:rotate-180 active:scale-95"
-            title="ចុចដើម្បី Refresh & Update កំណែថ្មីបំផុត (v6.48)"
+            title="ចុចដើម្បី Refresh & Update កំណែថ្មីបំផុត (v6.49)"
           >
             <RotateCw className="w-4 h-4 text-blue-600" />
           </button>

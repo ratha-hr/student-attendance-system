@@ -61,11 +61,12 @@ export const PrintButton: React.FC<PrintButtonProps> = ({
       <button
         type="button"
         onClick={handlePrint}
-        className="inline-flex items-center px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer"
+        className="inline-flex items-center px-2.5 sm:px-3 py-1.5 bg-slate-800 hover:bg-slate-900 active:scale-95 text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer shrink-0"
         title={`បោះពុម្ព ឬរក្សាទុកជា PDF (Save as PDF) ជាក្រដាស ${orientation === 'portrait' ? 'បញ្ឈរ (Portrait)' : 'ផ្ដេក (Landscape)'}`}
       >
-        <Printer className="w-3.5 h-3.5 mr-1 text-emerald-400" />
-        <span>{label}</span>
+        <Printer className="w-3.5 h-3.5 mr-1 text-emerald-400 shrink-0" />
+        <span className="hidden sm:inline">{label}</span>
+        <span className="sm:hidden">{label.length > 5 ? 'ពុម្ព' : label}</span>
       </button>
     </div>
   );

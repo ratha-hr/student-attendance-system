@@ -394,27 +394,30 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
             {/* 1. Mark All Present Button */}
             <button
               onClick={handleMarkAllPresent}
-              className="inline-flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-xs transition-colors cursor-pointer"
+              className="inline-flex items-center px-3 sm:px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-xs transition-colors cursor-pointer shrink-0"
               title="កត់វត្តមាន (មក) ដល់សិស្សទាំងអស់ក្នុងពេលតែមួយ"
             >
-              <Sparkles className="w-4 h-4 mr-1.5" />
-              កត់វត្តមានទាំងអស់ (មក)
+              <Sparkles className="w-4 h-4 mr-1 sm:mr-1.5" />
+              <span className="hidden sm:inline">កត់វត្តមានទាំងអស់ (មក)</span>
+              <span className="sm:hidden">វត្តមានទាំងអស់</span>
             </button>
             <button
               type="button"
               onClick={() => setIsStudentShareOpen(true)}
-              className="inline-flex items-center px-4 py-2 bg-linear-to-r from-violet-600 via-purple-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 active:scale-95 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md transition-all cursor-pointer"
+              className="inline-flex items-center px-3 sm:px-4 py-2 bg-linear-to-r from-violet-600 via-purple-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 active:scale-95 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md transition-all cursor-pointer shrink-0"
               title="ចែករំលែកតារាងស្រង់វត្តមានប្រចាំថ្ងៃទៅសិស្ស ឬប្រធានថ្នាក់"
             >
-              <Share2 className="w-4 h-4 mr-1.5 text-yellow-300" />
-              <span>ចែករំលែកទៅសិស្ស (ស្រង់វត្តមាន)</span>
+              <Share2 className="w-4 h-4 mr-1 sm:mr-1.5 text-yellow-300" />
+              <span className="hidden sm:inline">ចែករំលែកទៅសិស្ស (ស្រង់វត្តមាន)</span>
+              <span className="sm:hidden">ចែករំលែកសិស្ស</span>
             </button>
             <button
               onClick={() => setIsTelegramOpen(true)}
-              className="inline-flex items-center px-3.5 py-2 bg-sky-500 hover:bg-sky-600 text-white text-xs sm:text-sm font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
+              className="inline-flex items-center px-2.5 sm:px-3.5 py-2 bg-sky-500 hover:bg-sky-600 text-white text-xs sm:text-sm font-bold rounded-xl shadow-xs transition-colors cursor-pointer shrink-0"
             >
-              <Send className="w-4 h-4 mr-1.5" />
-              ផ្ញើ Telegram
+              <Send className="w-4 h-4 mr-1 sm:mr-1.5" />
+              <span className="hidden sm:inline">ផ្ញើ Telegram</span>
+              <span className="sm:hidden">Telegram</span>
             </button>
             <PrintButton defaultOrientation="portrait" label="បោះពុម្ព" />
           </div>
@@ -439,24 +442,28 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
               <button
                 type="button"
                 onClick={() => handleSessionChange('morning')}
-                className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer flex items-center space-x-1.5 ${
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition-colors cursor-pointer flex items-center space-x-1 sm:space-x-1.5 ${
                   selectedSession === 'morning'
                     ? 'bg-white text-blue-700 shadow-2xs font-black'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <span>🌅 វេនព្រឹក</span>
+                <span>🌅</span>
+                <span className="hidden sm:inline">វេនព្រឹក</span>
+                <span className="sm:hidden">ព្រឹក</span>
               </button>
               <button
                 type="button"
                 onClick={() => handleSessionChange('afternoon')}
-                className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer flex items-center space-x-1.5 ${
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition-colors cursor-pointer flex items-center space-x-1 sm:space-x-1.5 ${
                   selectedSession === 'afternoon'
                     ? 'bg-white text-amber-700 shadow-2xs font-black'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <span>🌇 វេនរសៀល</span>
+                <span>🌇</span>
+                <span className="hidden sm:inline">វេនរសៀល</span>
+                <span className="sm:hidden">រសៀល</span>
               </button>
             </div>
 
@@ -537,68 +544,68 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
 
       {/* Quick Filter Status Chips & Sound Toggle */}
       <div className="flex flex-wrap items-center justify-between gap-2.5 p-2.5 bg-slate-100/90 rounded-2xl border border-slate-200/80 no-print">
-        <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm font-bold">
-          <span className="text-slate-600 text-xs sm:text-sm font-bold px-1">តម្រងរហ័ស៖</span>
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-bold">
+          <span className="text-slate-600 text-xs sm:text-sm font-bold px-1 hidden sm:inline">តម្រងរហ័ស៖</span>
           <button
             onClick={() => setStatusFilter('all')}
-            className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
+            className={`px-2.5 sm:px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
               statusFilter === 'all'
                 ? 'bg-white text-slate-800 shadow-2xs font-black'
                 : 'text-slate-600 hover:bg-white/60'
             }`}
           >
-            ទាំងអស់ ({dailyStats.total})
+            <span>ទាំងអស់</span> ({dailyStats.total})
           </button>
           <button
             onClick={() => setStatusFilter('present')}
-            className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
+            className={`px-2.5 sm:px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
               statusFilter === 'present'
                 ? 'bg-emerald-600 text-white shadow-2xs font-black'
                 : 'text-emerald-700 hover:bg-emerald-50'
             }`}
           >
-            🟢 មក ({dailyStats.present})
+            🟢 <span>មក</span> ({dailyStats.present})
           </button>
           <button
             onClick={() => setStatusFilter('permission')}
-            className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
+            className={`px-2.5 sm:px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
               statusFilter === 'permission'
                 ? 'bg-amber-500 text-white shadow-2xs font-black'
                 : 'text-amber-700 hover:bg-amber-50'
             }`}
           >
-            🟡 ច្បាប់ ({dailyStats.permission})
+            🟡 <span>ច្បាប់</span> ({dailyStats.permission})
           </button>
           <button
             onClick={() => setStatusFilter('absent')}
-            className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
+            className={`px-2.5 sm:px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
               statusFilter === 'absent'
                 ? 'bg-rose-600 text-white shadow-2xs font-black'
                 : 'text-rose-700 hover:bg-rose-50'
             }`}
           >
-            🔴 ឥតច្បាប់ ({dailyStats.absent})
+            🔴 <span className="hidden sm:inline">ឥតច្បាប់</span><span className="sm:hidden">ឥត</span> ({dailyStats.absent})
           </button>
           <button
             onClick={() => setStatusFilter('late')}
-            className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
+            className={`px-2.5 sm:px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
               statusFilter === 'late'
                 ? 'bg-blue-600 text-white shadow-2xs font-black'
                 : 'text-blue-700 hover:bg-blue-50'
             }`}
           >
-            🔵 យឺត ({dailyStats.late})
+            🔵 <span>យឺត</span> ({dailyStats.late})
           </button>
           {dailyStats.notRecorded > 0 && (
             <button
               onClick={() => setStatusFilter('notRecorded')}
-              className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
                 statusFilter === 'notRecorded'
                   ? 'bg-slate-700 text-white shadow-2xs font-black'
                   : 'text-slate-600 hover:bg-slate-200'
               }`}
             >
-              ⚪ មិនទាន់កត់ ({dailyStats.notRecorded})
+              ⚪ <span className="hidden sm:inline">មិនទាន់កត់</span><span className="sm:hidden">ខ្វះ</span> ({dailyStats.notRecorded})
             </button>
           )}
         </div>
@@ -744,53 +751,57 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
 
                       {/* វត្តមាន Status Selector */}
                       <td className="py-3 px-3 text-center">
-                        <div className="inline-flex items-center p-1 bg-slate-100 rounded-xl space-x-1.5">
+                        <div className="inline-flex items-center p-1 bg-slate-100 rounded-xl space-x-1 sm:space-x-1.5">
                           {/* មក (Present) */}
                           <button
                             onClick={() => handleSetStatus(stu.id, 'present')}
-                            className={`px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                            className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                               currentStatus === 'present'
                                 ? 'bg-emerald-600 text-white shadow-xs'
                                 : 'text-slate-600 hover:bg-slate-200'
                             }`}
+                            title="វត្តមាន (មក)"
                           >
-                            មក
+                            <span>✅</span> <span className="hidden sm:inline">មក</span>
                           </button>
 
                           {/* ច្បាប់ (Permission) */}
                           <button
                             onClick={() => handleSetStatus(stu.id, 'permission')}
-                            className={`px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                            className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                               currentStatus === 'permission'
                                 ? 'bg-amber-500 text-white shadow-xs'
                                 : 'text-slate-600 hover:bg-slate-200'
                             }`}
+                            title="មានច្បាប់"
                           >
-                            ច្បាប់
+                            <span>🟡</span> <span className="hidden sm:inline">ច្បាប់</span>
                           </button>
 
                           {/* ឥតច្បាប់ (Absent) */}
                           <button
                             onClick={() => handleSetStatus(stu.id, 'absent')}
-                            className={`px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                            className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                               currentStatus === 'absent'
                                 ? 'bg-rose-600 text-white shadow-xs'
                                 : 'text-slate-600 hover:bg-slate-200'
                             }`}
+                            title="អវត្តមានឥតច្បាប់"
                           >
-                            ឥតច្បាប់
+                            <span>❌</span> <span className="hidden sm:inline">ឥតច្បាប់</span>
                           </button>
 
                           {/* យឺត (Late) */}
                           <button
                             onClick={() => handleSetStatus(stu.id, 'late')}
-                            className={`px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                            className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                               currentStatus === 'late'
                                 ? 'bg-blue-600 text-white shadow-xs'
                                 : 'text-slate-600 hover:bg-slate-200'
                             }`}
+                            title="មកយឺត"
                           >
-                            យឺត
+                            <span>🔵</span> <span className="hidden sm:inline">យឺត</span>
                           </button>
                         </div>
                       </td>

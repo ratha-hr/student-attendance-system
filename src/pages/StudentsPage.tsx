@@ -1309,28 +1309,30 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                   setIsAddModalOpen(true);
                 }
               }}
-              className="inline-flex items-center px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer shrink-0"
+              className="inline-flex items-center px-2.5 sm:px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer shrink-0"
               title="បើកផ្ទាំង Form ដើម្បីបញ្ចូលសិស្សថ្មី"
             >
               <Plus className="w-3.5 h-3.5 mr-1" />
-              <span>បន្ថែមសិស្សថ្មី</span>
+              <span className="hidden sm:inline">បន្ថែមសិស្សថ្មី</span>
+              <span className="sm:hidden">បន្ថែម</span>
             </button>
 
             {/* Paste from Excel Button */}
             <button
               type="button"
               onClick={handleDirectClipboardPasteClick}
-              className="inline-flex items-center px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer shrink-0"
+              className="inline-flex items-center px-2.5 sm:px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer shrink-0"
               title="បិទភ្ជាប់ទិន្នន័យដែលបាន Copy ពី Excel / XLSM (Ctrl+V)"
             >
               <Clipboard className="w-3.5 h-3.5 mr-1" />
-              <span>បិទភ្ជាប់ពី Excel</span>
+              <span className="hidden sm:inline">បិទភ្ជាប់ពី Excel</span>
+              <span className="sm:hidden">បិទភ្ជាប់</span>
             </button>
 
             {/* Excel Group */}
             <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs font-bold shrink-0">
               <label
-                className="inline-flex items-center px-2.5 py-1 rounded-lg text-slate-700 hover:bg-white hover:text-emerald-700 transition-colors cursor-pointer"
+                className="inline-flex items-center px-2 sm:px-2.5 py-1 rounded-lg text-slate-700 hover:bg-white hover:text-emerald-700 transition-colors cursor-pointer"
                 title="នាំចូលទិន្នន័យពី Excel"
               >
                 <Upload className="w-3.5 h-3.5 mr-1 text-emerald-600" />
@@ -1347,7 +1349,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
               <button
                 type="button"
                 onClick={handleExportExcel}
-                className="inline-flex items-center px-2.5 py-1 rounded-lg text-slate-700 hover:bg-white hover:text-blue-700 transition-colors cursor-pointer"
+                className="inline-flex items-center px-2 sm:px-2.5 py-1 rounded-lg text-slate-700 hover:bg-white hover:text-blue-700 transition-colors cursor-pointer"
                 title="ទាញយកជា Excel .xlsm"
               >
                 <Download className="w-3.5 h-3.5 mr-1 text-blue-600" />
@@ -1370,7 +1372,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                 type="button"
                 onClick={undo}
                 disabled={!canUndo}
-                className="inline-flex items-center px-2.5 py-1 rounded-lg text-slate-700 hover:bg-white hover:text-indigo-600 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-700 transition-colors cursor-pointer"
+                className="inline-flex items-center px-2 sm:px-2.5 py-1 rounded-lg text-slate-700 hover:bg-white hover:text-indigo-600 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-700 transition-colors cursor-pointer"
                 title="ត្រឡប់ក្រោយ (Ctrl+Z)"
               >
                 <Undo2 className="w-3.5 h-3.5 mr-0.5" />
@@ -1380,7 +1382,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                 type="button"
                 onClick={redo}
                 disabled={!canRedo}
-                className="inline-flex items-center px-2.5 py-1 rounded-lg text-slate-700 hover:bg-white hover:text-indigo-600 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-700 transition-colors cursor-pointer"
+                className="inline-flex items-center px-2 sm:px-2.5 py-1 rounded-lg text-slate-700 hover:bg-white hover:text-indigo-600 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-700 transition-colors cursor-pointer"
                 title="ធ្វើឡើងវិញ (Ctrl+Y)"
               >
                 <Redo2 className="w-3.5 h-3.5 mr-0.5" />
@@ -1395,7 +1397,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
             <button
               type="button"
               onClick={handleDeduplicateStudents}
-              className={`inline-flex items-center px-2.5 py-1.5 text-xs font-bold rounded-xl border transition-all cursor-pointer shrink-0 ${
+              className={`inline-flex items-center px-2 sm:px-2.5 py-1.5 text-xs font-bold rounded-xl border transition-all cursor-pointer shrink-0 ${
                 duplicateInfo.hasDuplicates
                   ? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-600 shadow-sm animate-pulse'
                   : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-200'
@@ -1403,7 +1405,8 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
               title="ស្វែងរក និងសម្អាតឈ្មោះសិស្សដែលស្ទួន/ជាន់គ្នាក្នុងថ្នាក់"
             >
               <Sparkles className={`w-3.5 h-3.5 mr-1 ${duplicateInfo.hasDuplicates ? 'text-white' : 'text-amber-600'}`} />
-              <span>សម្អាតឈ្មោះជាន់គ្នា</span>
+              <span className="hidden sm:inline">សម្អាតឈ្មោះជាន់គ្នា</span>
+              <span className="sm:hidden">ស្ទួន</span>
               {duplicateInfo.hasDuplicates && (
                 <span className="ml-1.5 px-1.5 py-0.2 bg-white text-amber-800 rounded-full text-[10px] font-black">
                   {toKhmerNum(duplicateInfo.duplicateStudentCount)}
@@ -1416,11 +1419,12 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
               <button
                 type="button"
                 onClick={handleClearAutoStudentCodes}
-                className="inline-flex items-center px-2.5 py-1.5 text-xs font-bold rounded-xl border bg-rose-50 hover:bg-rose-100 text-rose-800 border-rose-200 transition-all cursor-pointer shrink-0"
+                className="inline-flex items-center px-2 sm:px-2.5 py-1.5 text-xs font-bold rounded-xl border bg-rose-50 hover:bg-rose-100 text-rose-800 border-rose-200 transition-all cursor-pointer shrink-0"
                 title="សម្អាតអត្តលេខស្វ័យប្រវត្តិ (STU-...) ទាំងអស់ក្នុងថ្នាក់នេះឱ្យនៅទំនេរ"
               >
                 <Trash2 className="w-3.5 h-3.5 mr-1 text-rose-600" />
-                <span>សម្អាតកូដ STU-</span>
+                <span className="hidden sm:inline">សម្អាតកូដ STU-</span>
+                <span className="sm:hidden">កូដ STU</span>
               </button>
             )}
 
@@ -1428,18 +1432,19 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
             <button
               type="button"
               onClick={() => onNavigateTab ? onNavigateTab('continuous-assessment') : null}
-              className="inline-flex items-center px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl border border-indigo-200 transition-colors cursor-pointer shrink-0"
+              className="inline-flex items-center px-2 sm:px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl border border-indigo-200 transition-colors cursor-pointer shrink-0"
               title="បើកបញ្ជីពិន្ទុវត្តមាន (អវត្តមានម្តងដក ២ពិន្ទុ) + ១៥នាទី + ពិន្ទុ App (៣០%)"
             >
               <BookOpenCheck className="w-3.5 h-3.5 mr-1 text-indigo-600" />
-              <span>ពិន្ទុវត្តមាន (៣០%)</span>
+              <span className="hidden sm:inline">ពិន្ទុវត្តមាន (៣០%)</span>
+              <span className="sm:hidden">ពិន្ទុ ៣០%</span>
             </button>
 
             {/* ID Cards */}
             <button
               type="button"
               onClick={() => setIsIDCardsOpen(true)}
-              className="inline-flex items-center px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-bold rounded-xl border border-purple-200 transition-colors cursor-pointer shrink-0"
+              className="inline-flex items-center px-2 sm:px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-bold rounded-xl border border-purple-200 transition-colors cursor-pointer shrink-0"
               title="បោះពុម្ពកាតសិស្សភ្ជាប់ QR"
             >
               <QrCode className="w-3.5 h-3.5 mr-1 text-purple-600" />
@@ -1453,11 +1458,12 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
             <button
               type="button"
               onClick={handleDeleteAllStudents}
-              className="inline-flex items-center px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold rounded-xl border border-rose-200 transition-colors cursor-pointer shrink-0"
+              className="inline-flex items-center px-2 sm:px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold rounded-xl border border-rose-200 transition-colors cursor-pointer shrink-0"
               title="លុបសិស្សទាំងអស់ (អាចចុច Undo ដើម្បីយកមកវិញបាន)"
             >
               <Trash2 className="w-3.5 h-3.5 mr-1 text-rose-600" />
-              <span>លុបទាំងអស់</span>
+              <span className="hidden sm:inline">លុបទាំងអស់</span>
+              <span className="sm:hidden">លុប</span>
             </button>
           </div>
         </div>
@@ -1482,7 +1488,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
               <button
                 type="button"
                 onClick={() => setGenderFilter('all')}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 sm:gap-1.5 ${
                   genderFilter === 'all'
                     ? 'bg-white font-black text-slate-900 shadow-xs border border-slate-200/80 ring-1 ring-slate-300'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
@@ -1490,7 +1496,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                 title="បង្ហាញសិស្សទាំងអស់"
               >
                 <span>👥</span>
-                <span>ទាំងអស់៖</span>
+                <span className="hidden sm:inline">ទាំងអស់៖</span>
                 <strong className="text-slate-900 font-black">
                   {classStudentsTotal}
                 </strong>
@@ -1499,7 +1505,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
               <button
                 type="button"
                 onClick={() => setGenderFilter('ស្រី')}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 sm:gap-1.5 ${
                   genderFilter === 'ស្រី'
                     ? 'bg-pink-600 text-white font-black shadow-xs ring-1 ring-pink-700'
                     : 'text-pink-700 hover:text-pink-900 hover:bg-pink-50'
@@ -1507,7 +1513,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                 title="ត្រងយកតែសិស្សស្រី"
               >
                 <span>👩</span>
-                <span>ស្រី៖</span>
+                <span className="hidden sm:inline">ស្រី៖</span>
                 <strong className={genderFilter === 'ស្រី' ? 'text-white' : 'text-pink-700 font-black'}>
                   {classStudentsFemale}
                 </strong>
@@ -1516,7 +1522,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
               <button
                 type="button"
                 onClick={() => setGenderFilter('ប្រុស')}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 sm:gap-1.5 ${
                   genderFilter === 'ប្រុស'
                     ? 'bg-blue-600 text-white font-black shadow-xs ring-1 ring-blue-700'
                     : 'text-blue-700 hover:text-blue-900 hover:bg-blue-50'
@@ -1524,7 +1530,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                 title="ត្រងយកតែសិស្សប្រុស"
               >
                 <span>👨</span>
-                <span>ប្រុស៖</span>
+                <span className="hidden sm:inline">ប្រុស៖</span>
                 <strong className={genderFilter === 'ប្រុស' ? 'text-white' : 'text-blue-700 font-black'}>
                   {classStudentsMale}
                 </strong>
