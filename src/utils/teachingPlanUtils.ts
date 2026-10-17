@@ -46,49 +46,88 @@ export const POPULAR_SUBJECTS = [
   'កីឡា',
 ];
 
+export type BenchmarkYearKey = 'year1' | 'year2' | 'year3' | 'year4' | 'year5' | 'year6';
+
 export interface ModelSchoolBenchmark {
-  yearName: string; // ឧ. ឆ្នាំទី១, ឆ្នាំទី២, ឆ្នាំទី៣, ឆ្នាំទី៤, ឆ្នាំទី៥
-  yearKey: 'year1' | 'year2' | 'year3' | 'year4' | 'year5';
+  yearName: string; // ឧ. ឆ្នាំទី១, ឆ្នាំទី២, ឆ្នាំទី៣, ឆ្នាំទី៤, ឆ្នាំទី៥, ឆ្នាំទី៦
+  calendarYear: string; // 2023, 2024, 2025, 2026, 2027, 2028
+  displayLabel: string; // ឆ្នាំទី១ (2023)
+  yearKey: BenchmarkYearKey;
+  targetABC: number; // 17%, 24%, 40%, 52%, 66%, 80%
   title: string;
   description: string;
   targets: Record<'A' | 'B' | 'C' | 'D' | 'E' | 'F', number>; // Must sum to 100%
 }
 
-export const MODEL_SCHOOL_BENCHMARKS: Record<'year1' | 'year2' | 'year3' | 'year4' | 'year5', ModelSchoolBenchmark> = {
+export const MODEL_SCHOOL_YEAR_KEYS: BenchmarkYearKey[] = [
+  'year1',
+  'year2',
+  'year3',
+  'year4',
+  'year5',
+  'year6',
+];
+
+export const MODEL_SCHOOL_BENCHMARKS: Record<BenchmarkYearKey, ModelSchoolBenchmark> = {
   year1: {
     yearName: 'ឆ្នាំទី១',
+    calendarYear: '2023',
+    displayLabel: 'ឆ្នាំទី១ (2023)',
     yearKey: 'year1',
-    title: 'ផែនការសាលារៀនគំរូ ឆ្នាំទី១ (ពង្រឹងមូលដ្ឋាន)',
-    description: 'កម្រិតល្អប្រសើរ (A+B+C) ≥ ៤០%, មធ្យម (D) ២៧%, អន្តរាគមន៍ (E+F) ≤ ៣៣%',
-    targets: { A: 8, B: 15, C: 20, D: 27, E: 20, F: 10 }, // 8+15+20+27+20+10 = 100%
+    targetABC: 17,
+    title: 'ផែនការសាលារៀនគំរូ ឆ្នាំទី១ (2023)',
+    description: 'ក្រុមគោលដៅ ABC(17%) | A: 2%, B: 5%, C: 10%, D: 10%, E: 23%, F: 50%',
+    targets: { A: 2, B: 5, C: 10, D: 10, E: 23, F: 50 }, // 2+5+10+10+23+50 = 100%
   },
   year2: {
     yearName: 'ឆ្នាំទី២',
+    calendarYear: '2024',
+    displayLabel: 'ឆ្នាំទី២ (2024)',
     yearKey: 'year2',
-    title: 'ផែនការសាលារៀនគំរូ ឆ្នាំទី២ (ពង្រីកគុណភាព)',
-    description: 'កម្រិតល្អប្រសើរ (A+B+C) ≥ ៥៥%, មធ្យម (D) ២៥%, អន្តរាគមន៍ (E+F) ≤ ២០%',
-    targets: { A: 12, B: 18, C: 25, D: 25, E: 15, F: 5 }, // 12+18+25+25+15+5 = 100%
+    targetABC: 24,
+    title: 'ផែនការសាលារៀនគំរូ ឆ្នាំទី២ (2024)',
+    description: 'ក្រុមគោលដៅ ABC(24%) | A: 4%, B: 6%, C: 14%, D: 20%, E: 26%, F: 30%',
+    targets: { A: 4, B: 6, C: 14, D: 20, E: 26, F: 30 }, // 4+6+14+20+26+30 = 100%
   },
   year3: {
     yearName: 'ឆ្នាំទី៣',
+    calendarYear: '2025',
+    displayLabel: 'ឆ្នាំទី៣ (2025)',
     yearKey: 'year3',
-    title: 'ផែនការសាលារៀនគំរូ ឆ្នាំទី៣ (ស្តង់ដារពេញលេញ)',
-    description: 'កម្រិតល្អប្រសើរ (A+B+C) ≥ ៦៥%, មធ្យម (D) ២២%, អន្តរាគមន៍ (E+F) ≤ ១៣%',
-    targets: { A: 15, B: 22, C: 28, D: 22, E: 10, F: 3 }, // 15+22+28+22+10+3 = 100%
+    targetABC: 40,
+    title: 'ផែនការសាលារៀនគំរូ ឆ្នាំទី៣ (2025)',
+    description: 'ក្រុមគោលដៅ ABC(40%) | A: 8%, B: 15%, C: 17%, D: 30%, E: 20%, F: 10%',
+    targets: { A: 8, B: 15, C: 17, D: 30, E: 20, F: 10 }, // 8+15+17+30+20+10 = 100%
   },
   year4: {
     yearName: 'ឆ្នាំទី៤',
+    calendarYear: '2026',
+    displayLabel: 'ឆ្នាំទី៤ (2026)',
     yearKey: 'year4',
-    title: 'ផែនការសាលារៀនគំរូ ឆ្នាំទី៤ (គុណភាពកម្រិតខ្ពស់)',
-    description: 'កម្រិតល្អប្រសើរ (A+B+C) ≥ ៧៣%, មធ្យម (D) ១៨%, អន្តរាគមន៍ (E+F) ≤ ៩%',
-    targets: { A: 18, B: 25, C: 30, D: 18, E: 7, F: 2 }, // 18+25+30+18+7+2 = 100%
+    targetABC: 52,
+    title: 'ផែនការសាលារៀនគំរូ ឆ្នាំទី៤ (2026)',
+    description: 'ក្រុមគោលដៅ ABC(52%) | A: 12%, B: 20%, C: 20%, D: 38%, E: 10%, F: 0%',
+    targets: { A: 12, B: 20, C: 20, D: 38, E: 10, F: 0 }, // 12+20+20+38+10+0 = 100%
   },
   year5: {
     yearName: 'ឆ្នាំទី៥',
+    calendarYear: '2027',
+    displayLabel: 'ឆ្នាំទី៥ (2027)',
     yearKey: 'year5',
-    title: 'ផែនការសាលារៀនគំរូ ឆ្នាំទី៥ (ឧត្តមភាព និងនិរន្តរភាព)',
-    description: 'កម្រិតល្អប្រសើរ (A+B+C) ≥ ៨០%, មធ្យម (D) ១៥%, អន្តរាគមន៍ (E+F) ≤ ៥%',
-    targets: { A: 20, B: 28, C: 32, D: 15, E: 4, F: 1 }, // 20+28+32+15+4+1 = 100%
+    targetABC: 66,
+    title: 'ផែនការសាលារៀនគំរូ ឆ្នាំទី៥ (2027)',
+    description: 'ក្រុមគោលដៅ ABC(66%) | A: 16%, B: 25%, C: 25%, D: 29%, E: 5%, F: 0%',
+    targets: { A: 16, B: 25, C: 25, D: 29, E: 5, F: 0 }, // 16+25+25+29+5+0 = 100%
+  },
+  year6: {
+    yearName: 'ឆ្នាំទី៦',
+    calendarYear: '2028',
+    displayLabel: 'ឆ្នាំទី៦ (2028)',
+    yearKey: 'year6',
+    targetABC: 80,
+    title: 'ផែនការសាលារៀនគំរូ ឆ្នាំទី៦ (2028)',
+    description: 'ក្រុមគោលដៅ ABC(80%) | A: 20%, B: 30%, C: 30%, D: 20%, E: 0%, F: 0%',
+    targets: { A: 20, B: 30, C: 30, D: 20, E: 0, F: 0 }, // 20+30+30+20+0+0 = 100%
   },
 };
 

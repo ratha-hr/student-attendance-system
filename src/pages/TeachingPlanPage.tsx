@@ -14,6 +14,8 @@ import {
   Phone,
   Layers,
   ChevronDown,
+  ChevronUp,
+  Table,
   AlertTriangle,
   Scale,
   Award,
@@ -27,6 +29,8 @@ import {
   ALL_MONTH_KEYS,
   POPULAR_SUBJECTS,
   MODEL_SCHOOL_BENCHMARKS,
+  MODEL_SCHOOL_YEAR_KEYS,
+  type BenchmarkYearKey,
   balancePctList,
   createDefaultTeachingPlan,
   calculateTotals,
@@ -250,11 +254,12 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
     }
   };
 
-  // Model Standard School Benchmark Year Selection ('year1' | 'year2' | 'year3' | 'year4' | 'year5')
-  const [benchmarkYear, setBenchmarkYear] = useState<'year1' | 'year2' | 'year3' | 'year4' | 'year5'>('year1');
+  // Model Standard School Benchmark Year Selection ('year1' to 'year6')
+  const [benchmarkYear, setBenchmarkYear] = useState<BenchmarkYearKey>('year4');
+  const [showBenchmarkMatrix, setShowBenchmarkMatrix] = useState<boolean>(true);
 
   // Apply Model Standard School (សាលារៀនគំរូ) Benchmark to Plan
-  const handleApplyModelSchoolBenchmark = (yearKey: 'year1' | 'year2' | 'year3' | 'year4' | 'year5') => {
+  const handleApplyModelSchoolBenchmark = (yearKey: BenchmarkYearKey) => {
     const benchmark = MODEL_SCHOOL_BENCHMARKS[yearKey];
     if (!benchmark) return;
 
@@ -979,43 +984,80 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
         </div>
 
         {/* Model Standard School (សាលារៀនគំរូ) Benchmark Control Row */}
-        <div className="bg-gradient-to-r from-blue-50/90 via-indigo-50/90 to-blue-50/90 border border-blue-200 rounded-2xl p-3.5 space-y-2.5">
+        <div className="bg-gradient-to-r from-blue-50/90 via-indigo-50/90 to-blue-50/90 border border-blue-200 rounded-2xl p-4 space-y-3.5 shadow-xs">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-            <div className="flex items-center gap-2">
-              <Award className="w-4 h-4 text-blue-700 shrink-0" />
-              <span className="font-black text-xs sm:text-sm text-blue-950">
-                គោលដៅសាលាស្តង់ដារគំរូ (Model School Target Benchmarks)
-              </span>
-              <span className="text-[10px] bg-blue-200/80 text-blue-900 px-2 py-0.5 rounded-full font-bold">
-                ក្រសួងអប់រំ យុវជន និងកីឡា
-              </span>
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                <Award className="w-5 h-5 text-amber-300" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-black text-sm sm:text-base text-blue-950">
+                    គោលដៅសាលាស្តង់ដារគំរូ (Model School Target Benchmarks)
+                  </span>
+                  <span className="text-[10px] bg-blue-200/90 text-blue-900 px-2.5 py-0.5 rounded-full font-bold">
+                    ក្រសួងអប់រំ យុវជន និងកីឡា
+                  </span>
+                </div>
+                <p className="text-[11px] text-blue-700 mt-0.5">
+                  ផែនការបែងចែកភាគរយតាមកម្រិតនិទ្ទេស A, B, C, D, E, F សម្រាប់ឆ្នាំទី១ ដល់ ឆ្នាំទី៦ (២០២៣ - ២០២៨)
+                </p>
+              </div>
             </div>
 
-            {/* Year Selector Tabs: ឆ្នាំទី១, ឆ្នាំទី២, ឆ្នាំទី៣, ឆ្នាំទី៤, ឆ្នាំទី៥ */}
-            <div className="inline-flex items-center bg-white p-1 rounded-xl border border-blue-200 text-xs font-bold shadow-2xs">
-              {(['year1', 'year2', 'year3', 'year4', 'year5'] as const).map((yKey) => {
-                const b = MODEL_SCHOOL_BENCHMARKS[yKey];
-                return (
-                  <button
-                    key={yKey}
-                    type="button"
-                    onClick={() => setBenchmarkYear(yKey)}
-                    className={`px-2.5 py-1 rounded-lg text-xs transition-all cursor-pointer ${
-                      benchmarkYear === yKey
-                        ? 'bg-blue-600 text-white shadow-2xs font-black'
-                        : 'text-slate-600 hover:text-slate-900 font-bold'
-                    }`}
-                  >
-                    {b.yearName}
-                  </button>
-                );
-              })}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowBenchmarkMatrix(!showBenchmarkMatrix)}
+                className="px-3 py-1.5 bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs flex items-center gap-1.5 hover:scale-105 active:scale-95"
+                title="បង្ហាញ ឬលាក់ តារាងស្តង់ដាក្រសួងអប់រំ ៦ ឆ្នាំ"
+              >
+                <Table className="w-3.5 h-3.5 text-blue-600" />
+                <span>{showBenchmarkMatrix ? 'លាក់តារាងស្តង់ដា ៦ឆ្នាំ' : 'បង្ហាញតារាងស្តង់ដា ៦ឆ្នាំ'}</span>
+                {showBenchmarkMatrix ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
             </div>
           </div>
 
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 pt-2 border-t border-blue-100 text-xs text-blue-900">
+          {/* Quick Year Selector Buttons: ឆ្នាំទី១ (2023) ... ឆ្នាំទី៦ (2028) */}
+          <div className="flex flex-wrap items-center gap-1.5 p-1.5 bg-white/80 rounded-xl border border-blue-200/80">
+            <span className="text-xs font-bold text-slate-600 px-2">ជ្រើសរើសឆ្នាំ៖</span>
+            {MODEL_SCHOOL_YEAR_KEYS.map((yKey) => {
+              const b = MODEL_SCHOOL_BENCHMARKS[yKey];
+              const isSelected = benchmarkYear === yKey;
+              return (
+                <button
+                  key={yKey}
+                  type="button"
+                  onClick={() => setBenchmarkYear(yKey)}
+                  className={`px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer flex items-center gap-1.5 ${
+                    isSelected
+                      ? 'bg-blue-600 text-white shadow-xs font-black'
+                      : 'bg-white hover:bg-slate-100 text-slate-700 font-bold border border-slate-200'
+                  }`}
+                >
+                  <span>{b.yearName} ({b.calendarYear})</span>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                      isSelected ? 'bg-blue-700 text-blue-100' : 'bg-slate-100 text-slate-600'
+                    }`}
+                  >
+                    ABC {b.targetABC}%
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Active Year Highlights & Apply Bar */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-2 text-xs text-blue-900 bg-white/70 p-3 rounded-xl border border-blue-100">
             <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-              <span className="font-bold text-slate-700">ភាគរយគោលដៅ {MODEL_SCHOOL_BENCHMARKS[benchmarkYear].yearName}៖</span>
+              <span className="font-bold text-slate-800">
+                ភាគរយគោលដៅ {MODEL_SCHOOL_BENCHMARKS[benchmarkYear].yearName} ({MODEL_SCHOOL_BENCHMARKS[benchmarkYear].calendarYear})៖
+              </span>
+              <span className="bg-amber-100 text-amber-900 px-2 py-0.5 rounded-md font-bold text-xs border border-amber-300">
+                ក្រុមគោលដៅ ABC: {MODEL_SCHOOL_BENCHMARKS[benchmarkYear].targetABC}%
+              </span>
               <span className="bg-white px-2 py-0.5 rounded-md border border-blue-200 font-mono font-bold text-blue-800">
                 A: {MODEL_SCHOOL_BENCHMARKS[benchmarkYear].targets.A}%
               </span>
@@ -1043,14 +1085,140 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
               <button
                 type="button"
                 onClick={() => handleApplyModelSchoolBenchmark(benchmarkYear)}
-                className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs flex items-center gap-1.5 self-start sm:self-auto hover:scale-105 active:scale-95"
+                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm flex items-center gap-2 hover:scale-[1.02] active:scale-95 shrink-0"
                 title="អនុវត្តភាគរយគោលដៅតាមសាលារៀនគំរូ សម្រាប់ឆ្នាំនេះ"
               >
-                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                <Sparkles className="w-4 h-4 text-amber-300" />
                 <span>អនុវត្តភាគរយគោលដៅ ({MODEL_SCHOOL_BENCHMARKS[benchmarkYear].yearName})</span>
               </button>
             </div>
           </div>
+
+          {/* Full Official MoEYS Standard Matrix Table (Matches user's uploaded screenshot) */}
+          {showBenchmarkMatrix && (
+            <div className="overflow-x-auto bg-white rounded-xl border border-slate-300 shadow-xs">
+              <table className="w-full text-center border-collapse text-xs">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-300 text-slate-800 font-bold">
+                    <th rowSpan={2} className="border-r border-slate-300 px-3 py-2 w-20 text-[#8B2500]">
+                      និទ្ទេស
+                    </th>
+                    {MODEL_SCHOOL_YEAR_KEYS.map((yKey) => {
+                      const b = MODEL_SCHOOL_BENCHMARKS[yKey];
+                      const isSelected = benchmarkYear === yKey;
+                      return (
+                        <th
+                          key={yKey}
+                          className={`border-r border-slate-300 px-2 py-1.5 font-bold text-[#8B2500] cursor-pointer transition-colors ${
+                            isSelected ? 'bg-amber-50/90 font-black' : 'hover:bg-slate-100'
+                          }`}
+                          onClick={() => setBenchmarkYear(yKey)}
+                        >
+                          {b.yearName} ({b.calendarYear})
+                        </th>
+                      );
+                    })}
+                  </tr>
+                  <tr className="bg-slate-50/80 border-b border-slate-300 text-slate-700 font-bold">
+                    {MODEL_SCHOOL_YEAR_KEYS.map((yKey) => {
+                      const b = MODEL_SCHOOL_BENCHMARKS[yKey];
+                      const isSelected = benchmarkYear === yKey;
+                      return (
+                        <th
+                          key={yKey}
+                          className={`border-r border-slate-300 px-2 py-1 text-[11px] text-[#8B2500] font-normal cursor-pointer ${
+                            isSelected ? 'bg-amber-50/90 font-bold' : ''
+                          }`}
+                          onClick={() => setBenchmarkYear(yKey)}
+                        >
+                          <div>ក្រុមគោលដៅ</div>
+                          <div className="font-bold">ABC( {b.targetABC}% )</div>
+                        </th>
+                      );
+                    })}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {(['A', 'B', 'C', 'D', 'E', 'F'] as const).map((grade) => (
+                    <tr key={grade} className="hover:bg-blue-50/40 transition-colors">
+                      <td className="border-r border-slate-300 px-3 py-1.5 font-black text-slate-800 bg-slate-50/50">
+                        {grade}
+                      </td>
+                      {MODEL_SCHOOL_YEAR_KEYS.map((yKey) => {
+                        const val = MODEL_SCHOOL_BENCHMARKS[yKey].targets[grade];
+                        const isSelected = benchmarkYear === yKey;
+                        // In the MoEYS screenshot, D, E, F for Year 4, 5, 6 are colored red
+                        const isRed =
+                          (yKey === 'year4' && (grade === 'D' || grade === 'E' || grade === 'F')) ||
+                          (yKey === 'year5' && (grade === 'D' || grade === 'E' || grade === 'F')) ||
+                          (yKey === 'year6' && (grade === 'E' || grade === 'F'));
+                        return (
+                          <td
+                            key={yKey}
+                            className={`border-r border-slate-300 px-2 py-1.5 font-mono text-xs cursor-pointer ${
+                              isSelected ? 'bg-amber-50/70 font-black' : ''
+                            } ${isRed ? 'text-red-600 font-bold' : 'text-slate-800 font-medium'}`}
+                            onClick={() => setBenchmarkYear(yKey)}
+                          >
+                            {val}%
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                  {/* Total Row */}
+                  <tr className="bg-slate-100/90 font-bold border-t-2 border-slate-300">
+                    <td className="border-r border-slate-300 px-3 py-1.5 text-[#8B2500]">
+                      សរុប
+                    </td>
+                    {MODEL_SCHOOL_YEAR_KEYS.map((yKey) => {
+                      const isSelected = benchmarkYear === yKey;
+                      const isRed = yKey === 'year4' || yKey === 'year5' || yKey === 'year6';
+                      return (
+                        <td
+                          key={yKey}
+                          className={`border-r border-slate-300 px-2 py-1.5 font-mono font-bold text-xs ${
+                            isSelected ? 'bg-amber-50/90' : ''
+                          } ${isRed ? 'text-red-600' : 'text-slate-900'}`}
+                        >
+                          100%
+                        </td>
+                      );
+                    })}
+                  </tr>
+                  {/* Action Row */}
+                  <tr className="bg-slate-50 no-print">
+                    <td className="border-r border-slate-300 px-2 py-1.5 text-[10px] text-slate-500 font-bold">
+                      សកម្មភាព
+                    </td>
+                    {MODEL_SCHOOL_YEAR_KEYS.map((yKey) => {
+                      const b = MODEL_SCHOOL_BENCHMARKS[yKey];
+                      const isSelected = benchmarkYear === yKey;
+                      return (
+                        <td
+                          key={yKey}
+                          className={`border-r border-slate-300 p-1 ${isSelected ? 'bg-amber-50/90' : ''}`}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => handleApplyModelSchoolBenchmark(yKey)}
+                            className={`w-full py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                              isSelected
+                                ? 'bg-blue-600 text-white shadow-2xs hover:bg-blue-700'
+                                : 'bg-slate-200 hover:bg-blue-600 hover:text-white text-slate-700'
+                            }`}
+                            title={`អនុវត្តភាគរយគោលដៅ ${b.yearName} ភ្លាមៗ`}
+                          >
+                            អនុវត្ត
+                          </button>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
 
