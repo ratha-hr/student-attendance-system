@@ -395,6 +395,21 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
     return list;
   }, [plan.rows]);
 
+  // Centered Warning Notification Modal State
+  const [showWarningModal, setShowWarningModal] = useState<boolean>(false);
+  const prevWarningNamesRef = useRef<string>('');
+
+  useEffect(() => {
+    const currentNames = warningColumns.map((c) => `${c.name}:${c.sum}`).sort().join(',');
+    // Automatically pop up centered notification modal when column percentage > 100%
+    if (warningColumns.length > 0 && currentNames !== prevWarningNamesRef.current) {
+      setShowWarningModal(true);
+    } else if (warningColumns.length === 0) {
+      setShowWarningModal(false);
+    }
+    prevWarningNamesRef.current = currentNames;
+  }, [warningColumns]);
+
   // Auto-fill from actual student grades in db.grades
   const handleAutoFillFromGrades = async () => {
     if (!activeClass) return;
@@ -900,6 +915,18 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
               <span>បោះពុម្ព (ទម្រង់ផ្លូវការ)</span>
             </button>
 
+            {warningColumns.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowWarningModal(true)}
+                className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer animate-pulse shadow-2xs"
+                title="ចុចដើម្បីពិនិត្យសញ្ញាព្រមានភាគរយលើស ១០០%"
+              >
+                <span>⚠️</span>
+                <span>លើស ១០០% ({warningColumns.length})</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={handleResetToDefault}
@@ -1222,43 +1249,59 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
         </div>
       </div>
 
-      {/* Warning Banner: Displays prominently whenever any column percentage total > 100% */}
-      {warningColumns.length > 0 && (
-        <div className="bg-rose-50 border-2 border-rose-400 rounded-2xl p-4 text-rose-900 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3 animate-fade-in no-print">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-rose-200 text-rose-800 flex items-center justify-center font-bold text-xl shrink-0 mt-0.5">
+      {/* Centered Warning Notification Modal (លោតជាសារដំណឹងចំកណ្តាលអេក្រង់ ខ្លឹមសារខ្លីចំគោលដៅ) */}
+      {showWarningModal && warningColumns.length > 0 && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in no-print">
+          <div className="bg-white rounded-3xl p-5 sm:p-6 max-w-sm sm:max-w-md w-full shadow-2xl border-2 border-rose-300 text-center space-y-4 animate-scale-up">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center text-3xl shadow-inner">
               ⚠️
             </div>
-            <div>
-              <h4 className="font-black text-sm text-rose-950 flex items-center gap-2">
-                <span>សញ្ញាព្រមាន៖ ភាគរយលើសពី ១០០% ត្រូវបានរកឃើញ!</span>
-                <span className="text-xs bg-rose-200 text-rose-800 px-2 py-0.5 rounded-full font-bold">
-                  {warningColumns.length} ជួរឈរ
-                </span>
-              </h4>
-              <p className="text-xs text-rose-800 mt-1 leading-relaxed">
-                ជួរឈរដែលមានផលបូកលើសពី ១០០%៖{' '}
-                {warningColumns.map((c, i) => (
-                  <span key={i} className="inline-block bg-rose-200/80 text-rose-900 px-1.5 py-0.5 rounded text-[11px] font-bold mr-1 my-0.5">
-                    {c.name}: {c.sum}%
-                  </span>
-                ))}
-              </p>
-              <p className="text-[11px] text-rose-700 mt-0.5">
-                * តាមគោលការណ៍សាលារៀនគំរូ ផលបូកភាគរយនៃគ្រប់និទ្ទេសត្រូវតែស្មើ <strong>១០០% គត់</strong> (មិនអាចលើសពី ១០០% ឡើយ)។
+
+            <div className="space-y-1">
+              <h3 className="text-base font-black text-rose-950">
+                ភាគរយលើសពី ១០០%!
+              </h3>
+              <p className="text-xs text-slate-600">
+                ផលបូកគ្រប់និទ្ទេសត្រូវតែស្មើ <strong>១០០% គត់</strong>
               </p>
             </div>
-          </div>
 
-          <button
-            type="button"
-            onClick={handleAutoBalanceAll}
-            className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer shadow-xs flex items-center gap-1.5 self-start md:self-auto hover:scale-105 active:scale-95"
-            title="កែសម្រួលភាគរយក្នុងជួរឈរទាំងអស់ឱ្យស្មើ ១០០% គត់ដោយស្វ័យប្រវត្តិ"
-          >
-            <Scale className="w-4 h-4 text-white" />
-            <span>⚖️ ថ្លឹងភាគរយឱ្យស្មើ ១០០% ស្វ័យប្រវត្ត</span>
-          </button>
+            {/* Short & Concise Column Details */}
+            <div className="bg-rose-50 rounded-2xl p-2.5 border border-rose-200/80 space-y-1.5 max-h-48 overflow-y-auto">
+              {warningColumns.map((c, i) => (
+                <div
+                  key={i}
+                  className="flex items-center justify-between text-xs font-bold text-rose-900 px-3 py-2 bg-white rounded-xl shadow-2xs border border-rose-100"
+                >
+                  <span className="truncate pr-2">{c.name}</span>
+                  <span className="font-mono text-rose-600 font-black shrink-0">{c.sum}%</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Action Buttons: Auto-balance & Dismiss */}
+            <div className="flex items-center justify-center gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  handleAutoBalanceAll();
+                  setShowWarningModal(false);
+                }}
+                className="flex-1 py-2.5 px-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-md flex items-center justify-center gap-1.5 active:scale-95"
+              >
+                <Scale className="w-4 h-4" />
+                <span>ថ្លឹងស្មើ ១០០% ស្វ័យប្រវត្ត</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowWarningModal(false)}
+                className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer border border-slate-200 active:scale-95"
+              >
+                យល់ព្រម
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
