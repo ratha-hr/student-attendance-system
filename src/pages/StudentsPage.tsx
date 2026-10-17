@@ -180,24 +180,25 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
     }
   };
 
-  // Direct Ctrl+V on the spreadsheet table (Intelligent Excel-like grid paste)
-  const handleTablePaste = async (e: React.ClipboardEvent) => {
-    const text = e.clipboardData.getData('text/plain');
+  // Core Excel/Clipboard Paste Engine
+  const executeTablePaste = async (text: string) => {
     if (!text || (!text.includes('\t') && !text.includes('\n'))) {
-      return; // Regular single cell inline text paste, let browser handle it natively
+      return false;
     }
-    e.preventDefault();
     const targetClassId = selectedClassId === 'ALL' ? (classes[0]?.id || '') : selectedClassId;
     if (!targetClassId) {
       alert('សូមជ្រើសរើសថ្នាក់រៀនជាមុនសិន!');
-      return;
+      return false;
     }
 
     const startRowIdx = selectedCell ? selectedCell.rowIdx : 0;
     const startColKey = selectedCell ? (selectedCell.colKey as keyof Student) : undefined;
 
     const parsedGrid = parseClipboardGrid(text, startColKey);
-    if (parsedGrid.rows.length === 0) return;
+    if (parsedGrid.rows.length === 0) {
+      showToast('⚠️ មិនអាចស្គាល់ទិន្នន័យសិស្សពីការ Copy ទេ (សូមចម្លងពី Excel ឡើងវិញ)');
+      return false;
+    }
 
     await pushSnapshot(`បិទភ្ជាប់ទិន្នន័យ ${parsedGrid.rows.length} ជួរពី Excel`);
 
@@ -232,7 +233,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
           continue;
         }
 
-        const targetRollNo = rowData.rollNo ? Number(rowData.rollNo) : targetIdx + 1;
+        const targetRollNo = rowData.rollNo ? Number(rowData.rollNo) : (filteredStudents.length + addedCount + 1);
         const newStu: Student = {
           id: `stu-${Date.now()}-${rIdx}-${Math.random().toString(36).substring(2, 6)}`,
           classId: targetClassId,
@@ -241,7 +242,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
           nameEn: rowData.nameEn || '',
           gender: rowData.gender === 'ស្រី' ? 'ស្រី' : 'ប្រុស',
           dob: rowData.dob || '',
-          age: rowData.dob ? calculateAge(rowData.dob) : 0,
+          age: rowData.dob ? calculateAge(rowData.dob) : (rowData.age || 0),
           originSchool: rowData.originSchool || '',
           pobVillage: rowData.pobVillage || '',
           pobCommune: rowData.pobCommune || '',
@@ -279,8 +280,69 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
     const summary = [];
     if (updatedCount > 0) summary.push(`កែប្រែសិស្ស ${updatedCount} នាក់`);
     if (addedCount > 0) summary.push(`បន្ថែមសិស្សថ្មី ${addedCount} នាក់`);
-    showToast(`📋 បានបិទភ្ជាប់ទិន្នន័យពី Excel ${colInfo} ដោយជោគជ័យ (${summary.join(', ')})!`);
+    if (summary.length > 0) {
+      showToast(`📋 បានបិទភ្ជាប់ទិន្នន័យពី Excel ${colInfo} ដោយជោគជ័យ (${summary.join(', ')})!`);
+      return true;
+    } else {
+      showToast('⚠️ មិនមានទិន្នន័យសិស្សត្រូវបានបញ្ចូលទេ');
+      return false;
+    }
   };
+
+  // Direct Ctrl+V on the spreadsheet table (Intelligent Excel-like grid paste)
+  const handleTablePaste = async (e: React.ClipboardEvent) => {
+    const text = e.clipboardData.getData('text/plain');
+    if (!text || (!text.includes('\t') && !text.includes('\n'))) {
+      return; // Regular single cell inline text paste, let browser handle it natively
+    }
+    e.preventDefault();
+    await executeTablePaste(text);
+  };
+
+  // Direct 1-Click Clipboard paste or fallback to modal
+  const handleDirectClipboardPasteClick = async () => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.readText) {
+        const text = await navigator.clipboard.readText();
+        if (text && (text.includes('\t') || text.includes('\n'))) {
+          const success = await executeTablePaste(text);
+          if (success) return;
+        }
+      }
+    } catch (err) {
+      console.warn('Direct clipboard read restricted by browser:', err);
+    }
+    setIsPasteModalOpen(true);
+  };
+
+  // Global window paste listener: allow Ctrl+V anywhere on StudentsPage to paste directly into table
+  useEffect(() => {
+    const handleGlobalPaste = async (e: ClipboardEvent) => {
+      // Don't intercept if any modal is open
+      if (isAddModalOpen || isPasteModalOpen || isIDCardsOpen || viewingStudent) {
+        return;
+      }
+
+      // Don't intercept if typing in a search bar
+      const target = e.target as HTMLElement | null;
+      if (target && target.tagName === 'INPUT') {
+        const inputType = (target as HTMLInputElement).type;
+        const placeholder = target.getAttribute('placeholder') || '';
+        if (placeholder.includes('ស្វែងរក') || inputType === 'search') {
+          return;
+        }
+      }
+
+      const clipboardText = e.clipboardData?.getData('text/plain');
+      if (clipboardText && (clipboardText.includes('\t') || clipboardText.includes('\n'))) {
+        e.preventDefault();
+        await executeTablePaste(clipboardText);
+      }
+    };
+
+    window.addEventListener('paste', handleGlobalPaste);
+    return () => window.removeEventListener('paste', handleGlobalPaste);
+  }, [selectedClassId, classes, selectedCell, filteredStudents, isAddModalOpen, isPasteModalOpen, isIDCardsOpen, viewingStudent]);
 
   // Keyboard navigation inside table (Enter moves down, Tab moves right)
   const handleCellKeyDown = (
@@ -847,7 +909,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
             {/* Paste from Excel Button */}
             <button
               type="button"
-              onClick={() => setIsPasteModalOpen(true)}
+              onClick={handleDirectClipboardPasteClick}
               className="inline-flex items-center px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer shrink-0"
               title="បិទភ្ជាប់ទិន្នន័យដែលបាន Copy ពី Excel / XLSM (Ctrl+V)"
             >
@@ -1059,7 +1121,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
           <div className="flex flex-wrap items-center gap-2 text-[11px]">
             <button
               type="button"
-              onClick={() => setIsPasteModalOpen(true)}
+              onClick={handleDirectClipboardPasteClick}
               className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg cursor-pointer transition-colors font-bold flex items-center space-x-1.5 shadow-xs"
               title="បិទភ្ជាប់ទិន្នន័យដែលបាន Copy ពី Excel (Ctrl+V)"
             >
@@ -1082,10 +1144,10 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
             </div>
             <button
               type="button"
-              onClick={() => setIsPasteModalOpen(true)}
+              onClick={handleDirectClipboardPasteClick}
               className="px-2.5 py-0.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold text-[11px] transition-colors cursor-pointer shadow-2xs"
             >
-              + បើកផ្ទាំងបិទភ្ជាប់
+              📋 បិទភ្ជាប់ពី Excel (Ctrl+V)
             </button>
           </div>
         )}
@@ -1788,7 +1850,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
             {/* Quick Open Paste Modal */}
             <button
               type="button"
-              onClick={() => setIsPasteModalOpen(true)}
+              onClick={handleDirectClipboardPasteClick}
               className="inline-flex items-center px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 border border-indigo-300 rounded-lg font-bold text-indigo-800 shadow-2xs transition-colors cursor-pointer text-xs"
               title="បិទភ្ជាប់ទិន្នន័យពី Excel (Ctrl+V)"
             >

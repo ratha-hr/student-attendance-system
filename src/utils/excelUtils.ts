@@ -272,6 +272,9 @@ export async function parseExcelStudents(file: File, classId: string): Promise<P
             else if (/គោត្តនាម.*នាម|គោត្តនាម|ឈ្មោះសិស្ស|ឈ្មោះ|name/i.test(h)) {
               if (colMap.nameKh === undefined) colMap.nameKh = colIdx;
             } else if (/^(ភេទ|gender|sex)$/i.test(h)) colMap.gender = colIdx;
+            else if (/^ថ្ងៃ(ទី)?$/i.test(h) || h === 'day') colMap.day = colIdx;
+            else if (/^ខែ$/i.test(h) || h === 'month') colMap.month = colIdx;
+            else if (/^ឆ្នាំ$/i.test(h) || h === 'year') colMap.year = colIdx;
             else if (/ថ្ងៃ.*កំណើត|កំណើត|dob|birth/i.test(h)) colMap.dob = colIdx;
             else if (/^អាយុ|age$/i.test(h)) colMap.age = colIdx;
             else if (/សាលា|school/i.test(h)) colMap.originSchool = colIdx;
@@ -332,9 +335,22 @@ export async function parseExcelStudents(file: File, classId: string): Promise<P
 
           // 3. Extract DOB
           let dob = '';
-          if (colMap.dob !== undefined && cells[colMap.dob]) {
+          if (colMap.day !== undefined && colMap.month !== undefined && colMap.year !== undefined) {
+            const d = String(cells[colMap.day] || '').trim();
+            const m = String(cells[colMap.month] || '').trim();
+            const y = String(cells[colMap.year] || '').trim();
+            if (d && m && y) {
+              const dayStr = String(Number(khmerToArabic(d))).padStart(2, '0');
+              const monthStr = String(Number(khmerToArabic(m))).padStart(2, '0');
+              const yearStr = String(Number(khmerToArabic(y)));
+              if (Number(yearStr) >= 1990 && Number(yearStr) <= 2030) {
+                dob = `${yearStr}-${monthStr}-${dayStr}`;
+              }
+            }
+          }
+          if (!dob && colMap.dob !== undefined && cells[colMap.dob]) {
             dob = normalizeDate(cells[colMap.dob]);
-          } else {
+          } else if (!dob) {
             for (const cell of cells) {
               const d = normalizeDate(cell);
               if (d) {
@@ -368,7 +384,7 @@ export async function parseExcelStudents(file: File, classId: string): Promise<P
             nameKh: name,
             gender,
             dob,
-            age: dob ? calculateAge(dob) : 0,
+            age: dob ? calculateAge(dob) : (colMap.age !== undefined && cells[colMap.age] ? Number(khmerToArabic(cells[colMap.age])) || 0 : 0),
             originSchool: colMap.originSchool !== undefined ? String(cells[colMap.originSchool] || '').trim() : '',
             pobProvince: colMap.pobProvince !== undefined ? String(cells[colMap.pobProvince] || '').trim() : '',
             studentPhone: colMap.studentPhone !== undefined ? String(cells[colMap.studentPhone] || '').trim() : '',
@@ -431,130 +447,143 @@ export function parseClipboardGrid(
   const colCount = firstRow.length;
 
   // 1. Check if first row is an explicit table header
-  let headerMatchCount = 0;
-  const headerKeys: (keyof Student | null)[] = firstRow.map((cell) => {
-    const cleanCell = cell.toLowerCase().replace(/[\s_\-#.]/g, '');
-    for (const col of SPREADSHEET_COLUMNS) {
-      if (
-        col.aliases.some((alias) => {
-          const a = alias.toLowerCase().replace(/[\s_\-#.]/g, '');
-          return cleanCell === a || cleanCell.includes(a);
-        })
-      ) {
-        headerMatchCount++;
-        return col.key;
-      }
-    }
-    return null;
-  });
-
   const isHeader =
-    headerMatchCount >= 1 &&
-    (headerMatchCount >= Math.min(2, firstRow.length) ||
-      firstRow.some((c) => /^(ល\.?រ|ឈ្មោះ|ភេទ|អត្តលេខ|name|gender|dob)/i.test(c)));
+    firstRow.some((c) => /^(ល\.?រ|លេខរៀង|អត្តលេខ|គោត្តនាម|ឈ្មោះ|ភេទ|gender|sex)/i.test(c.replace(/[\s_\-#.]/g, '')));
 
   let startIndex = 0;
+  let dayColIdx = -1;
+  let monthColIdx = -1;
+  let yearColIdx = -1;
   let columnKeys: (keyof Student | null)[] = [];
 
   if (isHeader) {
     startIndex = 1;
-    columnKeys = headerKeys;
+    // Map from header row
+    firstRow.forEach((c, idx) => {
+      const clean = c.toLowerCase().replace(/[\s_\-#.]/g, '');
+      if (/^(លរ|លេខរៀង|no|roll)$/i.test(clean)) columnKeys[idx] = 'rollNo';
+      else if (/^(អត្តលេខ|កូដ|code|id|studentid)$/i.test(clean)) columnKeys[idx] = 'studentCode';
+      else if (/គោត្តនាម.*នាម|គោត្តនាម|ឈ្មោះសិស្ស|ឈ្មោះ|name/i.test(clean)) columnKeys[idx] = 'nameKh';
+      else if (/^(ភេទ|gender|sex)$/i.test(clean)) columnKeys[idx] = 'gender';
+      else if (/^ថ្ងៃ(ទី)?$/i.test(clean) || clean === 'day') dayColIdx = idx;
+      else if (/^ខែ$/i.test(clean) || clean === 'month') monthColIdx = idx;
+      else if (/^ឆ្នាំ$/i.test(clean) || clean === 'year') yearColIdx = idx;
+      else if (/ថ្ងៃ.*កំណើត|កំណើត|dob|birth/i.test(clean)) columnKeys[idx] = 'dob';
+      else if (/^អាយុ|age$/i.test(clean)) columnKeys[idx] = 'age';
+      else if (/សាលា|school/i.test(clean)) columnKeys[idx] = 'originSchool';
+      else if (/ទីកន្លែងកំណើត.*ខេត្ត|ខេត្ត.*កំណើត|ទីកន្លែងកំណើត/i.test(clean)) columnKeys[idx] = 'pobProvince';
+      else if (/ទូរស័ព្ទ|phone/i.test(clean)) columnKeys[idx] = 'studentPhone';
+      else if (/ឪពុក|father|អាណាព្យាបាល/i.test(clean)) columnKeys[idx] = 'fatherName';
+      else if (/ម្តាយ|mother/i.test(clean)) columnKeys[idx] = 'motherName';
+      else if (/ផ្សេងៗ|កំណត់ចំណាំ|ចំណាំ|remark|notes/i.test(clean)) columnKeys[idx] = 'otherNotes';
+      else columnKeys[idx] = null;
+    });
   } else {
-    // Content-aware column mapping for data without headers
-    const c0 = firstRow[0] || '';
-    const c1 = firstRow[1] || '';
-    const c2 = firstRow[2] || '';
-    const c3 = firstRow[3] || '';
+    // Intelligent Column Type Inference on raw student data rows
+    const sampleRows = rawGrid.slice(0, 10);
 
-    const isC0Roll = !isNaN(Number(khmerToArabic(c0))) && Number(khmerToArabic(c0)) > 0 && Number(khmerToArabic(c0)) < 300;
-    const isC0Code = /^STU/i.test(c0) || /^\d{4,8}$/.test(c0);
-    const isC1Code = /^STU/i.test(c1) || /^\d{4,8}$/.test(c1);
-    const isC1Gender = c1 === 'ស្រី' || c1 === 'ប្រុស' || /^(F|M|Female|Male)$/i.test(c1);
-    const isC2Gender = c2 === 'ស្រី' || c2 === 'ប្រុស' || /^(F|M|Female|Male)$/i.test(c2);
-    const isC3Gender = c3 === 'ស្រី' || c3 === 'ប្រុស' || /^(F|M|Female|Male)$/i.test(c3);
+    // 1. Detect gender column: >50% of cells are 'ប្រុស' or 'ស្រី' or 'F'/'M'
+    let detectedGenderCol = -1;
+    for (let c = 0; c < colCount; c++) {
+      const matchCount = sampleRows.filter((r) => {
+        const val = String(r[c] || '').trim();
+        return val === 'ស្រី' || val === 'ប្រុស' || /^(F|M|Female|Male)$/i.test(val);
+      }).length;
+      if (matchCount >= Math.min(2, sampleRows.length) && matchCount / sampleRows.length >= 0.5) {
+        detectedGenderCol = c;
+        break;
+      }
+    }
+
+    // 2. Detect roll number column (small numbers < 500 in column 0 or 1)
+    let detectedRollCol = -1;
+    if (colCount > 1) {
+      const c0IsRoll = sampleRows.every((r) => {
+        const val = Number(khmerToArabic(r[0] || ''));
+        return !isNaN(val) && val > 0 && val < 500;
+      });
+      if (c0IsRoll) detectedRollCol = 0;
+    }
+
+    // 3. Detect 3-column date: [Day (1-31), Month (1-12), Year (1990-2030)]
+    for (let c = 0; c < colCount - 2; c++) {
+      const is3ColDate = sampleRows.every((r) => {
+        const d = Number(khmerToArabic(r[c] || ''));
+        const m = Number(khmerToArabic(r[c + 1] || ''));
+        const y = Number(khmerToArabic(r[c + 2] || ''));
+        return !isNaN(d) && d >= 1 && d <= 31 && !isNaN(m) && m >= 1 && m <= 12 && !isNaN(y) && y >= 1990 && y <= 2030;
+      });
+      if (is3ColDate) {
+        dayColIdx = c;
+        monthColIdx = c + 1;
+        yearColIdx = c + 2;
+        break;
+      }
+    }
+
+    // 4. Single-column date check if 3-col date wasn't found
+    let detectedSingleDobCol = -1;
+    if (dayColIdx === -1) {
+      for (let c = 0; c < colCount; c++) {
+        const dateMatchCount = sampleRows.filter((r) => Boolean(normalizeDate(r[c]))).length;
+        if (dateMatchCount >= Math.min(2, sampleRows.length)) {
+          detectedSingleDobCol = c;
+          break;
+        }
+      }
+    }
+
+    // Build columnKeys array
+    columnKeys = new Array(colCount).fill(null);
 
     // Case A: Single column paste (respect active target cell e.g. nameKh, dob, studentPhone)
     if (colCount === 1) {
       if (targetStartColKey) {
-        columnKeys = [targetStartColKey];
-      } else if (/^\d{8,11}$/.test(c0) || /^0\d{8,9}$/.test(c0)) {
-        columnKeys = ['studentPhone'];
-      } else if (/\d{1,4}[-/.]\d{1,2}[-/.]\d{1,4}/.test(c0)) {
-        columnKeys = ['dob'];
-      } else if (isC0Roll) {
-        columnKeys = ['rollNo'];
+        columnKeys[0] = targetStartColKey;
+      } else if (detectedGenderCol === 0) {
+        columnKeys[0] = 'gender';
+      } else if (detectedSingleDobCol === 0) {
+        columnKeys[0] = 'dob';
+      } else if (detectedRollCol === 0) {
+        columnKeys[0] = 'rollNo';
       } else {
-        columnKeys = ['nameKh'];
+        columnKeys[0] = 'nameKh';
       }
-    }
-    // Case B: 2 columns [Name, Gender] or [Roll, Name]
-    else if (colCount === 2) {
-      if (isC1Gender) {
-        columnKeys = ['nameKh', 'gender'];
-      } else if (isC0Roll) {
-        columnKeys = ['rollNo', 'nameKh'];
-      } else {
-        columnKeys = ['nameKh', 'gender'];
+    } else {
+      // Multi-column mapping
+      if (detectedGenderCol !== -1) {
+        columnKeys[detectedGenderCol] = 'gender';
+        // In Cambodian school spreadsheets, Student Name ALWAYS immediately precedes Gender!
+        if (detectedGenderCol > 0) {
+          columnKeys[detectedGenderCol - 1] = 'nameKh';
+        }
       }
-    }
-    // Case C: 3 columns [Roll, Name, Gender] or [Roll, Code, Name] or [Name, Gender, DOB]
-    else if (colCount === 3) {
-      if (isC0Roll && isC2Gender) {
-        columnKeys = ['rollNo', 'nameKh', 'gender'];
-      } else if (isC0Roll && isC1Code) {
-        columnKeys = ['rollNo', 'studentCode', 'nameKh'];
-      } else if (isC1Gender) {
-        columnKeys = ['nameKh', 'gender', 'dob'];
-      } else {
-        columnKeys = ['rollNo', 'nameKh', 'gender'];
+
+      if (detectedRollCol !== -1 && columnKeys[detectedRollCol] === null) {
+        columnKeys[detectedRollCol] = 'rollNo';
       }
-    }
-    // Case D: 4 columns [Roll, Name, Gender, DOB] or [Roll, Code, Name, Gender]
-    else if (colCount === 4) {
-      if (isC0Roll && isC2Gender) {
-        columnKeys = ['rollNo', 'nameKh', 'gender', 'dob'];
-      } else if (isC0Roll && isC1Code && isC3Gender) {
-        columnKeys = ['rollNo', 'studentCode', 'nameKh', 'gender'];
-      } else if (isC1Gender) {
-        columnKeys = ['nameKh', 'gender', 'dob', 'studentPhone'];
-      } else {
-        columnKeys = ['rollNo', 'nameKh', 'gender', 'dob'];
+
+      if (detectedSingleDobCol !== -1) {
+        columnKeys[detectedSingleDobCol] = 'dob';
       }
-    }
-    // Case E: Full 15-23 columns (MoEYS)
-    else if (colCount >= 15) {
-      columnKeys = [
-        'rollNo',
-        'studentCode',
-        'nameKh',
-        'gender',
-        'dob',
-        'age',
-        'originSchool',
-        'pobVillage',
-        'pobCommune',
-        'pobDistrict',
-        'pobProvince',
-        'addrVillage',
-        'addrCommune',
-        'addrDistrict',
-        'addrProvince',
-        'studentPhone',
-        'fatherName',
-        'fatherOccupation',
-        'fatherPhone',
-        'motherName',
-        'motherOccupation',
-        'motherPhone',
-        'otherNotes',
-      ];
-    }
-    // Case F: 5 to 14 columns
-    else {
-      if (isC0Roll && isC2Gender) {
-        columnKeys = ['rollNo', 'nameKh', 'gender', 'dob', 'age', 'originSchool', 'pobProvince', 'addrProvince', 'studentPhone', 'fatherName', 'motherName'];
-      } else {
-        columnKeys = ['rollNo', 'studentCode', 'nameKh', 'gender', 'dob', 'age', 'originSchool', 'pobProvince', 'addrProvince', 'studentPhone', 'fatherName', 'motherName'];
+
+      // Check remaining columns (Origin School, Code, Phones, etc.)
+      for (let c = 0; c < colCount; c++) {
+        if (c === dayColIdx || c === monthColIdx || c === yearColIdx) continue;
+        if (columnKeys[c] !== null) continue;
+
+        const sampleVal = sampleRows.map((r) => String(r[c] || '').trim()).find(Boolean) || '';
+
+        // If it comes after date or year, and contains "សាលា", it's originSchool
+        if (/សាលា|បឋមសិក្សា|អនុវិទ្យាល័យ|វិទ្យាល័យ/i.test(sampleVal)) {
+          columnKeys[c] = 'originSchool';
+        } else if (/^STU/i.test(sampleVal) || (c === 1 && detectedRollCol === 0 && detectedGenderCol > 2)) {
+          columnKeys[c] = 'studentCode';
+        } else if (/^\d{8,11}$/.test(sampleVal) || /^0\d{8,9}$/.test(sampleVal)) {
+          columnKeys[c] = 'studentPhone';
+        } else if (columnKeys.filter(k => k === 'nameKh').length === 0 && !/^\d+$/.test(sampleVal)) {
+          columnKeys[c] = 'nameKh';
+        }
       }
     }
   }
@@ -568,6 +597,7 @@ export function parseClipboardGrid(
     const rowObj: Record<string, any> = {};
 
     for (let c = 0; c < cells.length; c++) {
+      if (c === dayColIdx || c === monthColIdx || c === yearColIdx) continue;
       const colKey = columnKeys[c];
       if (!colKey) continue;
       const cellVal = cells[c];
@@ -589,6 +619,22 @@ export function parseClipboardGrid(
         if (!isNaN(num)) rowObj.age = num;
       } else {
         rowObj[colKey] = cellVal;
+      }
+    }
+
+    // Combine 3-column date (Day, Month, Year) if present
+    if (dayColIdx !== -1 && monthColIdx !== -1 && yearColIdx !== -1) {
+      const d = String(cells[dayColIdx] || '').trim();
+      const m = String(cells[monthColIdx] || '').trim();
+      const y = String(cells[yearColIdx] || '').trim();
+      if (d && m && y) {
+        const dayStr = String(Number(khmerToArabic(d))).padStart(2, '0');
+        const monthStr = String(Number(khmerToArabic(m))).padStart(2, '0');
+        const yearStr = String(Number(khmerToArabic(y)));
+        if (Number(yearStr) >= 1990 && Number(yearStr) <= 2030) {
+          rowObj.dob = `${yearStr}-${monthStr}-${dayStr}`;
+          rowObj.age = calculateAge(rowObj.dob);
+        }
       }
     }
 
