@@ -20,6 +20,7 @@ import { GradeCoefficientsConfigPage } from './pages/GradeCoefficientsConfigPage
 import { TeachingPlanPage } from './pages/TeachingPlanPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ManageClassesModal } from './components/ManageClassesModal';
+import { CrossDeviceSyncModal } from './components/CrossDeviceSyncModal';
 import { StudentDailyAttendanceView } from './components/StudentDailyAttendanceView';
 import type { TeacherSettings } from './types';
 import { decodeRosterFromUrl } from './utils/attendanceShare';
@@ -71,9 +72,10 @@ export function App() {
   const [selectedStudentForLetter, setSelectedStudentForLetter] = useState<string>('');
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Modals for settings and class management
+  // Modals for settings, class management, and cross-device sync
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isManageClassesOpen, setIsManageClassesOpen] = useState(false);
+  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
 
   // Live data from IndexedDB
   const classes = useLiveQuery(() => db.classes.toArray(), [refreshKey]) || [];
@@ -90,9 +92,30 @@ export function App() {
       .catch(console.error);
     db.getSettings().then(setSettings).catch(console.error);
 
-    // Auto-detect & import student roster from URL query on any device/browser
+    // Auto-detect & import sync_code from QR code or shared sync link
     if (typeof window !== 'undefined') {
       const p = new URLSearchParams(window.location.search);
+      const syncCode = p.get('sync_code') || p.get('sync');
+      if (syncCode) {
+        const cleanCode = syncCode.replace(/\D/g, '');
+        if (cleanCode.length === 6) {
+          fetch(`https://ntfy.sh/kh-sync-hunratha-${cleanCode}/raw`)
+            .then(async (res) => {
+              if (res.ok) {
+                const raw = await res.text();
+                if (raw && raw.trim().startsWith('{')) {
+                  await db.importBackupJSON(raw);
+                  window.history.replaceState({}, '', window.location.pathname);
+                  alert('✅ សមកាលកម្មជោគជ័យ! ទិន្នន័យពីកុំព្យូទ័រត្រូវបានផ្ទុកចូលទូរស័ព្ទដៃរួចរាល់ ១០០%។');
+                  window.location.reload();
+                }
+              }
+            })
+            .catch(console.error);
+        }
+      }
+
+      // Auto-detect & import student roster from URL query on any device/browser
       const encodedRoster = p.get('roster') || p.get('students') || p.get('importStudents');
       const classId = p.get('class') || p.get('importClass');
       const className = p.get('className');
@@ -203,35 +226,11 @@ export function App() {
           settings={settings}
           onOpenSettings={() => setIsSettingsOpen(true)}
           onOpenManageClasses={() => setIsManageClassesOpen(true)}
+          onOpenSync={() => setIsSyncModalOpen(true)}
         />
 
         {/* Content Body - Full Width Screen Layout */}
         <main className="flex-1 p-3 sm:p-5 lg:p-6 2xl:px-8 w-full pb-20 lg:pb-8">
-          {/* Quick Load 200 Students Banner if database has fewer than 50 students */}
-          {students.length < 50 && (
-            <div className="mb-4 bg-linear-to-r from-blue-600 to-indigo-600 text-white p-3.5 rounded-2xl shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in no-print">
-              <div className="flex items-center space-x-2.5">
-                <span className="text-xl">🚀</span>
-                <div>
-                  <p className="font-bold text-xs sm:text-sm">
-                    ទិន្នន័យសាកល្បងសិស្ស ២០០ នាក់ (ថ្នាក់ទី ៧ ដល់ ទី ១២) បានត្រៀមរួចជាស្រេច!
-                  </p>
-                  <p className="text-[11px] text-blue-100">
-                    ចុចប៊ូតុងនេះដើម្បីផ្ទុកទិន្នន័យសាកល្បង ២០០នាក់ និង ៦ថ្នាក់ភ្លាមៗ
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={async () => {
-                  await db.loadSample200Students();
-                  handleRefresh();
-                }}
-                className="px-4 py-2 bg-white text-blue-700 hover:bg-blue-50 font-bold text-xs rounded-xl shadow-xs transition-colors whitespace-nowrap cursor-pointer self-end sm:self-auto"
-              >
-                ផ្ទុក ២០០ នាក់ភ្លាម
-              </button>
-            </div>
-          )}
 
           {currentTab === 'dashboard' && (
             <DashboardPage
@@ -396,6 +395,13 @@ export function App() {
         selectedClassId={selectedClassId}
         onSelectClass={setSelectedClassId}
         academicYear={settings?.academicYear || '២០២៤-២០២៥'}
+      />
+
+      {/* Cross-Device PC ⇄ Mobile Sync Modal */}
+      <CrossDeviceSyncModal
+        isOpen={isSyncModalOpen}
+        onClose={() => setIsSyncModalOpen(false)}
+        onSuccess={handleRefresh}
       />
     </div>
     </UndoRedoProvider>

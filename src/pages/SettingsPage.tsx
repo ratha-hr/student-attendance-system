@@ -32,6 +32,7 @@ import { db } from '../db/db';
 import { toKhmerNum } from '../utils/dateUtils';
 import { getPinForDate, getDateBasedPin, getDailySecurityPin, generateOneTimeSharePin, type PinMode } from '../utils/pinUtils';
 import { useUndoRedo } from '../context/UndoRedoContext';
+import { CrossDeviceSyncModal } from '../components/CrossDeviceSyncModal';
 
 interface SettingsPageProps {
   settings: TeacherSettings | null;
@@ -68,6 +69,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ settings, onRefresh 
   };
 
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [isSyncOpen, setIsSyncOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const todayStr = React.useMemo(() => {
@@ -812,22 +814,38 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ settings, onRefresh 
             </div>
 
             {/* Cross-Device Sync Card */}
-            <div className="p-5 rounded-2xl bg-linear-to-r from-blue-50/80 to-indigo-50/80 border border-blue-200/90 text-xs text-slate-700 space-y-3">
-              <div className="flex items-center space-x-2 text-blue-900 font-black text-sm">
-                <Smartphone className="w-4 h-4 text-blue-600" />
-                <span>សមកាលកម្មឆ្លងឧបករណ៍ (PC ↔ ទូរស័ព្ទដៃ / Tablet) ៖</span>
+            <div className="p-5 rounded-2xl bg-gradient-to-r from-blue-50/90 to-indigo-50/90 border border-blue-200/90 text-xs text-slate-700 space-y-3 shadow-2xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-blue-100 pb-3">
+                <div className="flex items-center space-x-2 text-blue-900 font-black text-sm">
+                  <Smartphone className="w-5 h-5 text-blue-600" />
+                  <span>សមកាលកម្មឆ្លងឧបករណ៍ (កុំព្យូទ័រ ↔ ទូរស័ព្ទដៃ / Tablet) ៖</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsSyncOpen(true)}
+                  className="px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2 self-start sm:self-auto active:scale-95"
+                >
+                  <RefreshCw className="w-4 h-4 text-amber-300" />
+                  <span>បើកផ្ទាំង Sync ទូរស័ព្ទ</span>
+                </button>
               </div>
-              <ul className="space-y-2 text-slate-600 text-[11px] sm:text-xs leading-relaxed">
+              <ul className="space-y-2 text-slate-600 text-[11px] sm:text-xs leading-relaxed pt-1">
                 <li className="flex items-start space-x-2">
                   <span className="text-blue-600 font-black">✓</span>
                   <span>
-                    <strong>តំណភ្ជាប់ស្រង់វត្តមាន ៖</strong> រាល់ពេលចុច «ចែករំលែកទៅសិស្ស (ស្រង់វត្តមាន)» ឬផ្ញើតំណទៅ Telegram ឈ្មោះសិស្សទាំងអស់ត្រូវបានបង្កប់ក្នុងតំណ។ បើកលើទូរស័ព្ទណាក៏បង្ហាញឈ្មោះសិស្ស និងវត្តមានភ្លាមៗ ១០០%។
+                    <strong>ស្កេន QR កូដ ៖</strong> នៅលើកុំព្យូទ័រ ចុច «បើកផ្ទាំង Sync ទូរស័ព្ទ» បង្ហាញ QR Code រួចយកទូរស័ព្ទមកស្កេន ទិន្នន័យចូលភ្លាមៗ ១០០%។
                   </span>
                 </li>
                 <li className="flex items-start space-x-2">
                   <span className="text-blue-600 font-black">✓</span>
                   <span>
-                    <strong>ផ្ទេរទិន្នន័យគ្រប់ថ្នាក់ទាំងអស់ទៅទូរស័ព្ទ ៖</strong> ចុច «ទាញយក Backup (.json)» ផ្ញើឯកសារនោះចូល Telegram រួចបើកលើទូរស័ព្ទហើយចុច «ស្តារទិន្នន័យពី Backup» ជាការស្រេច។
+                    <strong>កូដ Cloud ៦ ខ្ទង់ ៖</strong> ផ្ញើទិន្នន័យពីកុំព្យូទ័រ រួចយកលេខកូដ ៦ ខ្ទង់ទៅវាយលើទូរស័ព្ទ ដើម្បីទាញយកទិន្នន័យមកវិញ។
+                  </span>
+                </li>
+                <li className="flex items-start space-x-2">
+                  <span className="text-blue-600 font-black">✓</span>
+                  <span>
+                    <strong>ផ្ទេរទិន្នន័យតាម Telegram ៖</strong> ចុច «ទាញយក Backup (.json)» ផ្ញើឯកសារនោះចូល Telegram រួចបើកលើទូរស័ព្ទហើយចុច «ស្តារទិន្នន័យពី Backup» ជាការស្រេច។
                   </span>
                 </li>
               </ul>
@@ -857,6 +875,13 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ settings, onRefresh 
           </div>
         )}
       </form>
+
+      {/* Cross-Device Sync Modal */}
+      <CrossDeviceSyncModal
+        isOpen={isSyncOpen}
+        onClose={() => setIsSyncOpen(false)}
+        onSuccess={onRefresh}
+      />
     </div>
   );
 };

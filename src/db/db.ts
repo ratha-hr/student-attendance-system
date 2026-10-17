@@ -73,6 +73,9 @@ export class TeacherDatabase extends Dexie {
     if (!s) {
       await this.settings.put({ ...initialSettings, id: 'current_settings' });
     }
+
+    // Auto-align sample classes if device is still holding old dummy teachers (សុខ សារឿន, ជា ស្រីពៅ, ចាន់ សុផល)
+    await this.alignLegacySampleClasses();
   }
 
   async clearAllData() {
@@ -84,6 +87,173 @@ export class TeacherDatabase extends Dexie {
     await this.yearlyPlans.clear();
     await this.timetable.clear();
     await this.extracts.clear();
+    await this.teachingPlans.clear();
+  }
+
+  /**
+   * ធ្វើសមកាលកម្មកែតម្រូវទិន្នន័យលើឧបករណ៍ (ទូរស័ព្ទ/កុំព្យូទ័រ) ដែលធ្លាប់ជាប់ឈ្មោះគ្រូគំរូចាស់ (សុខ សារឿន, ជា ស្រីពៅ, ចាន់ សុផល)
+   * ឱ្យស្របទៅតាមថ្នាក់ជាក់ស្ដែងទាំង ៤ របស់លោកគ្រូ ហ៊ុន រដ្ឋា (7A, 7B, 9A, 10A) ដោយស្វ័យប្រវត្តិ។
+   */
+  async alignLegacySampleClasses() {
+    try {
+      const allClasses = await this.classes.toArray();
+      if (allClasses.length === 0) return;
+
+      const dummyTeacherNames = ['សុខ សារឿន', 'ជា ស្រីពៅ', 'ចាន់ សុផល', 'ស៊ឹម វីរៈ'];
+      const hasDummyTeachers = allClasses.some(
+        (c) => c.homeroomTeacher && dummyTeacherNames.includes(c.homeroomTeacher)
+      );
+      const hasOldClass8 = allClasses.some((c) => c.id === 'class-8' || c.name === 'ថ្នាក់ទី 8A');
+      const hasOldClass12 = allClasses.some((c) => c.id === 'class-12' || c.name === 'ថ្នាក់ទី 12A');
+
+      if (hasDummyTeachers || hasOldClass8 || hasOldClass12) {
+        console.log('Auto-aligning classes to teacher Hun Ratha 4 classes (7A, 7B, 9A, 10A)...');
+
+        // 1. Update 7A
+        const class7 = allClasses.find((c) => c.id === 'class-7' || c.name === 'ថ្នាក់ទី 7A');
+        if (class7) {
+          await this.classes.update(class7.id, {
+            name: 'ថ្នាក់ទី 7A',
+            grade: '7',
+            homeroomTeacher: 'ហ៊ុន រដ្ឋា',
+            academicYear: '២០២៦-២០២៧',
+            stream: 'general',
+          });
+        }
+
+        // 2. Ensure 7B exists
+        const class7b = allClasses.find((c) => c.id === 'class-7b' || c.name === 'ថ្នាក់ទី 7B');
+        if (!class7b) {
+          await this.classes.put({
+            id: 'class-7b',
+            name: 'ថ្នាក់ទី 7B',
+            grade: '7',
+            academicYear: '២០២៦-២០២៧',
+            homeroomTeacher: 'ហ៊ុន រដ្ឋា',
+            stream: 'general',
+            createdAt: new Date().toISOString(),
+          });
+        } else {
+          await this.classes.update(class7b.id, {
+            name: 'ថ្នាក់ទី 7B',
+            grade: '7',
+            homeroomTeacher: 'ហ៊ុន រដ្ឋា',
+            academicYear: '២០២៦-២០២៧',
+            stream: 'general',
+          });
+        }
+
+        // 3. Update 9A
+        const class9 = allClasses.find((c) => c.id === 'class-9' || c.name === 'ថ្នាក់ទី 9A');
+        if (class9) {
+          await this.classes.update(class9.id, {
+            name: 'ថ្នាក់ទី 9A',
+            grade: '9',
+            homeroomTeacher: 'សាលា',
+            academicYear: '២០២៦-២០២៧',
+            stream: 'general',
+          });
+        }
+
+        // 4. Update 10A
+        const class10 = allClasses.find((c) => c.id === 'class-10' || c.name === 'ថ្នាក់ទី 10A');
+        if (class10) {
+          await this.classes.update(class10.id, {
+            name: 'ថ្នាក់ទី 10A',
+            grade: '10',
+            homeroomTeacher: 'ចាបុត',
+            academicYear: '២០២៦-២០២៧',
+            stream: 'science',
+          });
+        }
+
+        // 5. Remove dummy 8A, 11A, 12A if attendance is empty, moving any students to 7B or preserving
+        const dummyClasses = allClasses.filter(
+          (c) =>
+            c.id === 'class-8' ||
+            c.id === 'class-11' ||
+            c.id === 'class-12' ||
+            c.name === 'ថ្នាក់ទី 8A' ||
+            c.name === 'ថ្នាក់ទី 12A' ||
+            (c.homeroomTeacher && dummyTeacherNames.includes(c.homeroomTeacher))
+        );
+
+        for (const dc of dummyClasses) {
+          const attCount = await this.attendance.where('classId').equals(dc.id).count();
+          if (attCount === 0) {
+            const stus = await this.students.where('classId').equals(dc.id).toArray();
+            for (const s of stus) {
+              if (dc.id === 'class-8') {
+                await this.students.update(s.id, { classId: 'class-7b' });
+              } else {
+                await this.students.delete(s.id);
+              }
+            }
+            await this.classes.delete(dc.id);
+          }
+        }
+
+        // Ensure teacher settings profile is complete
+        await this.updateSettings({
+          teacherName: 'ហ៊ុន រដ្ឋា',
+          schoolName: 'វិទ្យាល័យ ហ៊ុន សែន កំពង់ត្រឡាច',
+          principalName: 'ទី ម៉ៅ',
+          academicYear: '២០២៦-២០២៧',
+          phone: '093 486 987 / 089 230 998 / 071 741 1141',
+          deputyDirectorName: 'ណាក សំណាង',
+          deputyDirectorPhone: '012 925 739',
+          districtOffice: 'ការិយាល័យអប់រំ យុវជន និងកីឡា ស្រុកកំពង់ត្រឡាច',
+        });
+      }
+    } catch (err) {
+      console.warn('Failed to align legacy sample classes:', err);
+    }
+  }
+
+  /**
+   * កែតម្រូវទិន្នន័យលើឧបករណ៍នេះឱ្យដូចកុំព្យូទ័រលោកគ្រូភ្លាមៗ (ថ្នាក់ 7A, 7B, 9A, 10A)
+   */
+  async resetToTeacherFourClasses() {
+    await this.alignLegacySampleClasses();
+    const currClasses = await this.classes.toArray();
+    const needed = [
+      { id: 'class-7', name: 'ថ្នាក់ទី 7A', grade: '7', teacher: 'ហ៊ុន រដ្ឋា', stream: 'general' as const },
+      { id: 'class-7b', name: 'ថ្នាក់ទី 7B', grade: '7', teacher: 'ហ៊ុន រដ្ឋា', stream: 'general' as const },
+      { id: 'class-9', name: 'ថ្នាក់ទី 9A', grade: '9', teacher: 'សាលា', stream: 'general' as const },
+      { id: 'class-10', name: 'ថ្នាក់ទី 10A', grade: '10', teacher: 'ចាបុត', stream: 'science' as const },
+    ];
+    for (const n of needed) {
+      const exists = currClasses.find((c) => c.name === n.name || c.id === n.id);
+      if (exists) {
+        await this.classes.update(exists.id, {
+          name: n.name,
+          grade: n.grade,
+          homeroomTeacher: n.teacher,
+          academicYear: '២០២៦-២០២៧',
+          stream: n.stream,
+        });
+      } else {
+        await this.classes.put({
+          id: n.id,
+          name: n.name,
+          grade: n.grade,
+          academicYear: '២០២៦-២០២៧',
+          homeroomTeacher: n.teacher,
+          stream: n.stream,
+          createdAt: new Date().toISOString(),
+        });
+      }
+    }
+    await this.updateSettings({
+      teacherName: 'ហ៊ុន រដ្ឋា',
+      schoolName: 'វិទ្យាល័យ ហ៊ុន សែន កំពង់ត្រឡាច',
+      principalName: 'ទី ម៉ៅ',
+      academicYear: '២០២៦-២០២៧',
+      phone: '093 486 987 / 089 230 998 / 071 741 1141',
+      deputyDirectorName: 'ណាក សំណាង',
+      deputyDirectorPhone: '012 925 739',
+      districtOffice: 'ការិយាល័យអប់រំ យុវជន និងកីឡា ស្រុកកំពង់ត្រឡាច',
+    });
   }
 
   /**
@@ -174,7 +344,7 @@ export class TeacherDatabase extends Dexie {
 
   async exportBackupJSON(): Promise<string> {
     const backup = {
-      version: 1,
+      version: 2,
       exportDate: new Date().toISOString(),
       classes: await this.classes.toArray(),
       students: await this.students.toArray(),
@@ -184,14 +354,21 @@ export class TeacherDatabase extends Dexie {
       yearlyPlans: await this.yearlyPlans.toArray(),
       grades: await this.grades.toArray(),
       timetable: await this.timetable.toArray(),
+      teachingPlans: await this.teachingPlans.toArray(),
       settings: await this.getSettings(),
+      localStorageData: {
+        app_model_school_start_year: localStorage.getItem('app_model_school_start_year'),
+        custom_app_font: localStorage.getItem('custom_app_font'),
+        custom_font_scale: localStorage.getItem('custom_font_scale'),
+        custom_number_mode: localStorage.getItem('custom_number_mode'),
+      },
     };
     return JSON.stringify(backup, null, 2);
   }
 
   async importBackupJSON(jsonStr: string) {
     const backup = JSON.parse(jsonStr);
-    if (!backup.classes || !backup.students) {
+    if (!backup.classes) {
       throw new Error('ឯកសារ Backup មិនត្រឹមត្រូវ!');
     }
 
@@ -203,6 +380,7 @@ export class TeacherDatabase extends Dexie {
     await this.yearlyPlans.clear();
     await this.grades.clear();
     await this.timetable.clear();
+    await this.teachingPlans.clear();
 
     if (backup.classes?.length) await this.classes.bulkAdd(backup.classes);
     if (backup.students?.length) await this.students.bulkAdd(backup.students);
@@ -212,7 +390,16 @@ export class TeacherDatabase extends Dexie {
     if (backup.yearlyPlans?.length) await this.yearlyPlans.bulkAdd(backup.yearlyPlans);
     if (backup.grades?.length) await this.grades.bulkAdd(backup.grades);
     if (backup.timetable?.length) await this.timetable.bulkAdd(backup.timetable);
+    if (backup.teachingPlans?.length) await this.teachingPlans.bulkAdd(backup.teachingPlans);
     if (backup.settings) await this.settings.put({ ...backup.settings, id: 'current_settings' });
+
+    if (backup.localStorageData) {
+      Object.entries(backup.localStorageData).forEach(([k, v]) => {
+        if (v !== null && v !== undefined) {
+          localStorage.setItem(k, String(v));
+        }
+      });
+    }
   }
 }
 

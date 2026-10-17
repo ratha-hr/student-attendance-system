@@ -13,9 +13,12 @@ export const initialSettings: TeacherSettings = {
   email: 'hun.ratha@moeys.edu.kh',
   studentAttendancePin: '1234',
   pinMode: 'daily',
+  deputyDirectorName: 'ណាក សំណាង',
+  deputyDirectorPhone: '012 925 739',
+  districtOffice: 'ការិយាល័យអប់រំ យុវជន និងកីឡា ស្រុកកំពង់ត្រឡាច',
 };
 
-// ៥ ថ្នាក់ចាស់របស់លោកគ្រូ (ថ្នាក់ទី ៧, ៨, ៩, ១០, ១២)
+// ថ្នាក់ទាំង ៤ ជាក់ស្ដែងរបស់លោកគ្រូ (ថ្នាក់ទី 7A, 7B, 9A, 10A)
 export const initialClasses: ClassRoom[] = [
   {
     id: 'class-7',
@@ -27,11 +30,11 @@ export const initialClasses: ClassRoom[] = [
     createdAt: '2024-10-01T08:00:00Z',
   },
   {
-    id: 'class-8',
-    name: 'ថ្នាក់ទី 8A',
-    grade: '8',
+    id: 'class-7b',
+    name: 'ថ្នាក់ទី 7B',
+    grade: '7',
     academicYear: '២០២៦-២០២៧',
-    homeroomTeacher: 'គ្រូទទួលបន្ទុក',
+    homeroomTeacher: 'ហ៊ុន រដ្ឋា',
     stream: 'general',
     createdAt: '2024-10-01T08:00:00Z',
   },
@@ -40,7 +43,7 @@ export const initialClasses: ClassRoom[] = [
     name: 'ថ្នាក់ទី 9A',
     grade: '9',
     academicYear: '២០២៦-២០២៧',
-    homeroomTeacher: 'គ្រូទទួលបន្ទុក',
+    homeroomTeacher: 'សាលា',
     stream: 'general',
     createdAt: '2024-10-01T08:00:00Z',
   },
@@ -49,16 +52,7 @@ export const initialClasses: ClassRoom[] = [
     name: 'ថ្នាក់ទី 10A',
     grade: '10',
     academicYear: '២០២៦-២០២៧',
-    homeroomTeacher: 'គ្រូទទួលបន្ទុក',
-    stream: 'science',
-    createdAt: '2024-10-01T08:00:00Z',
-  },
-  {
-    id: 'class-12',
-    name: 'ថ្នាក់ទី 12A',
-    grade: '12',
-    academicYear: '២០២៦-២០២៧',
-    homeroomTeacher: 'គ្រូទទួលបន្ទុក',
+    homeroomTeacher: 'ចាបុត',
     stream: 'science',
     createdAt: '2024-10-01T08:00:00Z',
   },

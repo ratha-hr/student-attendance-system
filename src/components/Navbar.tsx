@@ -21,6 +21,7 @@ interface NavbarProps {
   settings: TeacherSettings | null;
   onOpenSettings: () => void;
   onOpenManageClasses?: () => void;
+  onOpenSync?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -31,6 +32,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   settings,
   onOpenSettings,
   onOpenManageClasses,
+  onOpenSync,
 }) => {
   const { canUndo, canRedo, undo, redo } = useUndoRedo();
 
@@ -187,6 +189,19 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           </div>
 
+          {/* Cross-Device Sync Button (សមកាលកម្មទិន្នន័យ PC ⇄ ទូរស័ព្ទ) */}
+          {onOpenSync && (
+            <button
+              type="button"
+              onClick={onOpenSync}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer active:scale-95 shrink-0"
+              title="សមកាលកម្មទិន្នន័យ (កុំព្យូទ័រ ⇄ ទូរស័ព្ទដៃ) ឱ្យដូចគ្នា ១០០%"
+            >
+              <RotateCw className="w-3.5 h-3.5 text-amber-300" />
+              <span className="hidden sm:inline">Sync ទូរស័ព្ទ</span>
+            </button>
+          )}
+
           {/* Modern Typography / Font Scaler (ពង្រីក-បង្រួមអក្សរទំនើប) */}
           <ModernFontZoom />
 
@@ -206,7 +221,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               window.location.href = window.location.pathname + '?v=' + Date.now();
             }}
             className="p-2 bg-slate-100 hover:bg-blue-50 text-blue-600 hover:text-blue-700 rounded-xl border border-slate-200 transition-all cursor-pointer shadow-2xs flex items-center justify-center hover:rotate-180 active:scale-95"
-            title="ចុចដើម្បី Refresh & Update កំណែថ្មីបំផុត (v6.44)"
+            title="ចុចដើម្បី Refresh & Update កំណែថ្មីបំផុត (v6.45)"
           >
             <RotateCw className="w-4 h-4 text-blue-600" />
           </button>
