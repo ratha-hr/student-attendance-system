@@ -39,6 +39,7 @@ import {
 import {
   getClassTimetableForDate,
   buildTimetablePeriodOptions,
+  getTimetableHoursOptions,
   getDayOfWeekFromDate,
   KHMER_DAY_NAMES,
   type TimetablePeriodOption,
@@ -109,37 +110,64 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
     return buildTimetablePeriodOptions(todayClassTimetable, selectedSession);
   }, [todayClassTimetable, selectedSession]);
 
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>(() => {
-    if (initialTimeSlot) return initialTimeSlot;
-    return initialSession === 'afternoon' ? '13:00 - 17:00' : '7:00 - 11:00';
+  const currentHoursOptions = useMemo(() => {
+    return getTimetableHoursOptions(todayClassTimetable, selectedSession);
+  }, [todayClassTimetable, selectedSession]);
+
+  const [checkInTime, setCheckInTime] = useState<string>(() => {
+    if (initialTimeSlot && initialTimeSlot.includes('-')) {
+      const parts = initialTimeSlot.split('-');
+      return parts[0].trim();
+    }
+    return initialSession === 'afternoon' ? '13:00' : '7:00';
   });
 
-  const activePeriodOption = useMemo<TimetablePeriodOption>(() => {
-    const found = currentTimeSlotOptions.find((o) => o.value === selectedTimeSlot);
-    return found || currentTimeSlotOptions[0];
-  }, [currentTimeSlotOptions, selectedTimeSlot]);
-
-  // Auto-sync selectedTimeSlot when period options change or date/class/session changes
-  useEffect(() => {
-    if (currentTimeSlotOptions.length > 0) {
-      const exists = currentTimeSlotOptions.some((o) => o.value === selectedTimeSlot);
-      if (!exists) {
-        setSelectedTimeSlot(currentTimeSlotOptions[0].value);
-      }
+  const [checkOutTime, setCheckOutTime] = useState<string>(() => {
+    if (initialTimeSlot && initialTimeSlot.includes('-')) {
+      const parts = initialTimeSlot.split('-');
+      return parts[1].trim();
     }
-  }, [currentTimeSlotOptions, selectedTimeSlot]);
+    return initialSession === 'afternoon' ? '17:00' : '11:00';
+  });
+
+  const selectedTimeSlot = `${checkInTime} - ${checkOutTime}`;
+
+  const activePeriodOption = useMemo<TimetablePeriodOption | undefined>(() => {
+    const found = currentTimeSlotOptions.find(
+      (o) => o.checkIn === checkInTime && o.checkOut === checkOutTime
+    );
+    return found || currentTimeSlotOptions[0];
+  }, [currentTimeSlotOptions, checkInTime, checkOutTime]);
 
   const handleSessionChange = (session: 'morning' | 'afternoon') => {
     setSelectedSession(session);
     const slots = getClassTimetableForDate(allTimetableSlots, selectedClassId, selectedDate, session, classes);
     const opts = buildTimetablePeriodOptions(slots, session);
-    setSelectedTimeSlot(opts[0]?.value || (session === 'morning' ? '7:00 - 11:00' : '13:00 - 17:00'));
+    if (opts.length > 0) {
+      setCheckInTime(opts[0].checkIn);
+      setCheckOutTime(opts[0].checkOut);
+    } else {
+      setCheckInTime(session === 'morning' ? '7:00' : '13:00');
+      setCheckOutTime(session === 'morning' ? '11:00' : '17:00');
+    }
     if (typeof window !== 'undefined' && window.history) {
       const url = new URL(window.location.href);
       url.searchParams.set('session', session);
       window.history.replaceState({}, '', url.toString());
     }
   };
+
+  // If session and checkInTime hour are mismatched, align to first option
+  useEffect(() => {
+    if (currentTimeSlotOptions.length > 0) {
+      const isMorning = selectedSession === 'morning';
+      const checkInHour = parseInt(checkInTime.split(':')[0], 10);
+      if ((isMorning && checkInHour >= 12) || (!isMorning && checkInHour < 12)) {
+        setCheckInTime(currentTimeSlotOptions[0].checkIn);
+        setCheckOutTime(currentTimeSlotOptions[0].checkOut);
+      }
+    }
+  }, [currentTimeSlotOptions, selectedSession]);
 
   // Auto-sync selectedClassId when classes resolves from IndexedDB
   useEffect(() => {
@@ -803,31 +831,52 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
                 </button>
               </div>
 
-              {/* 3. Time / Period Selector (ប្តូរម៉ោងតាមកាលវិភាគ) */}
-              <div className="flex items-center gap-1.5 bg-purple-50/90 border border-purple-200 hover:border-purple-300 rounded-xl px-2.5 py-1 shadow-2xs transition-colors">
-                <Clock className="w-3.5 h-3.5 text-purple-600 shrink-0" />
-                <select
-                  value={selectedTimeSlot}
-                  onChange={(e) => setSelectedTimeSlot(e.target.value)}
-                  className="bg-transparent font-bold text-purple-950 text-xs cursor-pointer focus:outline-none max-w-[190px] sm:max-w-xs truncate"
-                  title="ចុចដើម្បីប្តូរម៉ោងបង្រៀន / ម៉ោងស្រង់វត្តមានតាមកាលវិភាគ"
-                >
-                  {currentTimeSlotOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* ម៉ោងចូល និង ម៉ោងចេញ */}
-              {activePeriodOption && (
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold shadow-2xs">
-                  <span className="text-emerald-700 font-black">🚪 ចូល៖ {activePeriodOption.checkIn}</span>
-                  <span className="text-slate-400">➔</span>
-                  <span className="text-blue-700 font-black">🏁 ចេញ៖ {activePeriodOption.checkOut}</span>
+              {/* 3. ម៉ោងចូល និង ម៉ោងចេញ (ជ្រើសរើសបាន) */}
+              <div className="inline-flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-2xs text-xs">
+                {/* ម៉ោងចូល */}
+                <div className="flex items-center gap-1 pl-1.5 pr-1 py-0.5 rounded-lg bg-white border border-slate-200 shadow-2xs">
+                  <span className="text-emerald-700 font-black whitespace-nowrap">🚪 ចូល៖</span>
+                  <select
+                    value={checkInTime}
+                    onChange={(e) => setCheckInTime(e.target.value)}
+                    className="bg-slate-50 border border-slate-300 hover:border-emerald-500 rounded-md px-1.5 py-0.5 text-xs font-black text-slate-800 cursor-pointer focus:outline-none focus:ring-1 focus:ring-emerald-500 shadow-2xs"
+                    title="ជ្រើសរើសម៉ោងចូល"
+                  >
+                    {currentHoursOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              )}
+
+                <span className="text-slate-400 font-bold">➔</span>
+
+                {/* ម៉ោងចេញ */}
+                <div className="flex items-center gap-1 pl-1.5 pr-1 py-0.5 rounded-lg bg-white border border-slate-200 shadow-2xs">
+                  <span className="text-blue-700 font-black whitespace-nowrap">🏁 ចេញ៖</span>
+                  <select
+                    value={checkOutTime}
+                    onChange={(e) => setCheckOutTime(e.target.value)}
+                    className="bg-slate-50 border border-slate-300 hover:border-blue-500 rounded-md px-1.5 py-0.5 text-xs font-black text-slate-800 cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-2xs"
+                    title="ជ្រើសរើសម៉ោងចេញ"
+                  >
+                    {currentHoursOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Active Subject Badge if matching timetable */}
+                {activePeriodOption?.subject && (
+                  <span className="ml-1 text-[11px] text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-md font-bold hidden sm:inline-flex items-center gap-1">
+                    <span>📖</span>
+                    <span>{activePeriodOption.subject}</span>
+                  </span>
+                )}
+              </div>
 
               {/* 4. Date Picker (ប្តូរកាលបរិច្ឆេទ) */}
               <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-xl px-2.5 py-1 shadow-2xs transition-colors">
@@ -882,12 +931,15 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
                 <span>🗓️ កាលវិភាគ ({khmerDayName})៖</span>
               </span>
               {currentTimeSlotOptions.map((opt, idx) => {
-                const isSelected = selectedTimeSlot === opt.value;
+                const isSelected = checkInTime === opt.checkIn && checkOutTime === opt.checkOut;
                 return (
                   <button
                     key={idx}
                     type="button"
-                    onClick={() => setSelectedTimeSlot(opt.value)}
+                    onClick={() => {
+                      setCheckInTime(opt.checkIn);
+                      setCheckOutTime(opt.checkOut);
+                    }}
                     className={`px-2.5 py-1 rounded-lg font-bold whitespace-nowrap transition-all text-xs cursor-pointer border shrink-0 flex items-center gap-1 ${
                       isSelected
                         ? 'bg-purple-600 text-white border-purple-700 shadow-2xs scale-102 font-black'
