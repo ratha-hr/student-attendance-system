@@ -17,6 +17,7 @@ import { TimetablePage } from './pages/TimetablePage';
 import { OfficialLettersPage } from './pages/OfficialLettersPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { GradeCoefficientsConfigPage } from './pages/GradeCoefficientsConfigPage';
+import { TeachingPlanPage } from './pages/TeachingPlanPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ManageClassesModal } from './components/ManageClassesModal';
 import { StudentDailyAttendanceView } from './components/StudentDailyAttendanceView';
@@ -275,6 +276,17 @@ export function App() {
           {currentTab === 'grade-config' && (
             <GradeCoefficientsConfigPage
               settings={settings}
+              onRefresh={handleRefresh}
+            />
+          )}
+
+          {currentTab === 'teaching-plan' && (
+            <TeachingPlanPage
+              classes={classes}
+              students={students}
+              settings={settings}
+              selectedClassId={selectedClassId}
+              onSelectClass={setSelectedClassId}
               onRefresh={handleRefresh}
             />
           )}

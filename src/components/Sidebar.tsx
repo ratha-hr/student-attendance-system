@@ -11,6 +11,7 @@ import {
   LayoutDashboard,
   MailWarning,
   Settings,
+  Target,
 } from 'lucide-react';
 import type { ClassRoom } from '../types';
 
@@ -21,6 +22,7 @@ export type NavTab =
   | 'students'
   | 'grades'
   | 'continuous-assessment'
+  | 'teaching-plan'
   | 'grade-config'
   | 'timetable-class'
   | 'timetable-teacher'
@@ -99,6 +101,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
           id: 'continuous-assessment',
           label: 'ពិន្ទុវត្តមាន & វាយតម្លៃ (៣០%)',
           icon: BookOpenCheck,
+        },
+        {
+          id: 'teaching-plan',
+          label: 'តារាងផែនការគ្រូ',
+          icon: Target,
         },
         {
           id: 'grade-config',

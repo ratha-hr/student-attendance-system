@@ -9,6 +9,7 @@ import type {
   StudentGrade,
   TimetableSlot,
   TeacherSettings,
+  TeachingPlan,
 } from '../types';
 import {
   initialClasses,
@@ -34,6 +35,7 @@ export class TeacherDatabase extends Dexie {
   grades!: Table<StudentGrade, string>;
   timetable!: Table<TimetableSlot, string>;
   settings!: Table<TeacherSettings & { id: string }, string>;
+  teachingPlans!: Table<TeachingPlan, string>;
 
   constructor() {
     super('TeacherManagementDB');
@@ -47,6 +49,9 @@ export class TeacherDatabase extends Dexie {
       grades: 'id, classId, studentId, month, academicYear',
       timetable: 'id, dayOfWeek, timeSlot, classId',
       settings: 'id',
+    });
+    this.version(2).stores({
+      teachingPlans: 'id, classId, subject, academicYear, updatedAt',
     });
   }
 

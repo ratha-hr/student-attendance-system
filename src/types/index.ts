@@ -175,3 +175,41 @@ export interface TeacherSettings {
   pinMode?: 'daily' | 'date_format' | 'fixed'; // របៀបលេខកូដសម្ងាត់: 'daily' (ប្តូររាល់ថ្ងៃ), 'date_format' (DDMM), 'fixed' (ថេរ)
   customGradeCoefficients?: Record<string, Record<string, { maxScore: number; coefficient: number }>>;
 }
+
+export interface TeachingPlanGradeRow {
+  grade: 'A' | 'B' | 'C' | 'D' | 'E' | 'F';
+  baselineCount: number;
+  baselinePct: number;
+  monthly: Record<
+    string,
+    {
+      planCount: number;
+      planPct: number;
+      actualCount: number;
+      actualPct: number;
+    }
+  >;
+  yearEndTargetPct: number;
+  yearEndActualCount?: number;
+  yearEndActualPct?: number;
+}
+
+export interface TeachingPlan {
+  id: string;
+  classId: string;
+  className: string;
+  subject: string;
+  academicYear: string;
+  schoolName: string;
+  districtOffice: string;
+  teacherName: string;
+  teacherPhone: string;
+  deputyDirectorName: string;
+  deputyDirectorPhone: string;
+  totalStudents: number;
+  femaleStudents: number;
+  scoreScale: 'scale100' | 'scale50';
+  rows: TeachingPlanGradeRow[];
+  updatedAt: string;
+}
+
