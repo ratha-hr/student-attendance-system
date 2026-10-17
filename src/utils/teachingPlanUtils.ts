@@ -68,68 +68,76 @@ export const MODEL_SCHOOL_YEAR_KEYS: BenchmarkYearKey[] = [
   'year6',
 ];
 
-export const MODEL_SCHOOL_BENCHMARKS: Record<BenchmarkYearKey, ModelSchoolBenchmark> = {
+export const MODEL_SCHOOL_TARGET_DATA: Record<
+  BenchmarkYearKey,
+  {
+    yearName: string;
+    targetABC: number;
+    targets: Record<'A' | 'B' | 'C' | 'D' | 'E' | 'F', number>;
+  }
+> = {
   year1: {
     yearName: 'ឆ្នាំទី១',
-    calendarYear: '2023',
-    displayLabel: 'ឆ្នាំទី១ (2023)',
-    yearKey: 'year1',
     targetABC: 17,
-    title: 'ផែនការសាលារៀនគំរូ ឆ្នាំទី១ (2023)',
-    description: 'ក្រុមគោលដៅ ABC(17%) | A: 2%, B: 5%, C: 10%, D: 10%, E: 23%, F: 50%',
     targets: { A: 2, B: 5, C: 10, D: 10, E: 23, F: 50 }, // 2+5+10+10+23+50 = 100%
   },
   year2: {
     yearName: 'ឆ្នាំទី២',
-    calendarYear: '2024',
-    displayLabel: 'ឆ្នាំទី២ (2024)',
-    yearKey: 'year2',
     targetABC: 24,
-    title: 'ផែនការសាលារៀនគំរូ ឆ្នាំទី២ (2024)',
-    description: 'ក្រុមគោលដៅ ABC(24%) | A: 4%, B: 6%, C: 14%, D: 20%, E: 26%, F: 30%',
     targets: { A: 4, B: 6, C: 14, D: 20, E: 26, F: 30 }, // 4+6+14+20+26+30 = 100%
   },
   year3: {
     yearName: 'ឆ្នាំទី៣',
-    calendarYear: '2025',
-    displayLabel: 'ឆ្នាំទី៣ (2025)',
-    yearKey: 'year3',
     targetABC: 40,
-    title: 'ផែនការសាលារៀនគំរូ ឆ្នាំទី៣ (2025)',
-    description: 'ក្រុមគោលដៅ ABC(40%) | A: 8%, B: 15%, C: 17%, D: 30%, E: 20%, F: 10%',
     targets: { A: 8, B: 15, C: 17, D: 30, E: 20, F: 10 }, // 8+15+17+30+20+10 = 100%
   },
   year4: {
     yearName: 'ឆ្នាំទី៤',
-    calendarYear: '2026',
-    displayLabel: 'ឆ្នាំទី៤ (2026)',
-    yearKey: 'year4',
     targetABC: 52,
-    title: 'ផែនការសាលារៀនគំរូ ឆ្នាំទី៤ (2026)',
-    description: 'ក្រុមគោលដៅ ABC(52%) | A: 12%, B: 20%, C: 20%, D: 38%, E: 10%, F: 0%',
     targets: { A: 12, B: 20, C: 20, D: 38, E: 10, F: 0 }, // 12+20+20+38+10+0 = 100%
   },
   year5: {
     yearName: 'ឆ្នាំទី៥',
-    calendarYear: '2027',
-    displayLabel: 'ឆ្នាំទី៥ (2027)',
-    yearKey: 'year5',
     targetABC: 66,
-    title: 'ផែនការសាលារៀនគំរូ ឆ្នាំទី៥ (2027)',
-    description: 'ក្រុមគោលដៅ ABC(66%) | A: 16%, B: 25%, C: 25%, D: 29%, E: 5%, F: 0%',
     targets: { A: 16, B: 25, C: 25, D: 29, E: 5, F: 0 }, // 16+25+25+29+5+0 = 100%
   },
   year6: {
     yearName: 'ឆ្នាំទី៦',
-    calendarYear: '2028',
-    displayLabel: 'ឆ្នាំទី៦ (2028)',
-    yearKey: 'year6',
     targetABC: 80,
-    title: 'ផែនការសាលារៀនគំរូ ឆ្នាំទី៦ (2028)',
-    description: 'ក្រុមគោលដៅ ABC(80%) | A: 20%, B: 30%, C: 30%, D: 20%, E: 0%, F: 0%',
     targets: { A: 20, B: 30, C: 30, D: 20, E: 0, F: 0 }, // 20+30+30+20+0+0 = 100%
   },
 };
+
+/**
+ * Dynamically generate model school benchmarks given any Year 1 start year
+ */
+export function getModelSchoolBenchmarks(
+  startYear: number = 2023
+): Record<BenchmarkYearKey, ModelSchoolBenchmark> {
+  const safeStart = !isNaN(startYear) && startYear >= 1900 ? startYear : 2023;
+  const result = {} as Record<BenchmarkYearKey, ModelSchoolBenchmark>;
+
+  MODEL_SCHOOL_YEAR_KEYS.forEach((yKey, index) => {
+    const data = MODEL_SCHOOL_TARGET_DATA[yKey];
+    const calYear = String(safeStart + index);
+    const desc = `ក្រុមគោលដៅ ABC(${data.targetABC}%) | A: ${data.targets.A}%, B: ${data.targets.B}%, C: ${data.targets.C}%, D: ${data.targets.D}%, E: ${data.targets.E}%, F: ${data.targets.F}%`;
+    result[yKey] = {
+      yearName: data.yearName,
+      calendarYear: calYear,
+      displayLabel: `${data.yearName} (${calYear})`,
+      yearKey: yKey,
+      targetABC: data.targetABC,
+      title: `ផែនការសាលារៀនគំរូ ${data.yearName} (${calYear})`,
+      description: desc,
+      targets: data.targets,
+    };
+  });
+
+  return result;
+}
+
+export const MODEL_SCHOOL_BENCHMARKS: Record<BenchmarkYearKey, ModelSchoolBenchmark> =
+  getModelSchoolBenchmarks(2023);
 
 /**
  * Auto-balance an array of percentage numbers so their sum is exactly 100

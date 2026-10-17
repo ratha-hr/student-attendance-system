@@ -206,7 +206,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               window.location.href = window.location.pathname + '?v=' + Date.now();
             }}
             className="p-2 bg-slate-100 hover:bg-blue-50 text-blue-600 hover:text-blue-700 rounded-xl border border-slate-200 transition-all cursor-pointer shadow-2xs flex items-center justify-center hover:rotate-180 active:scale-95"
-            title="ចុចដើម្បី Refresh & Update កំណែថ្មីបំផុត (v6.39)"
+            title="ចុចដើម្បី Refresh & Update កំណែថ្មីបំផុត (v6.40)"
           >
             <RotateCw className="w-4 h-4 text-blue-600" />
           </button>

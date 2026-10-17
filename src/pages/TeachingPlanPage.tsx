@@ -31,6 +31,7 @@ import {
   MODEL_SCHOOL_BENCHMARKS,
   MODEL_SCHOOL_YEAR_KEYS,
   type BenchmarkYearKey,
+  getModelSchoolBenchmarks,
   balancePctList,
   createDefaultTeachingPlan,
   calculateTotals,
@@ -38,6 +39,7 @@ import {
   type MonthColDef,
 } from '../utils/teachingPlanUtils';
 import { triggerPrint, type PrintOrientation } from '../utils/printUtils';
+import { toKhmerNum } from '../utils/dateUtils';
 
 interface TeachingPlanPageProps {
   classes: ClassRoom[];
@@ -255,6 +257,28 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
     }
   };
 
+  // Model Standard School Configurable Start Year (Year 1)
+  const [modelSchoolStartYear, setModelSchoolStartYear] = useState<number>(() => {
+    const saved = localStorage.getItem('app_model_school_start_year');
+    if (saved) {
+      const p = parseInt(saved, 10);
+      if (!isNaN(p) && p >= 1990 && p <= 2100) return p;
+    }
+    return 2023;
+  });
+
+  const handleStartYearChange = (newYear: number) => {
+    if (isNaN(newYear) || newYear < 1990 || newYear > 2100) return;
+    setModelSchoolStartYear(newYear);
+    localStorage.setItem('app_model_school_start_year', String(newYear));
+    showToast(`បានកំណត់ឆ្នាំទី១ ត្រូវនឹងឆ្នាំ ${newYear} (${toKhmerNum(newYear)})`);
+  };
+
+  // Dynamically compute benchmarks for 6 years based on modelSchoolStartYear
+  const benchmarks = useMemo(() => {
+    return getModelSchoolBenchmarks(modelSchoolStartYear);
+  }, [modelSchoolStartYear]);
+
   // Model Standard School Benchmark Year Selection ('year1' to 'year6')
   const [benchmarkYear, setBenchmarkYear] = useState<BenchmarkYearKey>('year4');
   const [showBenchmarkMatrix, setShowBenchmarkMatrix] = useState<boolean>(true);
@@ -264,7 +288,7 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
 
   // Apply Model Standard School (សាលារៀនគំរូ) Benchmark to Plan
   const handleApplyModelSchoolBenchmark = (yearKey: BenchmarkYearKey) => {
-    const benchmark = MODEL_SCHOOL_BENCHMARKS[yearKey];
+    const benchmark = benchmarks[yearKey];
     if (!benchmark) return;
 
     const total = plan.totalStudents || 61;
@@ -1085,7 +1109,7 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
                   </span>
                 </div>
                 <p className="text-[11px] text-blue-700 mt-0.5">
-                  ផែនការបែងចែកភាគរយតាមកម្រិតនិទ្ទេស A, B, C, D, E, F សម្រាប់ឆ្នាំទី១ ដល់ ឆ្នាំទី៦ (២០២៣ - ២០២៨)
+                  ផែនការបែងចែកភាគរយតាមកម្រិតនិទ្ទេស A, B, C, D, E, F សម្រាប់ឆ្នាំទី១ ដល់ ឆ្នាំទី៦ ({toKhmerNum(modelSchoolStartYear)} - {toKhmerNum(modelSchoolStartYear + 5)})
                 </p>
               </div>
             </div>
@@ -1104,62 +1128,94 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
             </div>
           </div>
 
-          {/* Quick Year Selector Buttons: ឆ្នាំទី១ (2023) ... ឆ្នាំទី៦ (2028) */}
-          <div className="flex flex-wrap items-center gap-1.5 p-1.5 bg-white/80 rounded-xl border border-blue-200/80">
-            <span className="text-xs font-bold text-slate-600 px-2">ជ្រើសរើសឆ្នាំ៖</span>
-            {MODEL_SCHOOL_YEAR_KEYS.map((yKey) => {
-              const b = MODEL_SCHOOL_BENCHMARKS[yKey];
-              const isSelected = benchmarkYear === yKey;
-              return (
-                <button
-                  key={yKey}
-                  type="button"
-                  onClick={() => setBenchmarkYear(yKey)}
-                  className={`px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer flex items-center gap-1.5 ${
-                    isSelected
-                      ? 'bg-blue-600 text-white shadow-xs font-black'
-                      : 'bg-white hover:bg-slate-100 text-slate-700 font-bold border border-slate-200'
-                  }`}
-                >
-                  <span>{b.yearName} ({b.calendarYear})</span>
-                  <span
-                    className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                      isSelected ? 'bg-blue-700 text-blue-100' : 'bg-slate-100 text-slate-600'
+          {/* Quick Year Selector and Year 1 Configuration Bar */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5 p-2 bg-white/80 rounded-xl border border-blue-200/80">
+            {/* Left: Quick Year Selector Buttons: ឆ្នាំទី១ ... ឆ្នាំទី៦ */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-xs font-bold text-slate-700 px-1">ជ្រើសរើសឆ្នាំ៖</span>
+              {MODEL_SCHOOL_YEAR_KEYS.map((yKey) => {
+                const b = benchmarks[yKey];
+                const isSelected = benchmarkYear === yKey;
+                return (
+                  <button
+                    key={yKey}
+                    type="button"
+                    onClick={() => setBenchmarkYear(yKey)}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs transition-all cursor-pointer flex items-center gap-1.5 ${
+                      isSelected
+                        ? 'bg-blue-600 text-white shadow-xs font-black'
+                        : 'bg-white hover:bg-slate-100 text-slate-700 font-bold border border-slate-200'
                     }`}
                   >
-                    ABC {b.targetABC}%
-                  </span>
-                </button>
-              );
-            })}
+                    <span>{b.yearName} ({b.calendarYear})</span>
+                    <span
+                      className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                        isSelected ? 'bg-blue-700 text-blue-100' : 'bg-slate-100 text-slate-600'
+                      }`}
+                    >
+                      ABC {b.targetABC}%
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Right: Teacher-configurable Year 1 Starting Calendar Year */}
+            <div className="flex items-center gap-1.5 bg-blue-50/90 border border-blue-300/80 px-2.5 py-1 rounded-xl text-xs font-bold text-blue-950 shrink-0 shadow-2xs self-start md:self-auto">
+              <span className="flex items-center gap-1 text-blue-900">
+                <span>📅</span>
+                <span>ឆ្នាំទី១ (ចាប់ផ្ដើម)៖</span>
+              </span>
+              <input
+                type="number"
+                min={2000}
+                max={2099}
+                value={modelSchoolStartYear}
+                onChange={(e) => handleStartYearChange(parseInt(e.target.value, 10))}
+                className="w-16 px-1.5 py-0.5 text-xs font-black text-center text-blue-700 bg-white border border-blue-300 rounded-lg shadow-2xs focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono"
+                title="កំណត់ឆ្នាំប្រតិទិនសម្រាប់ ឆ្នាំទី១ (សាលានឹងគណនាឆ្នាំទី២ ដល់ ទី៦ ដោយស្វ័យប្រវត្តិ)"
+              />
+              <select
+                value={modelSchoolStartYear}
+                onChange={(e) => handleStartYearChange(parseInt(e.target.value, 10))}
+                className="text-xs font-bold text-blue-800 bg-white border border-blue-300 rounded-lg px-1.5 py-0.5 cursor-pointer shadow-2xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                title="ជ្រើសរើសឆ្នាំរហ័ស"
+              >
+                {[2020, 2021, 2022, 2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030].map((y) => (
+                  <option key={y} value={y}>
+                    {y} ({toKhmerNum(y)})
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* Active Year Highlights & Apply Bar */}
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-2 text-xs text-blue-900 bg-white/70 p-3 rounded-xl border border-blue-100">
             <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
               <span className="font-bold text-slate-800">
-                ភាគរយគោលដៅ {MODEL_SCHOOL_BENCHMARKS[benchmarkYear].yearName} ({MODEL_SCHOOL_BENCHMARKS[benchmarkYear].calendarYear})៖
+                ភាគរយគោលដៅ {benchmarks[benchmarkYear].yearName} ({benchmarks[benchmarkYear].calendarYear})៖
               </span>
               <span className="bg-amber-100 text-amber-900 px-2 py-0.5 rounded-md font-bold text-xs border border-amber-300">
-                ក្រុមគោលដៅ ABC: {MODEL_SCHOOL_BENCHMARKS[benchmarkYear].targetABC}%
+                ក្រុមគោលដៅ ABC: {benchmarks[benchmarkYear].targetABC}%
               </span>
               <span className="bg-white px-2 py-0.5 rounded-md border border-blue-200 font-mono font-bold text-blue-800">
-                A: {MODEL_SCHOOL_BENCHMARKS[benchmarkYear].targets.A}%
+                A: {benchmarks[benchmarkYear].targets.A}%
               </span>
               <span className="bg-white px-2 py-0.5 rounded-md border border-blue-200 font-mono font-bold text-blue-800">
-                B: {MODEL_SCHOOL_BENCHMARKS[benchmarkYear].targets.B}%
+                B: {benchmarks[benchmarkYear].targets.B}%
               </span>
               <span className="bg-white px-2 py-0.5 rounded-md border border-blue-200 font-mono font-bold text-blue-800">
-                C: {MODEL_SCHOOL_BENCHMARKS[benchmarkYear].targets.C}%
+                C: {benchmarks[benchmarkYear].targets.C}%
               </span>
               <span className="bg-white px-2 py-0.5 rounded-md border border-blue-200 font-mono font-bold text-blue-800">
-                D: {MODEL_SCHOOL_BENCHMARKS[benchmarkYear].targets.D}%
+                D: {benchmarks[benchmarkYear].targets.D}%
               </span>
               <span className="bg-white px-2 py-0.5 rounded-md border border-blue-200 font-mono font-bold text-blue-800">
-                E: {MODEL_SCHOOL_BENCHMARKS[benchmarkYear].targets.E}%
+                E: {benchmarks[benchmarkYear].targets.E}%
               </span>
               <span className="bg-white px-2 py-0.5 rounded-md border border-blue-200 font-mono font-bold text-blue-800">
-                F: {MODEL_SCHOOL_BENCHMARKS[benchmarkYear].targets.F}%
+                F: {benchmarks[benchmarkYear].targets.F}%
               </span>
               <span className="text-[11px] text-emerald-700 font-black">
                 (សរុប = ១០០%)
@@ -1174,7 +1230,7 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
                 title="អនុវត្តភាគរយគោលដៅតាមសាលារៀនគំរូ សម្រាប់ឆ្នាំនេះ"
               >
                 <Sparkles className="w-4 h-4 text-amber-300" />
-                <span>អនុវត្តភាគរយគោលដៅ ({MODEL_SCHOOL_BENCHMARKS[benchmarkYear].yearName})</span>
+                <span>អនុវត្តភាគរយគោលដៅ ({benchmarks[benchmarkYear].yearName})</span>
               </button>
             </div>
           </div>
@@ -1189,7 +1245,7 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
                       និទ្ទេស
                     </th>
                     {MODEL_SCHOOL_YEAR_KEYS.map((yKey) => {
-                      const b = MODEL_SCHOOL_BENCHMARKS[yKey];
+                      const b = benchmarks[yKey];
                       const isSelected = benchmarkYear === yKey;
                       return (
                         <th
@@ -1206,7 +1262,7 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
                   </tr>
                   <tr className="bg-slate-50/80 border-b border-slate-300 text-slate-700 font-bold">
                     {MODEL_SCHOOL_YEAR_KEYS.map((yKey) => {
-                      const b = MODEL_SCHOOL_BENCHMARKS[yKey];
+                      const b = benchmarks[yKey];
                       const isSelected = benchmarkYear === yKey;
                       return (
                         <th
@@ -1230,7 +1286,7 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
                         {grade}
                       </td>
                       {MODEL_SCHOOL_YEAR_KEYS.map((yKey) => {
-                        const val = MODEL_SCHOOL_BENCHMARKS[yKey].targets[grade];
+                        const val = benchmarks[yKey].targets[grade];
                         const isSelected = benchmarkYear === yKey;
                         // In the MoEYS screenshot, D, E, F for Year 4, 5, 6 are colored red
                         const isRed =
@@ -1277,7 +1333,7 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
                       សកម្មភាព
                     </td>
                     {MODEL_SCHOOL_YEAR_KEYS.map((yKey) => {
-                      const b = MODEL_SCHOOL_BENCHMARKS[yKey];
+                      const b = benchmarks[yKey];
                       const isSelected = benchmarkYear === yKey;
                       return (
                         <td
@@ -1292,7 +1348,7 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
                                 ? 'bg-blue-600 text-white shadow-2xs hover:bg-blue-700'
                                 : 'bg-slate-200 hover:bg-blue-600 hover:text-white text-slate-700'
                             }`}
-                            title={`អនុវត្តភាគរយគោលដៅ ${b.yearName} ភ្លាមៗ`}
+                            title={`អនុវត្តភាគរយគោលដៅ ${b.yearName} (${b.calendarYear}) ភ្លាមៗ`}
                           >
                             អនុវត្ត
                           </button>
