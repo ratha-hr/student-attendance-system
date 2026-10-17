@@ -179,6 +179,32 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
     };
   }, [currentClassStudents]);
 
+  // Detect students whose nameKh looks like a village or commune name while pobVillage is empty
+  const corruptedAddressNamesList = useMemo(() => {
+    const VILLAGE_PATTERNS = [
+      'សុបិន', 'សាលាលេខប្រាំ', 'ថ្នល់ទទឹង', 'ព្រៃពាក់', 'កំពង់ត្រឡាច', 'ឃ្លាំងមឿង',
+      'ត្រពាំងព្រីង', 'ស្វាយរូង', 'សេដ្ឋី', 'លង្វែក', 'អំពិលទឹក', 'ឆក់កណ្តោល'
+    ];
+    return currentClassStudents.filter((s) => {
+      const name = (s.nameKh || '').trim();
+      const isKnownVillage = VILLAGE_PATTERNS.some((vp) => name.includes(vp)) || /^(ភូមិ|ឃុំ|ស្រុក)/.test(name);
+      return isKnownVillage && (!s.pobVillage || s.pobVillage.trim() === '');
+    });
+  }, [currentClassStudents]);
+
+  const handleFixCorruptedAddressNames = async () => {
+    if (corruptedAddressNamesList.length === 0) return;
+    await pushSnapshot(`ផ្លាស់ទីឈ្មោះភូមិ ${corruptedAddressNamesList.length} ទៅជួរភូមិកំណើត`);
+    for (const stu of corruptedAddressNamesList) {
+      await db.students.update(stu.id, {
+        pobVillage: stu.nameKh,
+        nameKh: '', // Clear so user can enter or paste genuine student name
+      });
+    }
+    onRefresh();
+    showToast(`✨ បានផ្លាស់ទីឈ្មោះភូមិ ${toKhmerNum(corruptedAddressNamesList.length)} ទៅជួរ «ភូមិកំណើត» រួចរាល់!`);
+  };
+
   // Direct Inline Cell Edit Handler (Auto-Save on blur or change)
   const handleInlineChange = async (studentId: string, field: keyof Student, value: any) => {
     try {
@@ -267,8 +293,24 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
         const existingStudent = filteredStudents[targetIdx];
         const updates: Partial<Student> = { ...rowData };
 
-        // Never overwrite a student's name with pure numbers (e.g. roll numbers)
+        // Safeguard 1: Never overwrite a student's name with pure numbers (e.g. roll numbers)
         if (updates.nameKh && /^\d+$/.test(updates.nameKh)) {
+          delete updates.nameKh;
+        }
+
+        // Safeguard 2: If user started pasting from a non-name column (e.g. pobVillage, addrVillage, studentPhone, dob, etc.),
+        // NEVER allow nameKh to be overwritten by the paste!
+        if (startColKey && startColKey !== 'nameKh' && startColKey !== 'rollNo' && startColKey !== 'studentCode') {
+          delete updates.nameKh;
+        }
+
+        // Safeguard 3: If existing student already has a name, and address fields are being updated
+        // without an explicit nameKh column in the pasted grid, protect existing student's name!
+        if (
+          existingStudent.nameKh &&
+          (updates.pobVillage || updates.pobCommune || updates.pobDistrict || updates.pobProvince || updates.addrVillage) &&
+          !parsedGrid.columnKeys.includes('nameKh')
+        ) {
           delete updates.nameKh;
         }
 
@@ -1370,6 +1412,42 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
           >
             <span>🧹 សម្អាតឈ្មោះស្ទួនភ្លាមៗ</span>
           </button>
+        </div>
+      )}
+
+      {/* Misplaced Village Names Warning Banner & Recovery */}
+      {corruptedAddressNamesList.length > 0 && (
+        <div className="bg-sky-50 border-2 border-sky-400 p-3.5 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-sky-950 no-print shadow-xs animate-fade-in">
+          <div className="flex items-center space-x-3">
+            <span className="text-2xl">💡</span>
+            <div>
+              <p className="font-bold text-xs sm:text-sm text-sky-900">
+                បានរកឃើញឈ្មោះភូមិ/ឃុំ/ស្រុកដែលច្រឡំលោតចូលជួរ «គោត្តនាម នាម» ចំនួន {toKhmerNum(corruptedAddressNamesList.length)} នាក់ ({corruptedAddressNamesList.slice(0, 4).map((s) => s.nameKh).join(', ')}...)!
+              </p>
+              <p className="text-[11px] text-sky-800 mt-0.5">
+                លោកគ្រូអ្នកគ្រូអាចចុច <strong>«ផ្លាស់ទីទៅជួរភូមិកំណើត»</strong> ឬចុច <strong>Undo</strong> ខាងលើដើម្បីយកឈ្មោះដើមមកវិញ។
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2 shrink-0">
+            {canUndo && (
+              <button
+                type="button"
+                onClick={undo}
+                className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs rounded-xl shadow-xs cursor-pointer transition-all flex items-center space-x-1"
+                title="ត្រឡប់ក្រោយមុនពេល Paste"
+              >
+                <span>↶ Undo</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleFixCorruptedAddressNames}
+              className="px-3.5 py-1.5 bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer transition-all flex items-center space-x-1.5"
+            >
+              <span>🔄 ផ្លាស់ទីទៅជួរ «ភូមិកំណើត»</span>
+            </button>
+          </div>
         </div>
       )}
 

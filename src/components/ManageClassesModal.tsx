@@ -394,35 +394,68 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
                 />
               </div>
 
-              {/* If Grade 11 or 12: Stream selector */}
-              {(formGrade === '11' || formGrade === '12') && (
-                <div className="col-span-1 sm:col-span-3 bg-linear-to-r from-emerald-50/70 via-teal-50/60 to-amber-50/70 p-2.5 rounded-xl border border-teal-200/80 flex flex-wrap items-center gap-3">
-                  <span className="text-xs font-bold text-slate-800 flex items-center">
-                    <span className="mr-1">🎓</span>
-                    <span>ផ្នែក/ជំនាញសិក្សា (ថ្នាក់ទី {formGrade})៖</span>
+              {/* If Grade 7 to 10: Strictly General Class indicator */}
+              {(formGrade === '7' || formGrade === '8' || formGrade === '9' || formGrade === '10' || formGrade === 'ទូទៅ') && (
+                <div className="col-span-1 sm:col-span-3 bg-slate-100/90 p-2.5 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-base">🎓</span>
+                    <span className="text-slate-700 font-bold">
+                      ប្រភេទថ្នាក់៖ <strong className="text-blue-700">ថ្នាក់ទូទៅ (General)</strong> — ថ្នាក់ទី ៧ ដល់ ទី ១០ ជាចំណេះទូទៅ គ្មានបែងចែកវិទ្យាសាស្ត្រ/សង្គមទេ។
+                    </span>
+                  </div>
+                  <span className="px-2.5 py-0.5 rounded-md bg-blue-100 text-blue-800 text-[10px] font-black border border-blue-200">
+                    ទូទៅ
                   </span>
-                  <label className="flex items-center space-x-1.5 cursor-pointer px-2.5 py-1 rounded-lg bg-white border border-teal-300 shadow-2xs text-xs font-bold text-emerald-800 hover:bg-emerald-50 transition-colors">
-                    <input
-                      type="radio"
-                      name="formStream"
-                      value="science"
-                      checked={formStream === 'science'}
-                      onChange={() => setFormStream('science')}
-                      className="text-emerald-600 focus:ring-emerald-500"
-                    />
-                    <span>🔬 ថ្នាក់វិទ្យាសាស្ត្រ (Science)</span>
-                  </label>
-                  <label className="flex items-center space-x-1.5 cursor-pointer px-2.5 py-1 rounded-lg bg-white border border-amber-300 shadow-2xs text-xs font-bold text-amber-900 hover:bg-amber-50 transition-colors">
-                    <input
-                      type="radio"
-                      name="formStream"
-                      value="social"
-                      checked={formStream === 'social'}
-                      onChange={() => setFormStream('social')}
-                      className="text-amber-600 focus:ring-amber-500"
-                    />
-                    <span>📚 ថ្នាក់វិទ្យាសាស្ត្រសង្គម (Social Science)</span>
-                  </label>
+                </div>
+              )}
+
+              {/* If Grade 11 or 12: Stream selector (Science vs Social Science) */}
+              {(formGrade === '11' || formGrade === '12') && (
+                <div className="col-span-1 sm:col-span-3 bg-linear-to-r from-emerald-50 via-teal-50 to-amber-50 p-3 rounded-xl border-2 border-teal-300 shadow-2xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-slate-800 flex items-center">
+                      <span className="mr-1.5 text-base">🎓</span>
+                      <span>បែងចែកប្រភេទថ្នាក់ (ថ្នាក់ទី {formGrade})៖</span>
+                    </span>
+                    <span className="text-[10px] font-bold text-teal-800 bg-white/90 px-2 py-0.5 rounded-md border border-teal-200">
+                      លោកគ្រូអ្នកគ្រូជាអ្នកកំណត់ផ្ទាល់
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <label className={`flex items-center space-x-2 cursor-pointer px-3.5 py-2 rounded-xl border-2 transition-all shadow-2xs ${
+                      formStream === 'science'
+                        ? 'bg-emerald-600 text-white border-emerald-700 font-black scale-102'
+                        : 'bg-white text-emerald-800 border-emerald-300 hover:bg-emerald-50 font-bold'
+                    }`}>
+                      <input
+                        type="radio"
+                        name="formStream"
+                        value="science"
+                        checked={formStream === 'science'}
+                        onChange={() => setFormStream('science')}
+                        className="hidden"
+                      />
+                      <span className="text-base">🔬</span>
+                      <span className="text-xs">ថ្នាក់វិទ្យាសាស្ត្រ (Science)</span>
+                    </label>
+
+                    <label className={`flex items-center space-x-2 cursor-pointer px-3.5 py-2 rounded-xl border-2 transition-all shadow-2xs ${
+                      formStream === 'social'
+                        ? 'bg-amber-600 text-white border-amber-700 font-black scale-102'
+                        : 'bg-white text-amber-900 border-amber-300 hover:bg-amber-50 font-bold'
+                    }`}>
+                      <input
+                        type="radio"
+                        name="formStream"
+                        value="social"
+                        checked={formStream === 'social'}
+                        onChange={() => setFormStream('social')}
+                        className="hidden"
+                      />
+                      <span className="text-base">📚</span>
+                      <span className="text-xs">ថ្នាក់វិទ្យាសាស្ត្រសង្គម (Social Science)</span>
+                    </label>
+                  </div>
                 </div>
               )}
             </div>
@@ -529,9 +562,9 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
               </div>
             </div>
 
-            <div className="text-[11px] text-teal-800 bg-teal-50/80 border border-teal-200/80 px-2.5 py-1 rounded-lg flex items-center gap-1.5">
-              <span>💡</span>
-              <span><strong>កំណត់សម្គាល់៖</strong> ចំពោះថ្នាក់ទី ១១ និង ១២ លោកគ្រូអ្នកគ្រូអាចចុចលើស្លាកសញ្ញា <strong>[🔬 វិទ្យាសាស្ត្រ]</strong> ឬ <strong>[📚 វិទ្យាសាស្ត្រសង្គម]</strong> លើថ្នាក់នីមួយៗក្នុងបញ្ជីខាងក្រោម ដើម្បីប្តូរភ្លាមៗដោយចុចតែម្តង (1-Click Toggle)។</span>
+            <div className="text-[11px] text-teal-900 bg-teal-50/90 border border-teal-200 px-3 py-1.5 rounded-xl flex items-center gap-2">
+              <span className="text-sm">💡</span>
+              <span><strong>កំណត់សម្គាល់៖</strong> ថ្នាក់ទី ៧ ដល់ ទី ១០ ជា <strong>«ថ្នាក់ទូទៅ»</strong>។ ចំពោះថ្នាក់ទី ១១ និង ១២ លោកគ្រូអ្នកគ្រូអាចជ្រើសរើស <strong>[🔬 វិទ្យាសាស្ត្រ]</strong> ឬ <strong>[📚 វិទ្យាសាស្ត្រសង្គម]</strong> ក្នុងទម្រង់បង្កើតខាងលើ ឬចុចលើស្លាកសញ្ញាលើថ្នាក់នីមួយៗក្នុងបញ្ជីខាងក្រោម ដើម្បីប្តូរភ្លាមៗ (1-Click Toggle)។</span>
             </div>
           </div>
         </div>
@@ -695,6 +728,12 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
                               <span className="font-bold text-xs sm:text-sm text-slate-900 truncate">
                                 {c.name}
                               </span>
+                              {gNum <= 10 && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border bg-slate-100 text-slate-700 border-slate-300">
+                                  <span className="mr-0.5">🎓</span>
+                                  <span>ទូទៅ</span>
+                                </span>
+                              )}
                               {(gNum === 11 || gNum === 12) && (
                                 <button
                                   type="button"

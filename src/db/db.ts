@@ -21,7 +21,7 @@ import {
 } from './seedData';
 
 import { enrichStudentWithMoEYSFields } from '../utils/studentEnricher';
-import { generateStandardClasses, getStreamForClass } from '../utils/classUtils';
+import { generateStandardClasses, getStreamForClass, parseGradeNumber } from '../utils/classUtils';
 import { fromKhmerNum } from '../utils/dateUtils';
 
 export class TeacherDatabase extends Dexie {
@@ -99,8 +99,44 @@ export class TeacherDatabase extends Dexie {
       await this.students.bulkPut(updatedStudents);
     }
 
-    // Always ensure all 49 standard classes exist and room/building are removed
-    await this.ensureStandardClasses();
+    // Clean up room/building on existing classes and ensure correct stream classification:
+    // Grade 7-10 are strictly "general" (ទូទៅ), Grade 11-12 are "science" (វិទ្យាសាស្ត្រ) or "social" (វិទ្យាសាស្ត្រសង្គម)
+    const existingClasses = await this.classes.toArray();
+    for (const c of existingClasses) {
+      const gNum = parseGradeNumber(c.grade || c.name);
+      let changed = false;
+      let targetStream = c.stream;
+      if (gNum <= 10 && targetStream !== 'general') {
+        targetStream = 'general';
+        changed = true;
+      } else if ((gNum === 11 || gNum === 12) && (!targetStream || targetStream === 'general')) {
+        targetStream = getStreamForClass(c.grade, c.name, c.stream);
+        changed = true;
+      }
+      if (c.room) {
+        changed = true;
+      }
+      if (changed) {
+        await this.classes.update(c.id, {
+          room: '',
+          stream: targetStream,
+        });
+      }
+    }
+
+    // Only if completely empty on fresh install, create one clean starter class
+    if (existingClasses.length === 0) {
+      await this.classes.add({
+        id: 'class-7',
+        name: 'ថ្នាក់ទី 7A',
+        grade: '7',
+        academicYear: '២០២៤-២០២៥',
+        stream: 'general',
+        homeroomTeacher: 'ហ៊ុន រដ្ឋា',
+        description: 'ថ្នាក់ទី 7A (អនុវិទ្យាល័យ)',
+        createdAt: new Date().toISOString(),
+      });
+    }
   }
 
   async ensureStandardClasses() {

@@ -71,13 +71,20 @@ export function getStreamForClass(
   name: string,
   explicitStream?: ClassStream
 ): ClassStream {
-  if (explicitStream && explicitStream !== 'general') {
-    return explicitStream;
-  }
   const gNum = parseGradeNumber(grade || name);
+  // Grade 7 to 10 are strictly General classes (ថ្នាក់ទូទៅ គ្មានបែងចែកវិទ្យាសាស្ត្រ/សង្គមទេ)
   if (gNum !== 11 && gNum !== 12) {
     return 'general';
   }
+
+  // For Grade 11 and 12: Teacher explicitly selects or defines stream
+  if (explicitStream && (explicitStream === 'science' || explicitStream === 'social')) {
+    return explicitStream;
+  }
+
+  // Check if Khmer text indicates stream
+  if (name.includes('សង្គម')) return 'social';
+  if (name.includes('វិទ្យាសាស្ត្រ') || name.includes('វិទ្យា')) return 'science';
 
   // Extract letter from name (e.g. 11A, 11F, 12B, 12M)
   const upper = name.toUpperCase();
@@ -92,11 +99,7 @@ export function getStreamForClass(
     if (HIGH_SCHOOL_STREAM_CONFIGS.grade12Social.includes(letter)) return 'social';
   }
 
-  // Check if Khmer text indicates stream
-  if (name.includes('សង្គម')) return 'social';
-  if (name.includes('វិទ្យាសាស្ត្រ') || name.includes('វិទ្យា')) return 'science';
-
-  return explicitStream || 'science';
+  return 'science';
 }
 
 export function getStreamBadge(stream: ClassStream): {
@@ -122,9 +125,9 @@ export function getStreamBadge(stream: ClassStream): {
     };
   }
   return {
-    label: 'ចំណេះទូទៅ',
+    label: 'ថ្នាក់ទូទៅ',
     badgeKh: 'ទូទៅ',
-    colorClass: 'bg-slate-50 text-slate-700 border-slate-200',
+    colorClass: 'bg-slate-100 text-slate-700 border-slate-300',
     icon: '🎓',
   };
 }

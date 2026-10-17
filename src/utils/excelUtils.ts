@@ -111,14 +111,14 @@ export const SPREADSHEET_COLUMNS: ColumnDef[] = [
   },
   { key: 'age', name: 'អាយុ', aliases: ['អាយុ', 'age'] },
   { key: 'originSchool', name: 'មកពីសាលា', aliases: ['មកពីសាលា', 'សាលាចាស់', 'school', 'origin_school'] },
-  { key: 'pobVillage', name: 'ភូមិ (កំណើត)', aliases: ['ទីកន្លែងកំណើត_ភូមិ', 'ភូមិកំណើត', 'ភូមិ (កំណើត)'] },
-  { key: 'pobCommune', name: 'ឃុំ/សង្កាត់ (កំណើត)', aliases: ['ទីកន្លែងកំណើត_ឃុំ_សង្កាត់', 'ឃុំកំណើត', 'សង្កាត់កំណើត', 'ឃុំ/សង្កាត់ (កំណើត)'] },
-  { key: 'pobDistrict', name: 'ស្រុក/ខណ្ឌ (កំណើត)', aliases: ['ទីកន្លែងកំណើត_ស្រុក_ខណ្ឌ', 'ស្រុកកំណើត', 'ខណ្ឌកំណើត', 'ស្រុក/ខណ្ឌ (កំណើត)'] },
-  { key: 'pobProvince', name: 'ខេត្ត/រាជធានី (កំណើត)', aliases: ['ទីកន្លែងកំណើត_ខេត្ត_រាជធានី', 'ទីកន្លែងកំណើត', 'ខេត្តកំណើត', 'រាជធានីកំណើត'] },
-  { key: 'addrVillage', name: 'ភូមិ (អាសយដ្ឋាន)', aliases: ['អាសយដ្ឋាន_ភូមិ', 'ភូមិបច្ចុប្បន្ន', 'ភូមិ (អាសយដ្ឋាន)'] },
-  { key: 'addrCommune', name: 'ឃុំ (អាសយដ្ឋាន)', aliases: ['អាសយដ្ឋាន_ឃុំ', 'ឃុំបច្ចុប្បន្ន', 'ឃុំ (អាសយដ្ឋាន)'] },
-  { key: 'addrDistrict', name: 'ស្រុក (អាសយដ្ឋាន)', aliases: ['អាសយដ្ឋាន_ស្រុក', 'ស្រុកបច្ចុប្បន្ន', 'ស្រុក (អាសយដ្ឋាន)'] },
-  { key: 'addrProvince', name: 'ខេត្ត (អាសយដ្ឋាន)', aliases: ['អាសយដ្ឋាន_ខេត្ត', 'អាសយដ្ឋានបច្ចុប្បន្ន', 'ខេត្តបច្ចុប្បន្ន', 'ខេត្ត (អាសយដ្ឋាន)'] },
+  { key: 'pobVillage', name: 'ភូមិ (កំណើត)', aliases: ['ទីកន្លែងកំណើត_ភូមិ', 'ភូមិកំណើត', 'ភូមិ (កំណើត)', 'ភូមិ', 'pob_village', 'village'] },
+  { key: 'pobCommune', name: 'ឃុំ/សង្កាត់ (កំណើត)', aliases: ['ទីកន្លែងកំណើត_ឃុំ_សង្កាត់', 'ទីកន្លែងកំណើត_ឃុំ', 'ឃុំកំណើត', 'សង្កាត់កំណើត', 'ឃុំ/សង្កាត់ (កំណើត)', 'ឃុំ', 'សង្កាត់', 'ឃុំ/សង្កាត់', 'pob_commune', 'commune'] },
+  { key: 'pobDistrict', name: 'ស្រុក/ខណ្ឌ (កំណើត)', aliases: ['ទីកន្លែងកំណើត_ស្រុក_ខណ្ឌ', 'ទីកន្លែងកំណើត_ស្រុក', 'ស្រុកកំណើត', 'ខណ្ឌកំណើត', 'ស្រុក/ខណ្ឌ (កំណើត)', 'ស្រុក', 'ខណ្ឌ', 'ស្រុក/ខណ្ឌ', 'pob_district', 'district'] },
+  { key: 'pobProvince', name: 'ខេត្ត/រាជធានី (កំណើត)', aliases: ['ទីកន្លែងកំណើត_ខេត្ត_រាជធានី', 'ទីកន្លែងកំណើត_ខេត្ត', 'ទីកន្លែងកំណើត', 'ខេត្តកំណើត', 'រាជធានីកំណើត', 'ខេត្ត/រាជធានី (កំណើត)', 'ខេត្ត', 'រាជធានី', 'ខេត្ត/រាជធានី', 'pob_province', 'province'] },
+  { key: 'addrVillage', name: 'ភូមិ (អាសយដ្ឋាន)', aliases: ['អាសយដ្ឋាន_ភូមិ', 'ភូមិបច្ចុប្បន្ន', 'ភូមិ (អាសយដ្ឋាន)', 'អាសយដ្ឋានបច្ចុប្បន្ន_ភូមិ'] },
+  { key: 'addrCommune', name: 'ឃុំ (អាសយដ្ឋាន)', aliases: ['អាសយដ្ឋាន_ឃុំ', 'ឃុំបច្ចុប្បន្ន', 'ឃុំ (អាសយដ្ឋាន)', 'អាសយដ្ឋានបច្ចុប្បន្ន_ឃុំ'] },
+  { key: 'addrDistrict', name: 'ស្រុក (អាសយដ្ឋាន)', aliases: ['អាសយដ្ឋាន_ស្រុក', 'ស្រុកបច្ចុប្បន្ន', 'ស្រុក (អាសយដ្ឋាន)', 'អាសយដ្ឋានបច្ចុប្បន្ន_ស្រុក'] },
+  { key: 'addrProvince', name: 'ខេត្ត (អាសយដ្ឋាន)', aliases: ['អាសយដ្ឋាន_ខេត្ត', 'អាសយដ្ឋានបច្ចុប្បន្ន', 'ខេត្តបច្ចុប្បន្ន', 'ខេត្ត (អាសយដ្ឋាន)', 'អាសយដ្ឋានបច្ចុប្បន្ន_ខេត្ត'] },
   { key: 'studentPhone', name: 'ទូរស័ព្ទផ្ទាល់ខ្លួន', aliases: ['ទូរស័ព្ទផ្ទាល់ខ្លួន', 'លេខទូរស័ព្ទផ្ទាល់ខ្លួន', 'ទូរស័ព្ទសិស្ស', 'ទូរស័ព្ទ', 'phone'] },
   { key: 'fatherName', name: 'ឪពុក (ឈ្មោះ)', aliases: ['ឪពុក_ឈ្មោះ', 'ឈ្មោះឪពុក', 'ឪពុក', 'ឈ្មោះអាណាព្យាបាល', 'អាណាព្យាបាល'] },
   { key: 'fatherOccupation', name: 'ឪពុក (មុខរបរ)', aliases: ['ឪពុក_មុខរបរ', 'មុខរបរឪពុក', 'មុខរបរ'] },
@@ -415,8 +415,63 @@ export interface ParsedGridResult {
 }
 
 /**
+ * Helper to match a header string to a known Student column key or date part
+ */
+export function matchHeaderToColumnKey(header: string): keyof Student | 'day' | 'month' | 'year' | null {
+  if (!header) return null;
+  const clean = header
+    .toLowerCase()
+    .replace(/[\s_\-#.():\/]/g, '')
+    .trim();
+  if (!clean) return null;
+
+  // Day, Month, Year
+  if (/^ថ្ងៃ(ទី)?$/i.test(clean) || clean === 'day') return 'day';
+  if (/^ខែ$/i.test(clean) || clean === 'month') return 'month';
+  if (/^ឆ្នាំ$/i.test(clean) || clean === 'year') return 'year';
+
+  // Specific compound addresses first before general ones
+  if (/ទីកន្លែងកំណើត.*ភូមិ|ភូមិ.*កំណើត|pobvillage/i.test(clean)) return 'pobVillage';
+  if (/ទីកន្លែងកំណើត.*(ឃុំ|សង្កាត់)|(ឃុំ|សង្កាត់).*កំណើត|pobcommune/i.test(clean)) return 'pobCommune';
+  if (/ទីកន្លែងកំណើត.*(ស្រុក|ខណ្ឌ)|(ស្រុក|ខណ្ឌ).*កំណើត|pobdistrict/i.test(clean)) return 'pobDistrict';
+  if (/ទីកន្លែងកំណើត.*(ខេត្ត|រាជធានី)|(ខេត្ត|រាជធានី).*កំណើត|ទីកន្លែងកំណើត|pobprovince/i.test(clean)) return 'pobProvince';
+
+  if (/អាសយដ្ឋាន.*ភូមិ|ភូមិ.*(បច្ចុប្បន្ន|អាសយដ្ឋាន)|addrvillage/i.test(clean)) return 'addrVillage';
+  if (/អាសយដ្ឋាន.*(ឃុំ|សង្កាត់)|(ឃុំ|សង្កាត់).*(បច្ចុប្បន្ន|អាសយដ្ឋាន)|addrcommune/i.test(clean)) return 'addrCommune';
+  if (/អាសយដ្ឋាន.*(ស្រុក|ខណ្ឌ)|(ស្រុក|ខណ្ឌ).*(បច្ចុប្បន្ន|អាសយដ្ឋាន)|addrdistrict/i.test(clean)) return 'addrDistrict';
+  if (/អាសយដ្ឋាន.*(ខេត្ត|រាជធានី)|(ខេត្ត|រាជធានី).*(បច្ចុប្បន្ន|អាសយដ្ឋាន)|អាសយដ្ឋានបច្ចុប្បន្ន|addrprovince/i.test(clean)) return 'addrProvince';
+
+  // Simple address terms (often copied as column headers in 4-column address blocks: ភូមិ, ឃុំ/សង្កាត់, ស្រុក/ខណ្ឌ, ខេត្ត/រាជធានី)
+  if (/^ភូមិ$/i.test(clean) || clean === 'village') return 'pobVillage';
+  if (/^(ឃុំ|សង្កាត់|ឃុំសង្កាត់)$/i.test(clean) || clean === 'commune') return 'pobCommune';
+  if (/^(ស្រុក|ខណ្ឌ|ស្រុកខណ្ឌ)$/i.test(clean) || clean === 'district') return 'pobDistrict';
+  if (/^(ខេត្ត|រាជធានី|ខេត្តរាជធានី)$/i.test(clean) || clean === 'province') return 'pobProvince';
+
+  // Standard student fields
+  if (/^(លរ|លេខរៀង|no|roll|#)$/i.test(clean)) return 'rollNo';
+  if (/^(អត្តលេខ|អត្តលេខសិស្ស|កូដ|code|id|studentid|studentcode)$/i.test(clean)) return 'studentCode';
+  if (/គោត្តនាម.*នាម|គោត្តនាម|ឈ្មោះសិស្ស|ឈ្មោះ|fullname|studentname|namekh|name/i.test(clean)) return 'nameKh';
+  if (/^(ភេទ|gender|sex|fm)$/i.test(clean)) return 'gender';
+  if (/ថ្ងៃ.*កំណើត|កំណើត|dob|birthdate|birth/i.test(clean)) return 'dob';
+  if (/^អាយុ|age$/i.test(clean)) return 'age';
+  if (/សាលា|school|originschool/i.test(clean)) return 'originSchool';
+
+  // Contacts & Parents
+  if (/ទូរស័ព្ទ.*(ផ្ទាល់ខ្លួន|សិស្ស)|លេខទូរស័ព្ទផ្ទាល់ខ្លួន|ទូរស័ព្ទ|phone|studentphone/i.test(clean)) return 'studentPhone';
+  if (/ឪពុក.*ឈ្មោះ|ឈ្មោះឪពុក|ឪពុក|fathername|father/i.test(clean)) return 'fatherName';
+  if (/ឪពុក.*មុខរបរ|មុខរបរឪពុក|fatheroccupation/i.test(clean)) return 'fatherOccupation';
+  if (/ឪពុក.*ទូរស័ព្ទ|fatherphone/i.test(clean)) return 'fatherPhone';
+  if (/ម្តាយ.*ឈ្មោះ|ឈ្មោះម្តាយ|ម្តាយ|mothername|mother/i.test(clean)) return 'motherName';
+  if (/ម្តាយ.*មុខរបរ|មុខរបរម្តាយ|motheroccupation/i.test(clean)) return 'motherOccupation';
+  if (/ម្តាយ.*ទូរស័ព្ទ|motherphone/i.test(clean)) return 'motherPhone';
+  if (/ផ្សេងៗ|កំណត់ចំណាំ|ចំណាំ|remark|notes|othernotes/i.test(clean)) return 'otherNotes';
+
+  return null;
+}
+
+/**
  * Intelligent Content-Aware Grid Parser for clipboard text (Excel, Sheets, CSV, TSV)
- * Identifies student row structures automatically. Never puts roll numbers into student names.
+ * Respects active focused cell. Never overwrites student names with addresses or numbers.
  */
 export function parseClipboardGrid(
   pastedText: string,
@@ -447,8 +502,18 @@ export function parseClipboardGrid(
   const colCount = firstRow.length;
 
   // 1. Check if first row is an explicit table header
+  let matchedHeaderCount = 0;
+  firstRow.forEach((c) => {
+    if (matchHeaderToColumnKey(c) !== null) matchedHeaderCount++;
+  });
+
   const isHeader =
-    firstRow.some((c) => /^(ល\.?រ|លេខរៀង|អត្តលេខ|គោត្តនាម|ឈ្មោះ|ភេទ|gender|sex)/i.test(c.replace(/[\s_\-#.]/g, '')));
+    matchedHeaderCount >= 1 &&
+    firstRow.some((c) =>
+      /^(ល\.?រ|លេខរៀង|អត្តលេខ|គោត្តនាម|ឈ្មោះ|ភេទ|gender|sex|ភូមិ|ឃុំ|ស្រុក|ខេត្ត|ទីកន្លែងកំណើត|អាសយដ្ឋាន|ទូរស័ព្ទ|ឪពុក|ម្តាយ|ថ្ងៃ)/i.test(
+        c.replace(/[\s_\-#.():\/]/g, '')
+      )
+    );
 
   let startIndex = 0;
   let dayColIdx = -1;
@@ -458,24 +523,13 @@ export function parseClipboardGrid(
 
   if (isHeader) {
     startIndex = 1;
-    // Map from header row
+    // Map from header row using matchHeaderToColumnKey
     firstRow.forEach((c, idx) => {
-      const clean = c.toLowerCase().replace(/[\s_\-#.]/g, '');
-      if (/^(លរ|លេខរៀង|no|roll)$/i.test(clean)) columnKeys[idx] = 'rollNo';
-      else if (/^(អត្តលេខ|កូដ|code|id|studentid)$/i.test(clean)) columnKeys[idx] = 'studentCode';
-      else if (/គោត្តនាម.*នាម|គោត្តនាម|ឈ្មោះសិស្ស|ឈ្មោះ|name/i.test(clean)) columnKeys[idx] = 'nameKh';
-      else if (/^(ភេទ|gender|sex)$/i.test(clean)) columnKeys[idx] = 'gender';
-      else if (/^ថ្ងៃ(ទី)?$/i.test(clean) || clean === 'day') dayColIdx = idx;
-      else if (/^ខែ$/i.test(clean) || clean === 'month') monthColIdx = idx;
-      else if (/^ឆ្នាំ$/i.test(clean) || clean === 'year') yearColIdx = idx;
-      else if (/ថ្ងៃ.*កំណើត|កំណើត|dob|birth/i.test(clean)) columnKeys[idx] = 'dob';
-      else if (/^អាយុ|age$/i.test(clean)) columnKeys[idx] = 'age';
-      else if (/សាលា|school/i.test(clean)) columnKeys[idx] = 'originSchool';
-      else if (/ទីកន្លែងកំណើត.*ខេត្ត|ខេត្ត.*កំណើត|ទីកន្លែងកំណើត/i.test(clean)) columnKeys[idx] = 'pobProvince';
-      else if (/ទូរស័ព្ទ|phone/i.test(clean)) columnKeys[idx] = 'studentPhone';
-      else if (/ឪពុក|father|អាណាព្យាបាល/i.test(clean)) columnKeys[idx] = 'fatherName';
-      else if (/ម្តាយ|mother/i.test(clean)) columnKeys[idx] = 'motherName';
-      else if (/ផ្សេងៗ|កំណត់ចំណាំ|ចំណាំ|remark|notes/i.test(clean)) columnKeys[idx] = 'otherNotes';
+      const match = matchHeaderToColumnKey(c);
+      if (match === 'day') dayColIdx = idx;
+      else if (match === 'month') monthColIdx = idx;
+      else if (match === 'year') yearColIdx = idx;
+      else if (match !== null) columnKeys[idx] = match;
       else columnKeys[idx] = null;
     });
   } else {
@@ -495,17 +549,7 @@ export function parseClipboardGrid(
       }
     }
 
-    // 2. Detect roll number column (small numbers < 500 in column 0 or 1)
-    let detectedRollCol = -1;
-    if (colCount > 1) {
-      const c0IsRoll = sampleRows.every((r) => {
-        const val = Number(khmerToArabic(r[0] || ''));
-        return !isNaN(val) && val > 0 && val < 500;
-      });
-      if (c0IsRoll) detectedRollCol = 0;
-    }
-
-    // 3. Detect 3-column date: [Day (1-31), Month (1-12), Year (1990-2030)]
+    // 2. Detect 3-column date: [Day (1-31), Month (1-12), Year (1990-2030)]
     for (let c = 0; c < colCount - 2; c++) {
       const is3ColDate = sampleRows.every((r) => {
         const d = Number(khmerToArabic(r[c] || ''));
@@ -521,7 +565,7 @@ export function parseClipboardGrid(
       }
     }
 
-    // 4. Single-column date check if 3-col date wasn't found
+    // 3. Single-column date check if 3-col date wasn't found
     let detectedSingleDobCol = -1;
     if (dayColIdx === -1) {
       for (let c = 0; c < colCount; c++) {
@@ -533,37 +577,74 @@ export function parseClipboardGrid(
       }
     }
 
-    // Build columnKeys array
+    // 4. Detect roll number column (small numbers < 500 in column 0 or 1)
+    let detectedRollCol = -1;
+    if (colCount > 1) {
+      const c0IsRoll = sampleRows.every((r) => {
+        const val = Number(khmerToArabic(r[0] || ''));
+        return !isNaN(val) && val > 0 && val < 500;
+      });
+      if (c0IsRoll) detectedRollCol = 0;
+    }
+
+    // 5. Detect Cambodian Province in any column
+    const CAMBODIAN_PROVINCES = [
+      'កំពង់ឆ្នាំង', 'ភ្នំពេញ', 'កណ្ដាល', 'កណ្តាល', 'សៀមរាប', 'បាត់ដំបង',
+      'ព្រៃវែង', 'តាកែវ', 'កំពត', 'កំពង់ចាម', 'កំពង់ស្ពឺ', 'កំពង់ធំ',
+      'ពោធិ៍សាត់', 'ក្រចេះ', 'ស្ទឹងត្រែង', 'រតនគិរី', 'មណ្ឌលគិរី',
+      'ព្រះវិហារ', 'បន្ទាយមានជ័យ', 'ឧត្តរមានជ័យ', 'ស្វាយរៀង', 'កែប',
+      'ប៉ៃលិន', 'ព្រះសីហនុ', 'កោះកុង', 'ត្បូងឃ្មុំ'
+    ];
+    let detectedProvinceCol = -1;
+    for (let c = 0; c < colCount; c++) {
+      const matchCount = sampleRows.filter((r) => {
+        const val = String(r[c] || '').trim();
+        return CAMBODIAN_PROVINCES.some((p) => val.includes(p));
+      }).length;
+      if (matchCount >= 1 && matchCount / sampleRows.length >= 0.3) {
+        detectedProvinceCol = c;
+        break;
+      }
+    }
+
     columnKeys = new Array(colCount).fill(null);
 
-    // Case A: Single column paste (respect active target cell e.g. nameKh, dob, studentPhone)
-    if (colCount === 1) {
-      if (targetStartColKey) {
-        columnKeys[0] = targetStartColKey;
-      } else if (detectedGenderCol === 0) {
-        columnKeys[0] = 'gender';
-      } else if (detectedSingleDobCol === 0) {
-        columnKeys[0] = 'dob';
-      } else if (detectedRollCol === 0) {
-        columnKeys[0] = 'rollNo';
-      } else {
-        columnKeys[0] = 'nameKh';
-      }
-    } else {
-      // Multi-column mapping
-      if (detectedGenderCol !== -1) {
-        columnKeys[detectedGenderCol] = 'gender';
-        // In Cambodian school spreadsheets, Student Name ALWAYS immediately precedes Gender!
-        if (detectedGenderCol > 0) {
-          columnKeys[detectedGenderCol - 1] = 'nameKh';
+    // PATH 1: User explicitly selected a target cell (e.g. pobVillage, addrVillage, studentPhone, etc.)
+    // When no gender column is found, this is NOT a student roster! Align columns sequentially from target cell!
+    if (targetStartColKey && detectedGenderCol === -1) {
+      const startColIdx = SPREADSHEET_COLUMNS.findIndex((col) => col.key === targetStartColKey);
+      if (startColIdx !== -1) {
+        if (targetStartColKey === 'dob' && dayColIdx !== -1) {
+          // dayColIdx, monthColIdx, yearColIdx combine into dob
+          let offset = 0;
+          for (let c = 0; c < colCount; c++) {
+            if (c === dayColIdx || c === monthColIdx || c === yearColIdx) continue;
+            const targetDef = SPREADSHEET_COLUMNS[startColIdx + 1 + offset];
+            if (targetDef) columnKeys[c] = targetDef.key;
+            offset++;
+          }
+        } else {
+          // Direct positional mapping from targetStartColKey along SPREADSHEET_COLUMNS
+          for (let c = 0; c < colCount; c++) {
+            const targetDef = SPREADSHEET_COLUMNS[startColIdx + c];
+            if (targetDef) {
+              columnKeys[c] = targetDef.key;
+            }
+          }
         }
       }
-
+    }
+    // PATH 2: Full Student Roster (Contains Gender Column)
+    else if (detectedGenderCol !== -1) {
+      columnKeys[detectedGenderCol] = 'gender';
+      // In Cambodian school spreadsheets, Student Name ALWAYS immediately precedes Gender!
+      if (detectedGenderCol > 0) {
+        columnKeys[detectedGenderCol - 1] = 'nameKh';
+      }
       if (detectedRollCol !== -1 && columnKeys[detectedRollCol] === null) {
         columnKeys[detectedRollCol] = 'rollNo';
       }
-
-      if (detectedSingleDobCol !== -1) {
+      if (detectedSingleDobCol !== -1 && columnKeys[detectedSingleDobCol] === null) {
         columnKeys[detectedSingleDobCol] = 'dob';
       }
 
@@ -574,15 +655,55 @@ export function parseClipboardGrid(
 
         const sampleVal = sampleRows.map((r) => String(r[c] || '').trim()).find(Boolean) || '';
 
-        // If it comes after date or year, and contains "សាលា", it's originSchool
         if (/សាលា|បឋមសិក្សា|អនុវិទ្យាល័យ|វិទ្យាល័យ/i.test(sampleVal)) {
           columnKeys[c] = 'originSchool';
         } else if (/^STU/i.test(sampleVal) || (c === 1 && detectedRollCol === 0 && detectedGenderCol > 2)) {
           columnKeys[c] = 'studentCode';
         } else if (/^\d{8,11}$/.test(sampleVal) || /^0\d{8,9}$/.test(sampleVal)) {
           columnKeys[c] = 'studentPhone';
-        } else if (columnKeys.filter(k => k === 'nameKh').length === 0 && !/^\d+$/.test(sampleVal)) {
-          columnKeys[c] = 'nameKh';
+        } else if (CAMBODIAN_PROVINCES.some((p) => sampleVal.includes(p))) {
+          columnKeys[c] = 'pobProvince';
+        }
+      }
+    }
+    // PATH 3: Multi-column or Single-column without target cell and without gender column
+    else {
+      // Check if this matches address column pattern: e.g. 4 columns ending with province
+      if (detectedProvinceCol !== -1) {
+        if (colCount === 4 && detectedProvinceCol === 3) {
+          columnKeys = ['pobVillage', 'pobCommune', 'pobDistrict', 'pobProvince'];
+        } else if (colCount === 3 && detectedProvinceCol === 2) {
+          columnKeys = ['pobCommune', 'pobDistrict', 'pobProvince'];
+        } else if (colCount === 1) {
+          columnKeys = ['pobProvince'];
+        }
+      } else if (colCount === 1) {
+        if (detectedSingleDobCol === 0) {
+          columnKeys[0] = 'dob';
+        } else if (detectedRollCol === 0) {
+          columnKeys[0] = 'rollNo';
+        } else {
+          const sample = sampleRows.map((r) => String(r[0] || '').trim()).find(Boolean) || '';
+          if (/^0\d{8,9}$/.test(sample) || /^\d{8,10}$/.test(sample)) {
+            columnKeys[0] = 'studentPhone';
+          } else {
+            columnKeys[0] = 'nameKh';
+          }
+        }
+      } else {
+        // Multi-column unknown: only map text to nameKh if targetStartColKey is explicitly 'nameKh' or undefined AND no address keywords
+        for (let c = 0; c < colCount; c++) {
+          if (c === dayColIdx || c === monthColIdx || c === yearColIdx) continue;
+          if (columnKeys[c] !== null) continue;
+
+          const sampleVal = sampleRows.map((r) => String(r[c] || '').trim()).find(Boolean) || '';
+          if (/សាលា|បឋមសិក្សា|អនុវិទ្យាល័យ|វិទ្យាល័យ/i.test(sampleVal)) {
+            columnKeys[c] = 'originSchool';
+          } else if (/^\d{8,11}$/.test(sampleVal) || /^0\d{8,9}$/.test(sampleVal)) {
+            columnKeys[c] = 'studentPhone';
+          } else if (!targetStartColKey && columnKeys.filter((k) => k === 'nameKh').length === 0 && !/^\d+$/.test(sampleVal)) {
+            columnKeys[c] = 'nameKh';
+          }
         }
       }
     }
