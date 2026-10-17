@@ -21,6 +21,13 @@ import type { ClassRoom, TimetableSlot, TeacherSettings } from '../types';
 import { db } from '../db/db';
 import { useUndoRedo } from '../context/UndoRedoContext';
 import { toKhmerNum, getKhmerLunarDate, getKhmerSolarDate } from '../utils/dateUtils';
+import {
+  resolveGradeTrack,
+  getTrackSubjects,
+  GRADE_TRACKS,
+  type GradeTrackKey,
+} from '../utils/gradeCoefficients';
+import { parseGradeNumber } from '../utils/classUtils';
 import { Modal } from '../components/common/Modal';
 import { PrintButton } from '../components/common/PrintButton';
 
@@ -246,6 +253,32 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
   const activeClassId = selectedClassId === 'ALL' ? (classes[0]?.id || '') : selectedClassId;
   const currentClass = classes.find((c) => c.id === activeClassId);
   const currentClassName = currentClass?.name || '10A';
+
+  // Editing class context (used to retrieve subjects and coefficients according to MoEYS standards)
+  const editingClass = useMemo(() => {
+    if (!editingSlot) return currentClass;
+    return classes.find((c) => c.id === editingSlot.classId) || currentClass;
+  }, [editingSlot, classes, currentClass]);
+
+  const activeTrackKey = useMemo<GradeTrackKey>(() => {
+    if (!editingClass) return '7-8';
+    const gNum = parseGradeNumber(editingClass.grade || editingClass.name);
+    if (gNum === 11) {
+      return editingClass.stream === 'social' ? '11-soc' : '11-sci';
+    }
+    if (gNum === 12) {
+      return editingClass.stream === 'social' ? '12-soc' : '12-sci';
+    }
+    return resolveGradeTrack(editingClass.name, editingClass.grade || `${gNum}`);
+  }, [editingClass]);
+
+  const availableSubjects = useMemo(() => {
+    return getTrackSubjects(activeTrackKey, settings?.customGradeCoefficients);
+  }, [activeTrackKey, settings?.customGradeCoefficients]);
+
+  const activeTrackDef = useMemo(() => {
+    return GRADE_TRACKS.find((t) => t.key === activeTrackKey);
+  }, [activeTrackKey]);
 
   const teacherName = settings?.teacherName || 'ហ៊ុន រដ្ឋា';
   const teacherPhone = settings?.phone || '093 486 987';
@@ -883,18 +916,84 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
       >
         {editingSlot && (
           <form onSubmit={handleSaveSlot} className="space-y-4 text-xs sm:text-sm">
+            {/* Subject Selector according to Coefficient Matrix */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                មុខវិជ្ជា <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                value={editSubject}
-                onChange={(e) => setEditSubject(e.target.value)}
-                placeholder="ឧ. គណិតវិទ្យា, ភាសាខ្មែរ, រូបវិទ្យា..."
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
-              />
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-bold text-slate-700">
+                  មុខវិជ្ជា <span className="text-rose-500">*</span>
+                </label>
+                {activeTrackDef && (
+                  <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+                    កម្រិត៖ {activeTrackDef.label}
+                  </span>
+                )}
+              </div>
+
+              {/* Quick Dropdown Selection with Coefficients */}
+              <div className="space-y-2">
+                <select
+                  value={availableSubjects.some((s) => s.name === editSubject) ? editSubject : ''}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      setEditSubject(e.target.value);
+                    }
+                  }}
+                  className="w-full px-3 py-2 text-xs sm:text-sm font-bold bg-white border border-blue-400 rounded-xl focus:ring-2 focus:ring-blue-500 shadow-2xs cursor-pointer text-slate-800"
+                >
+                  <option value="">-- ចុចទីនេះដើម្បីរើសមុខវិជ្ជា (តាមមេគុណ) --</option>
+                  {availableSubjects.map((sub) => (
+                    <option key={sub.id} value={sub.name}>
+                      📚 {sub.name} (មេគុណ {sub.coefficient} • ពិន្ទុអតិ. {sub.maxScore})
+                    </option>
+                  ))}
+                </select>
+
+                {/* Direct text input for fine-tuning or custom subjects */}
+                <input
+                  type="text"
+                  required
+                  value={editSubject}
+                  onChange={(e) => setEditSubject(e.target.value)}
+                  placeholder="ឧ. គណិតវិទ្យា, ភាសាខ្មែរ, រូបវិទ្យា..."
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-bold text-slate-800"
+                />
+
+                {/* Quick Chips with Subject & Coefficient */}
+                <div className="space-y-1 pt-0.5">
+                  <span className="text-[10px] text-slate-500 font-bold block">
+                    ចុចលើមុខវិជ្ជាដើម្បីជ្រើសរើសភ្លាមៗ (១-Click Select)៖
+                  </span>
+                  <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto p-1 bg-slate-50 rounded-xl border border-slate-200">
+                    {availableSubjects.map((sub) => {
+                      const isSelected = editSubject === sub.name;
+                      return (
+                        <button
+                          key={sub.id}
+                          type="button"
+                          onClick={() => setEditSubject(sub.name)}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border shadow-2xs ${
+                            isSelected
+                              ? 'bg-blue-600 text-white border-blue-700 shadow-xs scale-102'
+                              : 'bg-white hover:bg-blue-50 hover:border-blue-300 text-slate-700 border-slate-200'
+                          }`}
+                          title={`${sub.name} - មេគុណ: ${sub.coefficient} (ពិន្ទុអតិបរមា: ${sub.maxScore})`}
+                        >
+                          <span>{sub.name}</span>
+                          <span
+                            className={`text-[10px] px-1.5 py-0.2 rounded font-black font-mono ${
+                              isSelected
+                                ? 'bg-blue-700 text-white'
+                                : 'bg-amber-100 text-amber-900 border border-amber-200'
+                            }`}
+                          >
+                            ×{sub.coefficient}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
