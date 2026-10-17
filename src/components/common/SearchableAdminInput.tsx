@@ -94,20 +94,22 @@ export const SearchableAdminInput: React.FC<SearchableAdminInputProps> = ({
     setQuery(value || '');
   }, [value]);
 
-  // Close popup on outside click
+  // Close popup on outside click or focus loss
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+    const handleOutside = (event: MouseEvent | TouchEvent | FocusEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setIsOpen(false);
         setShowAllExplicitly(false);
         setActiveIndex(-1);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('touchstart', handleClickOutside);
+    document.addEventListener('mousedown', handleOutside);
+    document.addEventListener('touchstart', handleOutside);
+    document.addEventListener('focusin', handleOutside);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('touchstart', handleClickOutside);
+      document.removeEventListener('mousedown', handleOutside);
+      document.removeEventListener('touchstart', handleOutside);
+      document.removeEventListener('focusin', handleOutside);
     };
   }, []);
 
@@ -172,6 +174,36 @@ export const SearchableAdminInput: React.FC<SearchableAdminInputProps> = ({
 
   // Keyboard navigation
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Single-tab navigation: commit choice and let browser Tab advance directly to next field!
+    if (e.key === 'Tab') {
+      if (isOpen) {
+        if (activeIndex >= 0 && activeIndex < filteredOptions.length) {
+          handleSelectOption(filteredOptions[activeIndex]);
+        } else if (filteredOptions.length === 1) {
+          handleSelectOption(filteredOptions[0]);
+        } else if (query.trim()) {
+          const exact = filteredOptions.find(
+            (o) => cleanAdminPrefix(o).toLowerCase() === cleanAdminPrefix(query.trim()).toLowerCase()
+          );
+          if (exact) {
+            handleSelectOption(exact);
+          } else {
+            setQuery(query.trim());
+            onChange(query.trim());
+            setIsOpen(false);
+            setShowAllExplicitly(false);
+            setActiveIndex(-1);
+          }
+        } else {
+          setIsOpen(false);
+          setShowAllExplicitly(false);
+          setActiveIndex(-1);
+        }
+      }
+      // Note: Do NOT call e.preventDefault(); allow browser Tab to jump straight to next field!
+      return;
+    }
+
     if (!isOpen) {
       if (e.key === 'ArrowDown' || e.key === 'Enter') {
         setIsOpen(true);
@@ -292,6 +324,7 @@ export const SearchableAdminInput: React.FC<SearchableAdminInputProps> = ({
           {query && !disabled && (
             <button
               type="button"
+              tabIndex={-1}
               onClick={handleClear}
               className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200 transition-colors cursor-pointer"
               title="លុបអក្សរស្វែងរក"
@@ -301,6 +334,7 @@ export const SearchableAdminInput: React.FC<SearchableAdminInputProps> = ({
           )}
           <button
             type="button"
+            tabIndex={-1}
             disabled={disabled}
             onClick={() => {
               if (!disabled) {
@@ -324,7 +358,10 @@ export const SearchableAdminInput: React.FC<SearchableAdminInputProps> = ({
 
       {/* Modern Filtered Suggestions Panel */}
       {isOpen && !disabled && (
-        <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white rounded-2xl shadow-xl border border-slate-200 max-h-64 overflow-y-auto overflow-x-hidden divide-y divide-slate-100 animate-in fade-in zoom-in-95 duration-100">
+        <div
+          onMouseDown={(e) => e.preventDefault()}
+          className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white rounded-2xl shadow-xl border border-slate-200 max-h-64 overflow-y-auto overflow-x-hidden divide-y divide-slate-100 animate-in fade-in zoom-in-95 duration-100"
+        >
           {/* Header count info: Shows exact filtered count for easy reading */}
           <div className="px-3 py-1.5 bg-slate-50 flex items-center justify-between text-[11px] font-bold text-slate-600 sticky top-0 z-10 border-b border-slate-100 backdrop-blur-xs">
             <span className="flex items-center gap-1.5">
@@ -347,6 +384,7 @@ export const SearchableAdminInput: React.FC<SearchableAdminInputProps> = ({
             {query.trim() && (
               <button
                 type="button"
+                tabIndex={-1}
                 onClick={() => setShowAllExplicitly(!showAllExplicitly)}
                 className="text-[10px] text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1 font-bold cursor-pointer"
               >
@@ -373,6 +411,7 @@ export const SearchableAdminInput: React.FC<SearchableAdminInputProps> = ({
                     key={opt}
                     data-list-item
                     type="button"
+                    tabIndex={-1}
                     onClick={() => handleSelectOption(opt)}
                     className={`w-full px-3 py-2 text-left text-xs sm:text-sm flex items-center justify-between transition-colors cursor-pointer ${
                       isHighlighted
@@ -396,6 +435,7 @@ export const SearchableAdminInput: React.FC<SearchableAdminInputProps> = ({
                 </p>
                 <button
                   type="button"
+                  tabIndex={-1}
                   onClick={() => setShowAllExplicitly(true)}
                   className="text-blue-600 hover:underline text-[11px] font-bold inline-flex items-center gap-1 mt-1 cursor-pointer"
                 >
@@ -409,6 +449,7 @@ export const SearchableAdminInput: React.FC<SearchableAdminInputProps> = ({
             {query.trim() && !hasExactMatch && (
               <button
                 type="button"
+                tabIndex={-1}
                 onClick={() => handleSelectOption(query.trim())}
                 className="w-full px-3 py-2.5 text-left text-xs text-emerald-700 bg-emerald-50/70 hover:bg-emerald-100 border-t border-emerald-100 flex items-center gap-1.5 transition-colors font-medium cursor-pointer"
               >

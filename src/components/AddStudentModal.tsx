@@ -339,8 +339,8 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({
   };
 
   // Submit Handler
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!validateForm()) {
       return;
     }
@@ -417,6 +417,20 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({
       setIsSubmitting(false);
     }
   };
+  // Global shortcut listeners inside Modal (Ctrl+S / Cmd+S to save, Escape to close)
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleModalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        handleSubmit();
+      }
+    };
+    window.addEventListener('keydown', handleModalKeyDown);
+    return () => window.removeEventListener('keydown', handleModalKeyDown);
+  }, [isOpen, handleSubmit, onClose]);
 
   if (!isOpen) return null;
 
@@ -1101,41 +1115,6 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({
             />
           </div>
         </form>
-
-        {/* Modal Footer */}
-        <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
-          <div className="text-xs text-slate-500">
-            <span className="text-rose-500 font-bold">*</span> ចាំបាច់ត្រូវបំពេញ៖ <strong>ឈ្មោះ, ភេទ, ថ្ងៃកំណើត, ថ្នាក់</strong>
-          </div>
-
-          <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isSubmitting}
-              className="px-4 py-2 text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 font-bold rounded-xl transition-colors cursor-pointer text-xs sm:text-sm"
-            >
-              បោះបង់
-            </button>
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={isSubmitting}
-              className={`px-6 py-2 text-white font-bold rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-2 text-xs sm:text-sm disabled:opacity-50 ${
-                studentToEdit ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'
-              }`}
-            >
-              {isSubmitting ? (
-                <>កំពុងរក្សាទុក...</>
-              ) : (
-                <>
-                  <CheckCircle2 className="w-4 h-4 text-white" />
-                  {studentToEdit ? 'រក្សាទុកការកែប្រែ' : 'រក្សាទុកសិស្សថ្មី'}
-                </>
-              )}
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );
