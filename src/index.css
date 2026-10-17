@@ -53,8 +53,9 @@
 }
 
 .font-moul {
-  font-family: 'Moul', cursive, serif;
+  font-family: 'Moul', 'Khmer OS Muol Light', 'Khmer OS Muol', 'Khmer OS Muol Pali', 'Noto Serif Khmer', cursive, serif;
   line-height: 1.5;
+  letter-spacing: 0.02em;
 }
 
 .font-kantumruy {

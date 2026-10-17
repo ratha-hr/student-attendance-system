@@ -869,6 +869,10 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
             width: 100% !important;
             max-width: 100% !important;
           }
+          .font-moul {
+            font-family: 'Moul', 'Khmer OS Muol Light', 'Khmer OS Muol', 'Khmer OS Muol Pali', 'Noto Serif Khmer', cursive, serif !important;
+            letter-spacing: 0.02em !important;
+          }
           .overflow-x-auto {
             overflow: visible !important;
           }
@@ -1421,35 +1425,47 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
 
       {/* Official Plan Sheet Container (Matches Excel Template Exactly for Display & Print) */}
       <div className="official-sheet bg-white rounded-2xl p-4 sm:p-6 lg:p-8 border border-slate-200 shadow-sm print:p-0 print:border-none print:shadow-none space-y-2">
-        {/* Kingdom & Ministry Header (Hidden on screen as requested in Image 1, appears ONLY when printing as official Kingdom format) */}
-        <div className="hidden print:flex items-start justify-between pt-1 pb-1 mb-2">
-          {/* Top Left Organization */}
-          <div className="text-xs text-black font-bold space-y-0.5 text-left">
-            <div className="font-moul text-xs text-black">
-              {plan.districtOffice || 'ការិយាល័យអប់រំ យុវជន និងកីឡា'}
-            </div>
-            <div className="text-xs text-black">
-              {plan.schoolName || 'វិទ្យាល័យ ហ៊ុន សែន កំពង់ត្រឡាច'}
+        {/* Official Kingdom & Ministry Administrative Header (បាវចនាជាតិនៅខាងលើកណ្តាល • ការិ.អយក និង វិទ្យាល័យ តម្រឹមខាងឆ្វេង) */}
+        <div className="w-full relative mb-3 print:mb-2 pt-1 pb-1">
+          {/* Top Center: National Motto (បាវចនាជាតិនៅខាងលើកណ្តាល) */}
+          <div className="w-full text-center">
+            <h2 className="font-moul text-sm sm:text-base print:text-[13pt] text-black tracking-wide leading-relaxed select-none">
+              ព្រះរាជាណាចក្រកម្ពុជា
+            </h2>
+            <h3 className="font-moul text-xs sm:text-sm print:text-[11pt] text-black tracking-wider mt-0.5 leading-relaxed select-none">
+              ជាតិ សាសនា ព្រះមហាក្សត្រ
+            </h3>
+            {/* Elegant Administrative Flourish (❖ ❖ ❖ with subtle divider) */}
+            <div className="flex items-center justify-center space-x-1.5 pt-0.5 text-black">
+              <span className="w-7 h-[1px] bg-black/70 rounded-full select-none" />
+              <span className="text-[10px] sm:text-xs font-serif leading-none select-none tracking-widest text-black">❖ ❖ ❖</span>
+              <span className="w-7 h-[1px] bg-black/70 rounded-full select-none" />
             </div>
           </div>
 
-          {/* Center/Right Kingdom */}
-          <div className="text-center">
-            <div className="font-moul text-xs sm:text-sm text-black tracking-wide">
-              ព្រះរាជាណាចក្រកម្ពុជា
-            </div>
-            <div className="font-moul text-[11px] text-black tracking-wider mt-0.5">
-              ជាតិ សាសនា ព្រះមហាក្សត្រ
-            </div>
-            <div className="text-center text-[10px] tracking-widest my-0.5 text-black font-serif select-none">
-              ❖ ❖ ❖
-            </div>
+          {/* Top Left: Office & School (ការិ.អយក និង វិទ្យាល័យ តម្រឹមខាងឆ្វេង) */}
+          <div className="sm:absolute sm:left-0 sm:top-0 print:absolute print:left-0 print:top-0 text-left text-black space-y-0.5 max-w-[42%]">
+            <input
+              type="text"
+              value={plan.districtOffice || 'ការិ.អយកស្រុកកំពង់ត្របែក'}
+              onChange={(e) => setPlan((p) => ({ ...p, districtOffice: e.target.value }))}
+              className="font-moul text-[10.5px] sm:text-[11.5px] print:text-[9.5pt] text-black bg-transparent border-none outline-none w-full p-0 hover:bg-amber-50 focus:bg-white rounded cursor-text"
+              title="ចុចដើម្បីកែសម្រួលឈ្មោះការិយាល័យអប់រំ"
+            />
+            <input
+              type="text"
+              value={plan.schoolName || 'វិទ្យាល័យ ហ៊ុន សែន កំពង់ត្របែក'}
+              onChange={(e) => setPlan((p) => ({ ...p, schoolName: e.target.value }))}
+              className="font-moul text-[10px] sm:text-[11px] print:text-[9pt] text-black bg-transparent border-none outline-none w-full p-0 hover:bg-amber-50 focus:bg-white rounded cursor-text"
+              title="ចុចដើម្បីកែសម្រួលឈ្មោះវិទ្យាល័យ"
+            />
+            <div className="w-16 h-[0.75px] bg-black/70 my-0.5 print:my-0.5" />
           </div>
         </div>
 
         {/* Red Document Title */}
-        <div className="text-center mt-1 mb-2">
-          <h1 className="font-moul text-sm sm:text-base text-red-600 tracking-wide leading-relaxed">
+        <div className="text-center mt-2 mb-2 print:mt-1.5 print:mb-1.5">
+          <h1 className="font-moul text-sm sm:text-base print:text-[13pt] text-red-600 tracking-wide leading-relaxed">
             ផែនការបង្រៀនប្រចាំឆ្នាំរបស់គ្រូ មុខវិជ្ជា {plan.subject} ( ឆ្នាំសិក្សា{plan.academicYear} )
           </h1>
         </div>
@@ -1544,21 +1560,21 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
             <tbody>
               <tr className="bg-white">
                 <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 font-bold text-black w-24 print:w-auto">កម្រិតពិន្ទុ</td>
-                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black">F ក្រោម៥០ពិន្ទុ</td>
-                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black">E ពី៥១-៦០ពិន្ទុ</td>
-                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black">D ពី៦១-៧០ពិន្ទុ</td>
-                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black">C ពី៧១-៧៩ពិន្ទុ</td>
-                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black">B ពី៨០-៨៩ពិន្ទុ</td>
-                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black font-bold">A ពី៩០-១០០ពិន្ទុ</td>
+                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black">F ក្រោម ៥០ ពិន្ទុ</td>
+                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black">E ពី ៥១ - ៦០ ពិន្ទុ</td>
+                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black">D ពី ៦១ - ៧០ ពិន្ទុ</td>
+                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black">C ពី ៧១ - ៧៩ ពិន្ទុ</td>
+                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black">B ពី ៨០ - ៨៩ ពិន្ទុ</td>
+                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black font-bold">A ពី ៩០ - ១០០ ពិន្ទុ</td>
               </tr>
               <tr className="bg-white">
                 <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 font-bold text-black w-24 print:w-auto">កម្រិតពិន្ទុ</td>
-                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black">F ក្រោម 25ពិន្ទុ</td>
-                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black">E ពី 25-29ពិន្ទុ</td>
-                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black">D ពី 30-34ពិន្ទុ</td>
-                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black">C ពី 35-39ពិន្ទុ</td>
-                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black">B ពី 40-44ពិន្ទុ</td>
-                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black font-bold">A ពី 45-50ពិន្ទុ</td>
+                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black">F ក្រោម ២៥ ពិន្ទុ</td>
+                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black">E ពី ២៥ - ២៩ ពិន្ទុ</td>
+                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black">D ពី ៣០ - ៣៤ ពិន្ទុ</td>
+                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black">C ពី ៣៥ - ៣៩ ពិន្ទុ</td>
+                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black">B ពី ៤០ - ៤៤ ពិន្ទុ</td>
+                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black font-bold">A ពី ៤៥ - ៥០ ពិន្ទុ</td>
               </tr>
             </tbody>
           </table>
