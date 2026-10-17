@@ -42,6 +42,7 @@ export function App() {
         classId: params.get('class') || undefined,
         date: params.get('date') || undefined,
         session: (params.get('session') as 'morning' | 'afternoon') || undefined,
+        timeSlot: params.get('time') || params.get('timeslot') || undefined,
         readOnly: params.get('view') === 'readonly' || params.get('readonly') === 'true' || true,
         payload: params.get('att') || params.get('data') || undefined,
         pinToken: params.get('pinToken') || params.get('token') || undefined,
@@ -181,6 +182,7 @@ export function App() {
         initialClassId={studentModeParams.classId || (selectedClassId !== 'ALL' ? selectedClassId : undefined)}
         initialDate={studentModeParams.date}
         initialSession={studentModeParams.session}
+        initialTimeSlot={studentModeParams.timeSlot}
         initialReadOnly={studentModeParams.readOnly}
         initialAttendancePayload={studentModeParams.payload}
         initialPinToken={studentModeParams.pinToken}

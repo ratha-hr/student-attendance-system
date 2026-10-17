@@ -22,6 +22,7 @@ import {
   Eye,
   EyeOff,
   Timer,
+  Calendar,
 } from 'lucide-react';
 import type { Student, ClassRoom, AttendanceRecord, AttendanceStatus, TeacherSettings } from '../types';
 import { db } from '../db/db';
@@ -31,6 +32,24 @@ import { decodeAttendanceFromUrl, encodeAttendanceForUrl, decodeRosterFromUrl } 
 import { verifyPin } from '../utils/pinUtils';
 import { Modal } from './common/Modal';
 
+const MORNING_TIME_SLOTS = [
+  { value: '7:00 - 11:00', label: 'ពេញមួយព្រឹក (07:00 - 11:00)' },
+  { value: '7:00 - 7:50', label: 'ម៉ោងទី ១ (07:00 - 07:50)' },
+  { value: '7:55 - 8:45', label: 'ម៉ោងទី ២ (07:55 - 08:45)' },
+  { value: '8:55 - 9:45', label: 'ម៉ោងទី ៣ (08:55 - 09:45)' },
+  { value: '9:50 - 10:40', label: 'ម៉ោងទី ៤ (09:50 - 10:40)' },
+  { value: '10:45 - 11:35', label: 'ម៉ោងទី ៥ (10:45 - 11:35)' },
+];
+
+const AFTERNOON_TIME_SLOTS = [
+  { value: '13:00 - 17:00', label: 'ពេញមួយរសៀល (13:00 - 17:00)' },
+  { value: '13:00 - 13:50', label: 'ម៉ោងទី ១ (13:00 - 13:50)' },
+  { value: '13:55 - 14:45', label: 'ម៉ោងទី ២ (13:55 - 14:45)' },
+  { value: '14:55 - 15:45', label: 'ម៉ោងទី ៣ (14:55 - 15:45)' },
+  { value: '15:50 - 16:40', label: 'ម៉ោងទី ៤ (15:50 - 16:40)' },
+  { value: '16:45 - 17:35', label: 'ម៉ោងទី ៥ (16:45 - 17:35)' },
+];
+
 interface StudentDailyAttendanceViewProps {
   classes: ClassRoom[];
   students: Student[];
@@ -39,6 +58,7 @@ interface StudentDailyAttendanceViewProps {
   initialClassId?: string;
   initialDate?: string;
   initialSession?: 'morning' | 'afternoon';
+  initialTimeSlot?: string;
   initialReadOnly?: boolean;
   initialAttendancePayload?: string;
   initialPinToken?: string;
@@ -54,18 +74,49 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
   initialClassId,
   initialDate,
   initialSession,
+  initialTimeSlot,
   initialAttendancePayload,
   initialPinToken,
   onExitStudentMode,
   onRefresh,
 }) => {
-  const [selectedClassId, setSelectedClassId] = useState<string>(
-    initialClassId && initialClassId !== 'ALL' ? initialClassId : (classes[0]?.id || '')
-  );
+  const [selectedClassId, setSelectedClassId] = useState<string>(() => {
+    if (initialClassId && initialClassId !== 'ALL') return initialClassId;
+    if (classes.length > 0) return classes[0].id;
+    return 'class-7';
+  });
   const [selectedDate, setSelectedDate] = useState<string>(initialDate || getTodayDateString());
   const [selectedSession, setSelectedSession] = useState<'morning' | 'afternoon'>(
     initialSession || 'morning'
   );
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>(() => {
+    if (initialTimeSlot) return initialTimeSlot;
+    return initialSession === 'afternoon' ? '13:00 - 17:00' : '7:00 - 11:00';
+  });
+
+  const currentTimeSlotOptions = selectedSession === 'morning' ? MORNING_TIME_SLOTS : AFTERNOON_TIME_SLOTS;
+
+  const handleSessionChange = (session: 'morning' | 'afternoon') => {
+    setSelectedSession(session);
+    if (session === 'morning') {
+      setSelectedTimeSlot('7:00 - 11:00');
+    } else {
+      setSelectedTimeSlot('13:00 - 17:00');
+    }
+    if (typeof window !== 'undefined' && window.history) {
+      const url = new URL(window.location.href);
+      url.searchParams.set('session', session);
+      window.history.replaceState({}, '', url.toString());
+    }
+  };
+
+  // Auto-sync selectedClassId when classes resolves from IndexedDB
+  useEffect(() => {
+    if ((!selectedClassId || selectedClassId === 'ALL') && classes.length > 0) {
+      setSelectedClassId(classes[0].id);
+    }
+  }, [classes, selectedClassId]);
+
   const [statusFilter, setStatusFilter] = useState<'all' | 'present' | 'permission' | 'absent' | 'late' | 'unmarked'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [soundOn, setSoundOn] = useState(true);
@@ -379,6 +430,7 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
       } else {
         await db.attendance.update(existing.id, {
           status,
+          timeSlot: selectedTimeSlot || existing.timeSlot,
         });
       }
     } else {
@@ -388,6 +440,7 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
         studentId,
         date: selectedDate,
         session: selectedSession,
+        timeSlot: selectedTimeSlot,
         status,
         reason: existing?.reason || '',
         createdAt: new Date().toISOString(),
@@ -404,7 +457,10 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
 
     const existing = dailyRecordMap.get(studentId);
     if (existing && !existing.id.startsWith('payload-')) {
-      await db.attendance.update(existing.id, { reason });
+      await db.attendance.update(existing.id, {
+        reason,
+        timeSlot: selectedTimeSlot || existing.timeSlot,
+      });
     } else {
       const newRec: AttendanceRecord = {
         id: 'att-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
@@ -412,6 +468,7 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
         studentId,
         date: selectedDate,
         session: selectedSession,
+        timeSlot: selectedTimeSlot,
         status: existing?.status || 'absent',
         reason,
         createdAt: new Date().toISOString(),
@@ -432,6 +489,7 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
       if (existing && !existing.id.startsWith('payload-')) {
         await db.attendance.update(existing.id, {
           status: 'present',
+          timeSlot: selectedTimeSlot || existing.timeSlot,
         });
       } else {
         const newRec: AttendanceRecord = {
@@ -440,6 +498,7 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
           studentId: stu.id,
           date: selectedDate,
           session: selectedSession,
+          timeSlot: selectedTimeSlot,
           status: 'present',
           createdAt: new Date().toISOString(),
         };
@@ -461,8 +520,9 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
     const origin = window.location.origin;
     const path = window.location.pathname;
     const payloadParam = currentPayload ? `&att=${encodeURIComponent(currentPayload)}` : '';
-    return `${origin}${path}?mode=student&class=${encodeURIComponent(selectedClassId)}&date=${selectedDate}&session=${selectedSession}&view=readonly${payloadParam}`;
-  }, [selectedClassId, selectedDate, selectedSession, currentPayload]);
+    const timeParam = selectedTimeSlot ? `&time=${encodeURIComponent(selectedTimeSlot)}` : '';
+    return `${origin}${path}?mode=student&class=${encodeURIComponent(selectedClassId)}&date=${selectedDate}&session=${selectedSession}${timeParam}&view=readonly${payloadParam}`;
+  }, [selectedClassId, selectedDate, selectedSession, selectedTimeSlot, currentPayload]);
 
   const handleCopyStudentLink = async () => {
     try {
@@ -587,23 +647,100 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
 
         {/* Compact Mobile-Optimized Dashboard Card (Replaces both the bulky info card & 5 huge stat boxes!) */}
         <div className="bg-white rounded-2xl p-2.5 sm:p-3 shadow-2xs border border-slate-200/90 space-y-2">
-          {/* Row 1: Class, Homeroom Teacher, Session, Date & Share Links */}
-          <div className="flex flex-wrap items-center justify-between gap-1.5 text-xs">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="px-2.5 py-1 bg-indigo-50 text-indigo-900 border border-indigo-200 rounded-lg font-black text-xs">
-                📚 {currentClass?.name || 'ថ្នាក់រៀន'}
-              </span>
-              <span className="px-2 py-1 bg-slate-100 text-slate-700 rounded-lg font-bold text-[11px]">
-                👨‍🏫 គ្រូ៖ {currentClass?.homeroomTeacher || settings?.teacherName || 'គ្រូទទួលបន្ទុក'}
-              </span>
-              <span className={`px-2 py-1 rounded-lg font-bold text-[11px] ${
-                selectedSession === 'morning' ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-700'
-              }`}>
-                {selectedSession === 'morning' ? '🌅 វេនព្រឹក' : '🌇 វេនរសៀល'}
-              </span>
-              <span className="text-slate-500 font-medium text-[11px]">
-                📅 {formatKhmerDate(selectedDate)}
-              </span>
+          {/* Row 1: Interactive Selectors - Class (ថ្នាក់), Session (វេន), Time/Period (ម៉ោង), Date (កាលបរិច្ឆេទ) */}
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+              {/* 1. Class Selector (ប្តូរថ្នាក់) */}
+              <div className="flex items-center gap-1.5 bg-indigo-50/90 border border-indigo-200 hover:border-indigo-300 rounded-xl px-2.5 py-1 shadow-2xs transition-colors">
+                <span className="text-sm">📚</span>
+                <select
+                  value={currentClass?.id || selectedClassId}
+                  onChange={(e) => {
+                    const newClassId = e.target.value;
+                    setSelectedClassId(newClassId);
+                    if (typeof window !== 'undefined' && window.history) {
+                      const url = new URL(window.location.href);
+                      url.searchParams.set('class', newClassId);
+                      window.history.replaceState({}, '', url.toString());
+                    }
+                  }}
+                  className="bg-transparent font-black text-indigo-950 text-xs cursor-pointer focus:outline-none"
+                  title="ចុចដើម្បីប្តូរថ្នាក់រៀន"
+                >
+                  {classes.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} {c.homeroomTeacher ? `• គ្រូ: ${c.homeroomTeacher}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* 2. Session Selector (ប្តូរវេន) */}
+              <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => handleSessionChange('morning')}
+                  className={`px-2.5 py-1 rounded-lg text-xs transition-all cursor-pointer flex items-center gap-1 ${
+                    selectedSession === 'morning'
+                      ? 'bg-blue-600 text-white font-black shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900 font-bold'
+                  }`}
+                  title="ប្តូរទៅវេនព្រឹក"
+                >
+                  <span>🌅</span>
+                  <span>ព្រឹក</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSessionChange('afternoon')}
+                  className={`px-2.5 py-1 rounded-lg text-xs transition-all cursor-pointer flex items-center gap-1 ${
+                    selectedSession === 'afternoon'
+                      ? 'bg-amber-600 text-white font-black shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900 font-bold'
+                  }`}
+                  title="ប្តូរទៅវេនរសៀល"
+                >
+                  <span>🌇</span>
+                  <span>រសៀល</span>
+                </button>
+              </div>
+
+              {/* 3. Time / Period Selector (ប្តូរម៉ោង) */}
+              <div className="flex items-center gap-1.5 bg-purple-50/90 border border-purple-200 hover:border-purple-300 rounded-xl px-2.5 py-1 shadow-2xs transition-colors">
+                <Clock className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                <select
+                  value={selectedTimeSlot}
+                  onChange={(e) => setSelectedTimeSlot(e.target.value)}
+                  className="bg-transparent font-bold text-purple-950 text-xs cursor-pointer focus:outline-none"
+                  title="ចុចដើម្បីប្តូរម៉ោងបង្រៀន / ម៉ោងស្រង់វត្តមាន"
+                >
+                  {currentTimeSlotOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* 4. Date Picker (ប្តូរកាលបរិច្ឆេទ) */}
+              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-xl px-2.5 py-1 shadow-2xs transition-colors">
+                <Calendar className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="bg-transparent text-slate-800 font-bold text-xs cursor-pointer focus:outline-none"
+                  title="ចុចដើម្បីប្តូរកាលបរិច្ឆេទ"
+                />
+              </div>
+
+              {/* 5. Teacher Badge */}
+              {currentClass?.homeroomTeacher && (
+                <span className="px-2 py-1 bg-slate-100 text-slate-700 rounded-lg font-bold text-[11px] hidden md:inline-flex items-center gap-1">
+                  <span>👨‍🏫</span>
+                  <span>គ្រូ៖ {currentClass.homeroomTeacher}</span>
+                </span>
+              )}
             </div>
 
             {/* Copy Link Button */}
