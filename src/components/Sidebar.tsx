@@ -220,7 +220,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 onClose();
               }}
               className="w-full flex items-center space-x-3 p-2 rounded-2xl bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 hover:border-blue-500/50 text-slate-200 transition-all cursor-pointer group shadow-xs text-left"
-              title="ការកំណត់ & បម្រុងទុកទិន្នន័យ"
+              title="ការកំណត់"
             >
               <div className="w-9 h-9 rounded-full bg-linear-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-xs group-hover:scale-105 transition-transform">
                 {settings?.teacherName ? settings.teacherName.charAt(0) : <User className="w-4 h-4" />}
@@ -230,7 +230,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   {settings?.teacherName || 'ហ៊ុន រដ្ឋា'}
                 </p>
                 <div className="flex items-center text-[10px] text-slate-400 space-x-1 mt-0.5">
-                  <span className="truncate">ការកំណត់ & បម្រុងទុក</span>
+                  <span className="truncate">ការកំណត់</span>
                 </div>
               </div>
               <Settings className="w-4 h-4 text-slate-400 group-hover:text-blue-400 group-hover:rotate-45 transition-all shrink-0" />

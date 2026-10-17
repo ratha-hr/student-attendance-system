@@ -362,11 +362,11 @@ export function App() {
         />
       </div>
 
-      {/* Settings Modal (Teacher info, School info, Backup/Restore JSON) */}
+      {/* Settings Modal */}
       <Modal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
-        title="ការកំណត់ប្រព័ន្ធ & បម្រុងទុកទិន្នន័យ"
+        title="ការកំណត់"
         maxWidth="4xl"
       >
         <SettingsPage settings={settings} onRefresh={handleRefresh} />
