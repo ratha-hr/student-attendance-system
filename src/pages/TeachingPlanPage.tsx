@@ -334,7 +334,79 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
     showToast('បានទាញយកឯកសារ Excel (.xlsx) រួចរាល់!');
   };
 
-  // Helper to render a specific block of tables
+  // Helper to render count cell (black font)
+  const renderCountCell = (
+    value: number,
+    onChange: (val: number) => void
+  ) => (
+    <td className="border border-black p-0 text-center font-bold font-mono text-black text-xs">
+      <div className="flex items-center justify-center w-full h-full min-h-[26px] print:hidden">
+        <input
+          type="number"
+          min={0}
+          value={value}
+          onChange={(e) => onChange(parseInt(e.target.value) || 0)}
+          className="w-full text-center font-mono font-bold text-black text-xs bg-transparent border-none outline-none p-0 focus:bg-amber-100 rounded"
+        />
+      </div>
+      <span className="hidden print:inline-block font-bold font-mono text-black text-[11px]">
+        {value}
+      </span>
+    </td>
+  );
+
+  // Helper to render percentage cell (red font)
+  const renderPercentCell = (
+    value: number,
+    onChange: (val: number) => void
+  ) => (
+    <td className="border border-black p-0 text-center font-bold font-mono text-red-600 text-xs">
+      <div className="flex items-center justify-center w-full h-full min-h-[26px] print:hidden">
+        <input
+          type="number"
+          min={0}
+          max={100}
+          value={value}
+          onChange={(e) => onChange(parseInt(e.target.value) || 0)}
+          className="w-7 text-right font-mono font-bold text-red-600 text-xs bg-transparent border-none outline-none p-0 focus:bg-amber-100 rounded"
+        />
+        <span className="text-red-600 font-bold text-[11px] ml-0.5 select-none">%</span>
+      </div>
+      <span className="hidden print:inline-block font-bold font-mono text-red-600 text-[11px]">
+        {value}%
+      </span>
+    </td>
+  );
+
+  // Helper to render year-end target percentage cell (golden yellow for A, B, C; black text)
+  const renderTargetCell = (
+    value: number,
+    grade: string,
+    onChange: (val: number) => void
+  ) => {
+    const isHighGrade = ['A', 'B', 'C'].includes(grade);
+    const bgClass = isHighGrade ? 'bg-[#FFC000]' : 'bg-white';
+    return (
+      <td className={`border border-black p-0 text-center font-bold font-mono text-black text-xs ${bgClass}`}>
+        <div className="flex items-center justify-center w-full h-full min-h-[26px] print:hidden">
+          <input
+            type="number"
+            min={0}
+            max={100}
+            value={value}
+            onChange={(e) => onChange(parseInt(e.target.value) || 0)}
+            className={`w-7 text-right font-mono font-bold text-black text-xs bg-transparent border-none outline-none p-0 focus:bg-amber-100 rounded ${bgClass}`}
+          />
+          <span className="text-black font-bold text-[11px] ml-0.5 select-none">%</span>
+        </div>
+        <span className="hidden print:inline-block font-bold font-mono text-black text-[11px]">
+          {value}%
+        </span>
+      </td>
+    );
+  };
+
+  // Helper to render an Excel-identical 3-tier table block
   const renderTableBlock = (title: string, months: MonthColDef[]) => {
     const baselineTotals = calculateTotals(
       plan.rows,
@@ -343,268 +415,231 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
     );
 
     const yearTargetTotal = plan.rows.reduce((sum, r) => sum + (r.yearEndTargetPct || 0), 0);
+    const totalCols = 1 + 2 + months.length * 4 + 1;
 
     return (
-      <div className="bg-white rounded-2xl border border-slate-300 shadow-sm overflow-hidden mb-6">
-        {/* Table Banner Header */}
-        <div className="bg-[#FFF2CC] border-b border-amber-200 px-4 py-2 text-center font-black text-slate-800 text-sm tracking-wide">
-          ចំនួន និងភាគរយ {plan.subject}
-        </div>
+      <div className="overflow-x-auto mb-4 print:mb-3">
+        <table className="w-full text-center border-collapse border border-black text-xs font-sans">
+          <thead>
+            {/* Banner Row 0 */}
+            <tr>
+              <th
+                colSpan={totalCols}
+                className="bg-[#FCE4D6] border border-black py-1 px-2 text-center font-bold text-black text-xs sm:text-sm tracking-wide"
+              >
+                ចំនួន និងភាគរយ {plan.subject}
+              </th>
+            </tr>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs text-center border-collapse">
-            <thead>
-              {/* Row 1 Headers */}
-              <tr className="bg-slate-100/90 text-slate-800 font-bold border-b border-slate-300">
-                <th rowSpan={2} className="border-r border-slate-300 px-2.5 py-2 w-16">
-                  និទ្ទេស
+            {/* Header Tier 1 */}
+            <tr className="bg-white text-black font-bold text-xs">
+              <th rowSpan={3} className="border border-black px-1.5 py-1 w-12 align-middle text-center">
+                និទ្ទេស
+              </th>
+              <th colSpan={2} rowSpan={2} className="border border-black px-1.5 py-1 align-middle text-center leading-tight">
+                <div>ទិន្នន័យ</div>
+                <div>មូលដ្ឋាន</div>
+              </th>
+              {months.map((m) => (
+                <th key={m.key} colSpan={4} className="border border-black px-1.5 py-1 align-middle text-center">
+                  {m.monthName}
                 </th>
-                <th colSpan={2} className="border-r border-slate-300 px-2 py-1.5 bg-slate-50">
-                  ទិន្នន័យ មូលដ្ឋាន
-                </th>
-                {months.map((m) => (
-                  <th
-                    key={m.key}
-                    colSpan={4}
-                    className="border-r border-slate-300 px-2 py-1.5 bg-blue-50/50"
-                  >
-                    {m.monthName}
-                  </th>
-                ))}
-                <th rowSpan={2} className="border-l border-slate-300 px-2.5 py-2 w-20 bg-[#FFE599] text-amber-950">
-                  ចំនួន %<br />ចុងឆ្នាំសិក្សា
-                </th>
-              </tr>
-
-              {/* Row 2 Subheaders */}
-              <tr className="bg-slate-50 text-[11px] font-bold text-slate-600 border-b border-slate-300">
-                <th className="border-r border-slate-300 px-2 py-1 w-14">ចំនួន</th>
-                <th className="border-r border-slate-300 px-2 py-1 w-12">%</th>
-
-                {months.map((m) => (
-                  <React.Fragment key={m.key}>
-                    <th className="border-r border-slate-200 px-2 py-1 w-14 bg-blue-50/30">ផែនការ</th>
-                    <th className="border-r border-slate-200 px-2 py-1 w-12 bg-blue-50/30">%</th>
-                    <th className="border-r border-slate-200 px-2 py-1 w-14 bg-emerald-50/40">
-                      {m.actualName}
-                    </th>
-                    <th className="border-r border-slate-300 px-2 py-1 w-12 bg-emerald-50/40">%</th>
-                  </React.Fragment>
-                ))}
-              </tr>
-            </thead>
-
-            <tbody className="divide-y divide-slate-200 text-slate-700">
-              {plan.rows.map((row) => (
-                <tr key={row.grade} className="hover:bg-slate-50/60 transition-colors">
-                  {/* Grade letter */}
-                  <td className="border-r border-slate-300 px-2 py-2 font-black text-sm text-slate-800 bg-slate-50/40">
-                    {row.grade}
-                  </td>
-
-                  {/* Baseline Count */}
-                  <td className="border-r border-slate-300 p-1">
-                    <input
-                      type="number"
-                      min={0}
-                      value={row.baselineCount}
-                      onChange={(e) =>
-                        handleBaselineCountChange(row.grade, parseInt(e.target.value) || 0)
-                      }
-                      className="w-full text-center font-mono py-1 bg-transparent hover:bg-white focus:bg-white rounded border border-transparent hover:border-slate-300 focus:border-blue-500 text-xs focus:ring-1 focus:ring-blue-400 font-bold"
-                    />
-                  </td>
-
-                  {/* Baseline % */}
-                  <td className="border-r border-slate-300 p-1 text-slate-600 font-bold">
-                    <input
-                      type="number"
-                      min={0}
-                      max={100}
-                      value={row.baselinePct}
-                      onChange={(e) =>
-                        handleBaselinePctChange(row.grade, parseInt(e.target.value) || 0)
-                      }
-                      className="w-full text-center font-mono py-1 bg-transparent hover:bg-white focus:bg-white rounded border border-transparent hover:border-slate-300 focus:border-blue-500 text-xs text-slate-500"
-                    />
-                  </td>
-
-                  {/* Months data */}
-                  {months.map((m) => {
-                    const d = row.monthly[m.key] || {
-                      planCount: 0,
-                      planPct: 0,
-                      actualCount: 0,
-                      actualPct: 0,
-                    };
-                    return (
-                      <React.Fragment key={m.key}>
-                        {/* Plan Count */}
-                        <td className="border-r border-slate-200 p-1 bg-blue-50/10">
-                          <input
-                            type="number"
-                            min={0}
-                            value={d.planCount}
-                            onChange={(e) =>
-                              handleMonthCellChange(
-                                row.grade,
-                                m.key,
-                                'planCount',
-                                parseInt(e.target.value) || 0
-                              )
-                            }
-                            className="w-full text-center font-mono py-1 bg-transparent hover:bg-white focus:bg-white rounded border border-transparent hover:border-blue-300 focus:border-blue-500 text-xs font-semibold"
-                          />
-                        </td>
-                        {/* Plan % */}
-                        <td className="border-r border-slate-200 p-1 text-slate-500 bg-blue-50/10 text-[11px]">
-                          <input
-                            type="number"
-                            min={0}
-                            max={100}
-                            value={d.planPct}
-                            onChange={(e) =>
-                              handleMonthCellChange(
-                                row.grade,
-                                m.key,
-                                'planPct',
-                                parseInt(e.target.value) || 0
-                              )
-                            }
-                            className="w-full text-center font-mono py-1 bg-transparent text-slate-500 text-[11px]"
-                          />
-                        </td>
-
-                        {/* Actual Count */}
-                        <td className="border-r border-slate-200 p-1 bg-emerald-50/15">
-                          <input
-                            type="number"
-                            min={0}
-                            value={d.actualCount}
-                            onChange={(e) =>
-                              handleMonthCellChange(
-                                row.grade,
-                                m.key,
-                                'actualCount',
-                                parseInt(e.target.value) || 0
-                              )
-                            }
-                            className="w-full text-center font-mono py-1 bg-transparent hover:bg-white focus:bg-white rounded border border-transparent hover:border-emerald-300 focus:border-emerald-500 text-xs font-bold text-slate-800"
-                          />
-                        </td>
-                        {/* Actual % */}
-                        <td className="border-r border-slate-300 p-1 bg-emerald-50/15 text-[11px] font-bold text-slate-600">
-                          <input
-                            type="number"
-                            min={0}
-                            max={100}
-                            value={d.actualPct}
-                            onChange={(e) =>
-                              handleMonthCellChange(
-                                row.grade,
-                                m.key,
-                                'actualPct',
-                                parseInt(e.target.value) || 0
-                              )
-                            }
-                            className="w-full text-center font-mono py-1 bg-transparent text-[11px] text-slate-600"
-                          />
-                        </td>
-                      </React.Fragment>
-                    );
-                  })}
-
-                  {/* Year-End Target % */}
-                  <td className="border-l border-slate-300 p-1 bg-[#FFE599]/60 font-bold text-amber-950">
-                    <input
-                      type="number"
-                      min={0}
-                      max={100}
-                      value={row.yearEndTargetPct}
-                      onChange={(e) =>
-                        handleYearEndTargetChange(row.grade, parseInt(e.target.value) || 0)
-                      }
-                      className="w-full text-center font-mono py-1 bg-transparent hover:bg-white focus:bg-white rounded border border-transparent hover:border-amber-400 focus:border-amber-500 text-xs font-black text-amber-950"
-                    />
-                  </td>
-                </tr>
               ))}
+              <th rowSpan={3} className="border border-black px-1.5 py-1 w-20 sm:w-24 align-middle text-center leading-tight">
+                <div>ចំនួន %</div>
+                <div>ចុងឆ្នាំសិក្សា</div>
+              </th>
+            </tr>
 
-              {/* Total Row (សរុប) */}
-              <tr className="bg-slate-100 font-black text-slate-800 border-t-2 border-slate-300">
-                <td className="border-r border-slate-300 px-2.5 py-2 text-xs">សរុប</td>
+            {/* Header Tier 2 */}
+            <tr className="bg-white text-black font-bold text-xs">
+              {months.map((m) => (
+                <React.Fragment key={m.key}>
+                  <th colSpan={2} className="border border-black px-1.5 py-1 text-center">
+                    ផែនការ
+                  </th>
+                  <th colSpan={2} className="border border-black px-1.5 py-1 text-center">
+                    {m.actualName}
+                  </th>
+                </React.Fragment>
+              ))}
+            </tr>
 
-                {/* Baseline Total */}
-                <td
-                  className={`border-r border-slate-300 px-2 py-2 font-mono ${
-                    baselineTotals.countSum === plan.totalStudents ? 'text-slate-900' : 'text-rose-600'
-                  }`}
-                >
-                  {baselineTotals.countSum}
+            {/* Header Tier 3 (Subheaders: ចំនួន vs %) */}
+            <tr className="bg-white font-bold text-[11px]">
+              <th className="border border-black px-1 py-0.5 w-12 text-center text-black">ចំនួន</th>
+              <th className="border border-black px-1 py-0.5 w-10 text-center text-red-600">%</th>
+              {months.map((m) => (
+                <React.Fragment key={m.key}>
+                  <th className="border border-black px-1 py-0.5 w-12 text-center text-black">ចំនួន</th>
+                  <th className="border border-black px-1 py-0.5 w-10 text-center text-red-600">%</th>
+                  <th className="border border-black px-1 py-0.5 w-12 text-center text-black">ចំនួន</th>
+                  <th className="border border-black px-1 py-0.5 w-10 text-center text-red-600">%</th>
+                </React.Fragment>
+              ))}
+            </tr>
+          </thead>
+
+          <tbody>
+            {plan.rows.map((row) => (
+              <tr key={row.grade} className="bg-white hover:bg-slate-50/50 transition-colors">
+                {/* Grade */}
+                <td className="border border-black px-2 py-1 font-bold text-black text-xs text-center">
+                  {row.grade}
                 </td>
-                <td className="border-r border-slate-300 px-2 py-2 font-mono text-slate-600">
-                  {baselineTotals.pctSum}%
-                </td>
 
-                {/* Month Totals */}
+                {/* Baseline Count (Black) */}
+                {renderCountCell(row.baselineCount, (val) =>
+                  handleBaselineCountChange(row.grade, val)
+                )}
+
+                {/* Baseline % (Red) */}
+                {renderPercentCell(row.baselinePct, (val) =>
+                  handleBaselinePctChange(row.grade, val)
+                )}
+
+                {/* Months Data */}
                 {months.map((m) => {
-                  const pcSum = plan.rows.reduce(
-                    (sum, r) => sum + (r.monthly[m.key]?.planCount || 0),
-                    0
-                  );
-                  const ppSum = plan.rows.reduce(
-                    (sum, r) => sum + (r.monthly[m.key]?.planPct || 0),
-                    0
-                  );
-                  const acSum = plan.rows.reduce(
-                    (sum, r) => sum + (r.monthly[m.key]?.actualCount || 0),
-                    0
-                  );
-                  const apSum = plan.rows.reduce(
-                    (sum, r) => sum + (r.monthly[m.key]?.actualPct || 0),
-                    0
-                  );
-
+                  const d = row.monthly[m.key] || {
+                    planCount: 0,
+                    planPct: 0,
+                    actualCount: 0,
+                    actualPct: 0,
+                  };
                   return (
                     <React.Fragment key={m.key}>
-                      <td
-                        className={`border-r border-slate-200 px-2 py-2 font-mono ${
-                          pcSum === plan.totalStudents ? 'text-blue-900' : 'text-rose-600'
-                        }`}
-                      >
-                        {pcSum}
-                      </td>
-                      <td className="border-r border-slate-200 px-2 py-2 font-mono text-slate-600">
-                        {ppSum}%
-                      </td>
-                      <td
-                        className={`border-r border-slate-200 px-2 py-2 font-mono ${
-                          acSum === plan.totalStudents || acSum === 0 ? 'text-emerald-900' : 'text-rose-600'
-                        }`}
-                      >
-                        {acSum}
-                      </td>
-                      <td className="border-r border-slate-300 px-2 py-2 font-mono text-slate-600">
-                        {apSum}%
-                      </td>
+                      {/* Plan Count */}
+                      {renderCountCell(d.planCount, (val) =>
+                        handleMonthCellChange(row.grade, m.key, 'planCount', val)
+                      )}
+                      {/* Plan % */}
+                      {renderPercentCell(d.planPct, (val) =>
+                        handleMonthCellChange(row.grade, m.key, 'planPct', val)
+                      )}
+                      {/* Actual Count */}
+                      {renderCountCell(d.actualCount, (val) =>
+                        handleMonthCellChange(row.grade, m.key, 'actualCount', val)
+                      )}
+                      {/* Actual % */}
+                      {renderPercentCell(d.actualPct, (val) =>
+                        handleMonthCellChange(row.grade, m.key, 'actualPct', val)
+                      )}
                     </React.Fragment>
                   );
                 })}
 
-                {/* Year-End Target Sum */}
-                <td className="border-l border-slate-300 px-2 py-2 font-mono bg-[#FFE599] text-amber-950 font-black">
-                  {yearTargetTotal}%
-                </td>
+                {/* Year-End Target % */}
+                {renderTargetCell(row.yearEndTargetPct, row.grade, (val) =>
+                  handleYearEndTargetChange(row.grade, val)
+                )}
               </tr>
-            </tbody>
-          </table>
-        </div>
+            ))}
+
+            {/* Total Row (សរុប) */}
+            <tr className="bg-white font-bold text-black border-t-2 border-black">
+              <td className="border border-black px-2 py-1 text-center text-xs">សរុប</td>
+
+              {/* Baseline Total */}
+              <td className="border border-black px-1 py-1 text-center font-mono text-black text-xs">
+                {baselineTotals.countSum}
+              </td>
+              <td className="border border-black px-1 py-1 text-center font-mono text-red-600 text-xs">
+                {baselineTotals.pctSum}%
+              </td>
+
+              {/* Month Totals */}
+              {months.map((m) => {
+                const pcSum = plan.rows.reduce(
+                  (sum, r) => sum + (r.monthly[m.key]?.planCount || 0),
+                  0
+                );
+                const ppSum = plan.rows.reduce(
+                  (sum, r) => sum + (r.monthly[m.key]?.planPct || 0),
+                  0
+                );
+                const acSum = plan.rows.reduce(
+                  (sum, r) => sum + (r.monthly[m.key]?.actualCount || 0),
+                  0
+                );
+                const apSum = plan.rows.reduce(
+                  (sum, r) => sum + (r.monthly[m.key]?.actualPct || 0),
+                  0
+                );
+
+                return (
+                  <React.Fragment key={m.key}>
+                    <td className="border border-black px-1 py-1 text-center font-mono text-black text-xs">
+                      {pcSum}
+                    </td>
+                    <td className="border border-black px-1 py-1 text-center font-mono text-red-600 text-xs">
+                      {ppSum}%
+                    </td>
+                    <td className="border border-black px-1 py-1 text-center font-mono text-black text-xs">
+                      {acSum}
+                    </td>
+                    <td className="border border-black px-1 py-1 text-center font-mono text-red-600 text-xs">
+                      {apSum}%
+                    </td>
+                  </React.Fragment>
+                );
+              })}
+
+              {/* Year-End Target Sum */}
+              <td className="border border-black px-1 py-1 text-center font-mono text-black text-xs">
+                {yearTargetTotal}%
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     );
   };
 
   return (
     <div className="space-y-6 pb-20">
+      {/* Print CSS Configuration for Official A4 Landscape Report */}
+      <style>{`
+        @media print {
+          @page {
+            size: A4 landscape;
+            margin: 6mm 8mm 6mm 8mm;
+          }
+          body {
+            background-color: #ffffff !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .no-print {
+            display: none !important;
+          }
+          .official-sheet {
+            padding: 0 !important;
+            margin: 0 !important;
+            border: none !important;
+            box-shadow: none !important;
+            width: 100% !important;
+            max-width: 100% !important;
+          }
+          table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            page-break-inside: avoid !important;
+          }
+          th, td {
+            border: 1px solid #000000 !important;
+          }
+          .bg-\\[\\#FCE4D6\\] {
+            background-color: #FCE4D6 !important;
+          }
+          .bg-\\[\\#FFC000\\] {
+            background-color: #FFC000 !important;
+          }
+          .text-red-600 {
+            color: #dc2626 !important;
+          }
+        }
+      `}</style>
+
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed top-4 right-4 z-50 bg-emerald-700 text-white px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-200 text-xs sm:text-sm font-bold">
@@ -656,14 +691,14 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
               className="px-3 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
             >
               <Printer className="w-3.5 h-3.5" />
-              <span>បោះពុម្ព</span>
+              <span>បោះពុម្ព (ទម្រង់ផ្លូវការ)</span>
             </button>
 
             <button
               type="button"
               onClick={handleResetToDefault}
               className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer border border-slate-200"
-              title="ផ្ទុកគំរូដើមឡើងវិញ"
+              title="ផ្ទុកគំរូដើមឡើងវិញ (ដូច Excel Screenshot)"
             >
               <RotateCcw className="w-4 h-4" />
             </button>
@@ -743,139 +778,159 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
         </div>
       </div>
 
-      {/* Official Plan Sheet Container (Matches the Screenshot for Display & Print) */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm print:p-0 print:border-none print:shadow-none space-y-5">
+      {/* Official Plan Sheet Container (Matches Excel Template Exactly for Display & Print) */}
+      <div className="official-sheet bg-white rounded-2xl p-4 sm:p-6 lg:p-8 border border-slate-200 shadow-sm print:p-0 print:border-none print:shadow-none space-y-2">
         {/* Kingdom & Ministry Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start gap-4 pb-2">
-          {/* Left School Info */}
-          <div className="text-xs space-y-1 text-slate-800 font-bold">
-            <div className="flex items-center gap-1.5">
-              <span>ការិ.អយក:</span>
+        <div className="relative pt-1 pb-1">
+          {/* Top Left Organization */}
+          <div className="sm:absolute sm:top-0 sm:left-0 text-xs text-black font-bold space-y-0.5 mb-2 sm:mb-0">
+            <div className="flex items-center">
               <input
                 type="text"
                 value={plan.districtOffice}
                 onChange={(e) => setPlan((p) => ({ ...p, districtOffice: e.target.value }))}
-                className="bg-transparent border-b border-dotted border-slate-300 font-bold focus:border-blue-500 outline-none w-52"
+                className="font-bold text-xs text-black bg-transparent border-none outline-none w-60 hover:bg-slate-50 focus:bg-white rounded px-0.5 print:border-none"
               />
             </div>
-            <div className="flex items-center gap-1.5">
-              <span>សាលា:</span>
+            <div className="flex items-center">
               <input
                 type="text"
                 value={plan.schoolName}
                 onChange={(e) => setPlan((p) => ({ ...p, schoolName: e.target.value }))}
-                className="bg-transparent border-b border-dotted border-slate-300 font-bold focus:border-blue-500 outline-none w-52"
+                className="font-bold text-xs text-black bg-transparent border-none outline-none w-60 hover:bg-slate-50 focus:bg-white rounded px-0.5 print:border-none"
               />
             </div>
           </div>
 
-          {/* Kingdom Right Header */}
-          <div className="text-center font-moul text-xs text-slate-900 self-center sm:self-end">
-            <div>ព្រះរាជាណាចក្រកម្ពុជា</div>
-            <div className="text-[11px] font-kantumruy font-bold text-slate-700 mt-0.5">
+          {/* Center Kingdom */}
+          <div className="text-center">
+            <div className="font-moul text-sm sm:text-base text-black tracking-wide">
+              ព្រះរាជាណាចក្រកម្ពុជា
+            </div>
+            <div className="font-moul text-xs sm:text-sm text-black tracking-wider mt-0.5">
               ជាតិ សាសនា ព្រះមហាក្សត្រ
             </div>
-            <div className="w-16 h-0.5 bg-slate-300 mx-auto mt-1" />
+            <div className="text-center text-xs tracking-widest my-1 text-black font-serif select-none">
+              ❖ ❖ ❖
+            </div>
+          </div>
+
+          {/* Red Document Title */}
+          <div className="text-center mt-3 mb-2">
+            <h1 className="font-moul text-sm sm:text-base text-red-600 tracking-wide leading-relaxed">
+              ផែនការបង្រៀនប្រចាំឆ្នាំរបស់គ្រូ មុខវិជ្ជា {plan.subject} ( ឆ្នាំសិក្សា{plan.academicYear} )
+            </h1>
           </div>
         </div>
 
-        {/* Title */}
-        <div className="text-center py-2">
-          <h1 className="text-base sm:text-lg font-black text-rose-700 tracking-wide font-moul leading-relaxed">
-            ផែនការបង្រៀនប្រចាំឆ្នាំរបស់គ្រូ មុខវិជ្ជា {plan.subject} ({plan.academicYear})
-          </h1>
-        </div>
-
-        {/* Metadata Details Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-3.5 bg-slate-50/70 border border-slate-200 rounded-2xl text-xs">
-          <div>
-            <span className="text-slate-500">ឈ្មោះសាលា: </span>
-            <strong className="text-slate-900">{plan.schoolName}</strong>
-          </div>
-
+        {/* Metadata Details Section (Exact Excel Layout) */}
+        <div className="text-xs space-y-1 my-2 text-black">
+          {/* Row 1: School */}
           <div className="flex items-center gap-2">
-            <span className="text-slate-500">ថ្នាក់ទី: </span>
+            <span className="font-bold w-24 shrink-0">ឈ្មោះសាលា</span>
             <input
               type="text"
-              value={plan.className}
-              onChange={(e) => setPlan((p) => ({ ...p, className: e.target.value }))}
-              className="bg-white border border-slate-200 rounded-lg px-2 py-0.5 font-black text-slate-900 text-xs w-24"
+              value={plan.schoolName}
+              onChange={(e) => setPlan((p) => ({ ...p, schoolName: e.target.value }))}
+              className="font-bold text-black bg-transparent border-b border-dotted border-slate-400 outline-none w-64 hover:bg-slate-50 focus:bg-white px-1 print:border-none"
             />
           </div>
 
-          <div className="sm:col-span-2 flex items-center gap-3">
-            <span className="text-slate-500">ចំនួនសិស្ស សរុប:</span>
-            <span className="bg-[#FFC000] text-slate-950 font-black px-3 py-0.5 rounded-md shadow-2xs">
-              {plan.totalStudents}
-            </span>
-            <span className="text-slate-500">នាក់, ស្រី:</span>
-            <span className="bg-[#FFC000] text-slate-950 font-black px-3 py-0.5 rounded-md shadow-2xs">
-              {plan.femaleStudents}
-            </span>
-            <span className="text-slate-500">នាក់</span>
+          {/* Row 2: Class & Counts */}
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
+            <div className="flex items-center gap-2">
+              <span className="font-bold w-24 shrink-0">ថ្នាក់ទី</span>
+              <input
+                type="text"
+                value={plan.className}
+                onChange={(e) => setPlan((p) => ({ ...p, className: e.target.value }))}
+                className="font-bold text-black bg-transparent border-b border-dotted border-slate-400 outline-none w-20 hover:bg-slate-50 focus:bg-white px-1 print:border-none"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="font-bold">ចំនួនសិស្ស សរុប:</span>
+              <span className="bg-[#FFC000] text-black font-bold font-mono px-3 py-0.5 border border-black/40 text-center min-w-[36px] shadow-2xs">
+                {plan.totalStudents}
+              </span>
+              <span className="font-medium">នាក់</span>
+              <span className="font-bold ml-3">ស្រី</span>
+              <span className="bg-[#FFC000] text-black font-bold font-mono px-3 py-0.5 border border-black/40 text-center min-w-[36px] shadow-2xs">
+                {plan.femaleStudents}
+              </span>
+              <span className="font-medium">នាក់</span>
+            </div>
           </div>
 
-          <div>
-            <span className="text-slate-500">ឈ្មោះគ្រូ: </span>
-            <input
-              type="text"
-              value={plan.teacherName}
-              onChange={(e) => setPlan((p) => ({ ...p, teacherName: e.target.value }))}
-              className="bg-transparent border-b border-slate-300 font-bold text-slate-900 outline-none w-28"
-            />
+          {/* Row 3: Teacher & Phone */}
+          <div className="flex flex-wrap items-center gap-x-8 gap-y-1">
+            <div className="flex items-center gap-2">
+              <span className="font-bold w-24 shrink-0">ឈ្មោះគ្រូ</span>
+              <input
+                type="text"
+                value={plan.teacherName}
+                onChange={(e) => setPlan((p) => ({ ...p, teacherName: e.target.value }))}
+                className="font-bold text-black bg-transparent border-b border-dotted border-slate-400 outline-none w-44 hover:bg-slate-50 focus:bg-white px-1 print:border-none"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="font-bold">លេខទូរស័ព្ទ:</span>
+              <input
+                type="text"
+                value={plan.teacherPhone}
+                onChange={(e) => setPlan((p) => ({ ...p, teacherPhone: e.target.value }))}
+                className="font-bold font-mono text-black bg-transparent border-b border-dotted border-slate-400 outline-none w-36 hover:bg-slate-50 focus:bg-white px-1 print:border-none"
+              />
+            </div>
           </div>
 
-          <div>
-            <span className="text-slate-500">លេខទូរស័ព្ទ: </span>
-            <input
-              type="text"
-              value={plan.teacherPhone}
-              onChange={(e) => setPlan((p) => ({ ...p, teacherPhone: e.target.value }))}
-              className="bg-transparent border-b border-slate-300 font-mono font-bold text-slate-900 outline-none w-28"
-            />
-          </div>
-
-          <div>
-            <span className="text-slate-500">នាយករងបច្ចេកទេស: </span>
-            <input
-              type="text"
-              value={plan.deputyDirectorName}
-              onChange={(e) => setPlan((p) => ({ ...p, deputyDirectorName: e.target.value }))}
-              className="bg-transparent border-b border-slate-300 font-bold text-slate-900 outline-none w-28"
-            />
-          </div>
-
-          <div>
-            <span className="text-slate-500">លេខទូរស័ព្ទ: </span>
-            <input
-              type="text"
-              value={plan.deputyDirectorPhone}
-              onChange={(e) => setPlan((p) => ({ ...p, deputyDirectorPhone: e.target.value }))}
-              className="bg-transparent border-b border-slate-300 font-mono font-bold text-slate-900 outline-none w-28"
-            />
+          {/* Row 4: Deputy Director & Phone */}
+          <div className="flex flex-wrap items-center gap-x-8 gap-y-1">
+            <div className="flex items-center gap-2">
+              <span className="font-bold w-40 shrink-0">ឈ្មោះនាយករងបច្ចេកទេស</span>
+              <input
+                type="text"
+                value={plan.deputyDirectorName}
+                onChange={(e) => setPlan((p) => ({ ...p, deputyDirectorName: e.target.value }))}
+                className="font-bold text-black bg-transparent border-b border-dotted border-slate-400 outline-none w-44 hover:bg-slate-50 focus:bg-white px-1 print:border-none"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="font-bold">លេខទូរស័ព្ទ:</span>
+              <input
+                type="text"
+                value={plan.deputyDirectorPhone}
+                onChange={(e) => setPlan((p) => ({ ...p, deputyDirectorPhone: e.target.value }))}
+                className="font-bold font-mono text-black bg-transparent border-b border-dotted border-slate-400 outline-none w-36 hover:bg-slate-50 focus:bg-white px-1 print:border-none"
+              />
+            </div>
           </div>
         </div>
 
-        {/* Score Rubric Box */}
-        <div className="p-3 bg-amber-50/40 border border-amber-200/80 rounded-2xl text-[11px] space-y-1.5 text-slate-700">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-medium">
-            <strong className="text-slate-900">កម្រិតពិន្ទុ (១០០%):</strong>
-            <span>F ក្រោម៥០ពិន្ទុ</span>
-            <span>E ពី៥១-៦០ពិន្ទុ</span>
-            <span>D ពី៦១-៧០ពិន្ទុ</span>
-            <span>C ពី៧១-៧៩ពិន្ទុ</span>
-            <span>B ពី៨០-៨៩ពិន្ទុ</span>
-            <span className="font-bold text-emerald-800">A ពី៩០-១០០ពិន្ទុ</span>
-          </div>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-medium text-slate-600">
-            <strong className="text-slate-900">កម្រិតពិន្ទុ (៥០%):</strong>
-            <span>F ក្រោម 25ពិន្ទុ</span>
-            <span>E ពី 25-29ពិន្ទុ</span>
-            <span>D ពី 30-34ពិន្ទុ</span>
-            <span>C ពី 35-39ពិន្ទុ</span>
-            <span>B ពី 40-44ពិន្ទុ</span>
-            <span className="font-bold text-emerald-800">A ពី 45-50ពិន្ទុ</span>
-          </div>
+        {/* Score Rubric Box (Exact 2-Row Bordered Table from Screenshot) */}
+        <div className="overflow-x-auto my-2.5">
+          <table className="w-full text-center border-collapse border border-black text-[11px]">
+            <tbody>
+              <tr className="bg-white">
+                <td className="border border-black px-2 py-0.5 font-bold text-black w-24">កម្រិតពិន្ទុ</td>
+                <td className="border border-black px-2 py-0.5 text-black">F ក្រោម៥០ពិន្ទុ</td>
+                <td className="border border-black px-2 py-0.5 text-black">E ពី៥១-៦០ពិន្ទុ</td>
+                <td className="border border-black px-2 py-0.5 text-black">D ពី៦១-៧០ពិន្ទុ</td>
+                <td className="border border-black px-2 py-0.5 text-black">C ពី៧១-៧៩ពិន្ទុ</td>
+                <td className="border border-black px-2 py-0.5 text-black">B ពី៨០-៨៩ពិន្ទុ</td>
+                <td className="border border-black px-2 py-0.5 text-black font-bold">A ពី៩០-១០០ពិន្ទុ</td>
+              </tr>
+              <tr className="bg-white">
+                <td className="border border-black px-2 py-0.5 font-bold text-black w-24">កម្រិតពិន្ទុ</td>
+                <td className="border border-black px-2 py-0.5 text-black">F ក្រោម 25ពិន្ទុ</td>
+                <td className="border border-black px-2 py-0.5 text-black">E ពី 25-29ពិន្ទុ</td>
+                <td className="border border-black px-2 py-0.5 text-black">D ពី 30-34ពិន្ទុ</td>
+                <td className="border border-black px-2 py-0.5 text-black">C ពី 35-39ពិន្ទុ</td>
+                <td className="border border-black px-2 py-0.5 text-black">B ពី 40-44ពិន្ទុ</td>
+                <td className="border border-black px-2 py-0.5 text-black font-bold">A ពី 45-50ពិន្ទុ</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
 
         {/* Table 1: ត្រីមាសទី ១ (ខែធ្នូ, ខែមករា, ខែកុម្ភៈ) */}
@@ -887,20 +942,25 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
         {/* Table 3: បញ្ចប់ឆ្នាំសិក្សា (ខែមិថុនា, ខែកក្កដា) */}
         {renderTableBlock('តារាងទី ៣', TABLE_3_MONTHS)}
 
-        {/* Signature Blocks for Print & Official Handover */}
-        <div className="pt-6 grid grid-cols-2 text-center text-xs text-slate-800 break-inside-avoid">
-          <div>
+        {/* Official Signatures (Kingdom of Cambodia Format) */}
+        <div className="pt-6 pb-2 grid grid-cols-2 text-center text-xs text-black break-inside-avoid">
+          {/* Left: Deputy Technical Director */}
+          <div className="space-y-1">
             <div className="font-bold">បានឃើញ និងឯកភាព</div>
-            <div className="font-bold text-slate-600 mt-1">នាយករងបច្ចេកទេស</div>
+            <div className="text-slate-600">ថ្ងៃទី...........ខែ...........ឆ្នាំ២០២...</div>
+            <div className="font-bold font-moul text-xs pt-1">នាយករងបច្ចេកទេស</div>
+            <div className="text-[11px] text-slate-500 italic">(ហត្ថលេខា និងត្រា)</div>
             <div className="h-16" />
-            <div className="font-bold text-slate-900">{plan.deputyDirectorName}</div>
+            <div className="font-bold text-sm text-black">{plan.deputyDirectorName}</div>
           </div>
 
-          <div>
-            <div className="text-slate-600">ថ្ងៃ................ខែ...........ឆ្នាំ២០២...</div>
-            <div className="font-bold text-slate-800 mt-1">គ្រូបង្រៀនមុខវិជ្ជា</div>
+          {/* Right: Subject Teacher */}
+          <div className="space-y-1">
+            <div className="text-slate-600">ថ្ងៃទី...........ខែ...........ឆ្នាំ២០២...</div>
+            <div className="font-bold font-moul text-xs pt-1">គ្រូបង្រៀនមុខវិជ្ជា</div>
+            <div className="text-[11px] text-slate-500 italic">(ហត្ថលេខា)</div>
             <div className="h-16" />
-            <div className="font-bold text-slate-900">{plan.teacherName}</div>
+            <div className="font-bold text-sm text-black">{plan.teacherName}</div>
           </div>
         </div>
       </div>

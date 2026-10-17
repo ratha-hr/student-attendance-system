@@ -200,18 +200,25 @@ export function exportTeachingPlanToExcel(plan: TeachingPlan) {
   const wb = XLSX.utils.book_new();
 
   const aoa: any[][] = [];
+  const merges: XLSX.Range[] = [];
 
   // Title & Kingdom Header
-  aoa.push(['', '', '', '', 'ព្រះរាជាណាចក្រកម្ពុជា']);
-  aoa.push(['', '', '', '', 'ជាតិ សាសនា ព្រះមហាក្សត្រ']);
+  aoa.push(['', '', '', '', '', '', 'ព្រះរាជាណាចក្រកម្ពុជា']);
+  merges.push({ s: { r: 0, c: 6 }, e: { r: 0, c: 10 } });
+
+  aoa.push(['', '', '', '', '', '', 'ជាតិ សាសនា ព្រះមហាក្សត្រ']);
+  merges.push({ s: { r: 1, c: 6 }, e: { r: 1, c: 10 } });
+
   aoa.push([plan.districtOffice]);
   aoa.push([plan.schoolName]);
   aoa.push([]);
+
   aoa.push([
     '',
     '',
-    `ផែនការបង្រៀនប្រចាំឆ្នាំរបស់គ្រូ មុខវិជ្ជា ${plan.subject} (ឆ្នាំសិក្សា${plan.academicYear})`,
+    `ផែនការបង្រៀនប្រចាំឆ្នាំរបស់គ្រូ មុខវិជ្ជា ${plan.subject} ( ឆ្នាំសិក្សា${plan.academicYear} )`,
   ]);
+  merges.push({ s: { r: 5, c: 2 }, e: { r: 5, c: 13 } });
   aoa.push([]);
 
   // Meta Info
@@ -255,25 +262,74 @@ export function exportTeachingPlanToExcel(plan: TeachingPlan) {
   ]);
   aoa.push([]);
 
-  // Helper to append a table
+  // Helper to append a table with exact 3-tier headers and cell merges
   const appendTable = (title: string, months: MonthColDef[]) => {
-    aoa.push(['', '', '', '', `ចំនួន និងភាគរយ ${plan.subject}`]);
+    const startRow = aoa.length;
+    const totalCols = 1 + 2 + months.length * 4 + 1;
+    const lastColIdx = totalCols - 1;
 
-    // Row 1 Header
-    const row1 = ['និទ្ទេស', 'ទិន្នន័យ មូលដ្ឋាន', ''];
-    months.forEach((m) => {
-      row1.push(m.monthName, '', '', '');
-    });
-    row1.push('ចំនួន % ចុងឆ្នាំសិក្សា');
-    aoa.push(row1);
+    // Row 0 of table: Banner
+    const bannerRow = new Array(totalCols).fill('');
+    bannerRow[0] = `ចំនួន និងភាគរយ ${plan.subject}`;
+    aoa.push(bannerRow);
+    merges.push({ s: { r: startRow, c: 0 }, e: { r: startRow, c: lastColIdx } });
 
-    // Row 2 Subheader
-    const row2 = ['', 'ចំនួន', '%'];
-    months.forEach((m) => {
-      row2.push('ផែនការ ចំនួន', 'ផែនការ %', `${m.actualName} ចំនួន`, `${m.actualName} %`);
+    // Row 1 of table: Tier 1
+    const r1 = new Array(totalCols).fill('');
+    r1[0] = 'និទ្ទេស';
+    r1[1] = 'ទិន្នន័យ មូលដ្ឋាន';
+    months.forEach((m, mi) => {
+      r1[3 + mi * 4] = m.monthName;
     });
-    row2.push('%');
-    aoa.push(row2);
+    r1[lastColIdx] = 'ចំនួន % ចុងឆ្នាំសិក្សា';
+    aoa.push(r1);
+
+    // Merges for Row 1:
+    // និទ្ទេស spans rows startRow+1 to startRow+3, col 0
+    merges.push({ s: { r: startRow + 1, c: 0 }, e: { r: startRow + 3, c: 0 } });
+    // ទិន្នន័យ មូលដ្ឋាន spans rows startRow+1 to startRow+2, cols 1 to 2
+    merges.push({ s: { r: startRow + 1, c: 1 }, e: { r: startRow + 2, c: 2 } });
+    // Each month spans row startRow+1, cols 3+mi*4 to 3+mi*4+3
+    months.forEach((_, mi) => {
+      merges.push({
+        s: { r: startRow + 1, c: 3 + mi * 4 },
+        e: { r: startRow + 1, c: 3 + mi * 4 + 3 },
+      });
+    });
+    // ចំនួន % ចុងឆ្នាំសិក្សា spans rows startRow+1 to startRow+3, col lastColIdx
+    merges.push({ s: { r: startRow + 1, c: lastColIdx }, e: { r: startRow + 3, c: lastColIdx } });
+
+    // Row 2 of table: Tier 2
+    const r2 = new Array(totalCols).fill('');
+    months.forEach((m, mi) => {
+      r2[3 + mi * 4] = 'ផែនការ';
+      r2[3 + mi * 4 + 2] = m.actualName;
+    });
+    aoa.push(r2);
+
+    // Merges for Row 2:
+    months.forEach((_, mi) => {
+      merges.push({
+        s: { r: startRow + 2, c: 3 + mi * 4 },
+        e: { r: startRow + 2, c: 3 + mi * 4 + 1 },
+      });
+      merges.push({
+        s: { r: startRow + 2, c: 3 + mi * 4 + 2 },
+        e: { r: startRow + 2, c: 3 + mi * 4 + 3 },
+      });
+    });
+
+    // Row 3 of table: Tier 3
+    const r3 = new Array(totalCols).fill('');
+    r3[1] = 'ចំនួន';
+    r3[2] = '%';
+    months.forEach((_, mi) => {
+      r3[3 + mi * 4] = 'ចំនួន';
+      r3[3 + mi * 4 + 1] = '%';
+      r3[3 + mi * 4 + 2] = 'ចំនួន';
+      r3[3 + mi * 4 + 3] = '%';
+    });
+    aoa.push(r3);
 
     // Data rows
     plan.rows.forEach((r) => {
@@ -327,26 +383,35 @@ export function exportTeachingPlanToExcel(plan: TeachingPlan) {
   // Table 3
   appendTable('តារាងទី ៣', TABLE_3_MONTHS);
 
+  // Bottom signatures
+  aoa.push([]);
+  aoa.push(['បានឃើញ និងឯកភាព', '', '', '', '', '', '', '', '', '', 'ថ្ងៃទី...........ខែ...........ឆ្នាំ២០២...']);
+  aoa.push(['នាយករងបច្ចេកទេស', '', '', '', '', '', '', '', '', '', 'គ្រូបង្រៀនមុខវិជ្ជា']);
+  aoa.push([]);
+  aoa.push([]);
+  aoa.push([plan.deputyDirectorName, '', '', '', '', '', '', '', '', '', plan.teacherName]);
+
   const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!merges'] = merges;
 
   // Set column widths
   ws['!cols'] = [
     { wch: 10 },
     { wch: 10 },
     { wch: 8 },
-    { wch: 12 },
     { wch: 10 },
+    { wch: 8 },
     { wch: 12 },
+    { wch: 8 },
     { wch: 10 },
+    { wch: 8 },
     { wch: 12 },
+    { wch: 8 },
     { wch: 10 },
+    { wch: 8 },
     { wch: 12 },
-    { wch: 10 },
-    { wch: 12 },
-    { wch: 10 },
-    { wch: 12 },
-    { wch: 10 },
-    { wch: 14 },
+    { wch: 8 },
+    { wch: 16 },
   ];
 
   XLSX.utils.book_append_sheet(wb, ws, 'ផែនការបង្រៀន');
