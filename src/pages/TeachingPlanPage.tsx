@@ -1470,86 +1470,98 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
           </h1>
         </div>
 
-        {/* Metadata Details Section (Exact Excel Layout) */}
-        <div className="text-xs space-y-1 my-2 text-black">
-          {/* Row 1: School */}
-          <div className="flex items-center gap-2">
-            <span className="font-bold w-24 shrink-0">ឈ្មោះសាលា</span>
-            <input
-              type="text"
-              value={plan.schoolName}
-              onChange={(e) => setPlan((p) => ({ ...p, schoolName: e.target.value }))}
-              className="font-bold text-black bg-transparent border-b border-dotted border-slate-400 outline-none w-64 hover:bg-slate-50 focus:bg-white px-1 print:border-none"
-            />
-          </div>
+        {/* Metadata Details Section (រៀបជា ២ ជួរ យ៉ាងស្អាត និងមានរបៀបរៀបរយ) */}
+        <div className="text-xs text-black space-y-1.5 my-2.5 print:my-1.5 print:text-[8.5pt]">
+          {/* ជួរទី ១ (Row 1): ឈ្មោះសាលា • ថ្នាក់ទី • ចំនួនសិស្សសរុប • ស្រី */}
+          <div className="flex flex-wrap print:flex-nowrap items-center justify-between gap-x-4 gap-y-1 border-b border-slate-100 print:border-none pb-1 print:pb-0">
+            {/* ឈ្មោះសាលា */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="font-bold text-black text-xs print:text-[8.5pt]">ឈ្មោះសាលា ៖</span>
+              <input
+                type="text"
+                value={plan.schoolName}
+                onChange={(e) => setPlan((p) => ({ ...p, schoolName: e.target.value }))}
+                className="font-bold text-black text-xs print:text-[8.5pt] bg-transparent border-b border-dotted border-slate-400 outline-none w-52 sm:w-64 hover:bg-slate-50 focus:bg-amber-50/60 px-1 print:border-none"
+                placeholder="ឈ្មោះសាលា"
+              />
+            </div>
 
-          {/* Row 2: Class & Counts */}
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
-            <div className="flex items-center gap-2">
-              <span className="font-bold w-24 shrink-0">ថ្នាក់ទី</span>
+            {/* ថ្នាក់ទី */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="font-bold text-black text-xs print:text-[8.5pt]">ថ្នាក់ទី ៖</span>
               <input
                 type="text"
                 value={plan.className}
                 onChange={(e) => setPlan((p) => ({ ...p, className: e.target.value }))}
-                className="font-bold text-black bg-transparent border-b border-dotted border-slate-400 outline-none w-20 hover:bg-slate-50 focus:bg-white px-1 print:border-none"
+                className="font-bold text-black text-xs print:text-[8.5pt] bg-transparent border-b border-dotted border-slate-400 outline-none w-20 text-center hover:bg-slate-50 focus:bg-amber-50/60 px-1 print:border-none"
+                placeholder="ថ្នាក់ទី"
               />
             </div>
 
-            <div className="flex items-center gap-2">
-              <span className="font-bold">ចំនួនសិស្ស សរុប:</span>
-              <span className="bg-[#FFC000] text-black font-bold font-mono px-3 py-0.5 border border-black/40 text-center min-w-[36px] shadow-2xs">
+            {/* ស្ថិតិសិស្ស (សរុប & ស្រី) */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="font-bold text-black text-xs print:text-[8.5pt]">ចំនួនសិស្ស សរុប ៖</span>
+              <span className="bg-[#FFC000] text-black font-bold font-mono px-2.5 py-0.5 border border-black/40 text-center min-w-[30px] text-xs print:text-[8.5pt] shadow-2xs">
                 {plan.totalStudents}
               </span>
-              <span className="font-medium">នាក់</span>
-              <span className="font-bold ml-3">ស្រី</span>
-              <span className="bg-[#FFC000] text-black font-bold font-mono px-3 py-0.5 border border-black/40 text-center min-w-[36px] shadow-2xs">
+              <span className="font-medium text-black text-xs print:text-[8.5pt] mr-2">នាក់</span>
+
+              <span className="font-bold text-black text-xs print:text-[8.5pt]">ស្រី ៖</span>
+              <span className="bg-[#FFC000] text-black font-bold font-mono px-2.5 py-0.5 border border-black/40 text-center min-w-[30px] text-xs print:text-[8.5pt] shadow-2xs">
                 {plan.femaleStudents}
               </span>
-              <span className="font-medium">នាក់</span>
+              <span className="font-medium text-black text-xs print:text-[8.5pt]">នាក់</span>
             </div>
           </div>
 
-          {/* Row 3: Teacher & Phone */}
-          <div className="flex flex-wrap items-center gap-x-8 gap-y-1">
-            <div className="flex items-center gap-2">
-              <span className="font-bold w-24 shrink-0">ឈ្មោះគ្រូ</span>
-              <input
-                type="text"
-                value={plan.teacherName}
-                onChange={(e) => setPlan((p) => ({ ...p, teacherName: e.target.value }))}
-                className="font-bold text-black bg-transparent border-b border-dotted border-slate-400 outline-none w-44 hover:bg-slate-50 focus:bg-white px-1 print:border-none"
-              />
+          {/* ជួរទី ២ (Row 2): ឈ្មោះគ្រូ • លេខទូរស័ព្ទ • ឈ្មោះនាយករងបច្ចេកទេស • លេខទូរស័ព្ទ */}
+          <div className="flex flex-wrap print:flex-nowrap items-center justify-between gap-x-4 gap-y-1 pt-0.5">
+            {/* ឈ្មោះគ្រូ & លេខទូរស័ព្ទ */}
+            <div className="flex items-center gap-3 shrink-0">
+              <div className="flex items-center gap-1.5">
+                <span className="font-bold text-black text-xs print:text-[8.5pt]">ឈ្មោះគ្រូ ៖</span>
+                <input
+                  type="text"
+                  value={plan.teacherName}
+                  onChange={(e) => setPlan((p) => ({ ...p, teacherName: e.target.value }))}
+                  className="font-bold text-black text-xs print:text-[8.5pt] bg-transparent border-b border-dotted border-slate-400 outline-none w-36 sm:w-44 hover:bg-slate-50 focus:bg-amber-50/60 px-1 print:border-none"
+                  placeholder="ឈ្មោះគ្រូ"
+                />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="font-bold text-black text-xs print:text-[8.5pt]">លេខទូរស័ព្ទ ៖</span>
+                <input
+                  type="text"
+                  value={plan.teacherPhone}
+                  onChange={(e) => setPlan((p) => ({ ...p, teacherPhone: e.target.value }))}
+                  className="font-bold font-mono text-black text-xs print:text-[8.5pt] bg-transparent border-b border-dotted border-slate-400 outline-none w-32 sm:w-36 hover:bg-slate-50 focus:bg-amber-50/60 px-1 print:border-none"
+                  placeholder="លេខទូរស័ព្ទ"
+                />
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="font-bold">លេខទូរស័ព្ទ:</span>
-              <input
-                type="text"
-                value={plan.teacherPhone}
-                onChange={(e) => setPlan((p) => ({ ...p, teacherPhone: e.target.value }))}
-                className="font-bold font-mono text-black bg-transparent border-b border-dotted border-slate-400 outline-none w-36 hover:bg-slate-50 focus:bg-white px-1 print:border-none"
-              />
-            </div>
-          </div>
 
-          {/* Row 4: Deputy Director & Phone */}
-          <div className="flex flex-wrap items-center gap-x-8 gap-y-1">
-            <div className="flex items-center gap-2">
-              <span className="font-bold w-40 shrink-0">ឈ្មោះនាយករងបច្ចេកទេស</span>
-              <input
-                type="text"
-                value={plan.deputyDirectorName}
-                onChange={(e) => setPlan((p) => ({ ...p, deputyDirectorName: e.target.value }))}
-                className="font-bold text-black bg-transparent border-b border-dotted border-slate-400 outline-none w-44 hover:bg-slate-50 focus:bg-white px-1 print:border-none"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="font-bold">លេខទូរស័ព្ទ:</span>
-              <input
-                type="text"
-                value={plan.deputyDirectorPhone}
-                onChange={(e) => setPlan((p) => ({ ...p, deputyDirectorPhone: e.target.value }))}
-                className="font-bold font-mono text-black bg-transparent border-b border-dotted border-slate-400 outline-none w-36 hover:bg-slate-50 focus:bg-white px-1 print:border-none"
-              />
+            {/* ឈ្មោះនាយករងបច្ចេកទេស & លេខទូរស័ព្ទ */}
+            <div className="flex items-center gap-3 shrink-0">
+              <div className="flex items-center gap-1.5">
+                <span className="font-bold text-black text-xs print:text-[8.5pt]">ឈ្មោះនាយករងបច្ចេកទេស ៖</span>
+                <input
+                  type="text"
+                  value={plan.deputyDirectorName}
+                  onChange={(e) => setPlan((p) => ({ ...p, deputyDirectorName: e.target.value }))}
+                  className="font-bold text-black text-xs print:text-[8.5pt] bg-transparent border-b border-dotted border-slate-400 outline-none w-36 sm:w-44 hover:bg-slate-50 focus:bg-amber-50/60 px-1 print:border-none"
+                  placeholder="ឈ្មោះនាយករងបច្ចេកទេស"
+                />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="font-bold text-black text-xs print:text-[8.5pt]">លេខទូរស័ព្ទ ៖</span>
+                <input
+                  type="text"
+                  value={plan.deputyDirectorPhone}
+                  onChange={(e) => setPlan((p) => ({ ...p, deputyDirectorPhone: e.target.value }))}
+                  className="font-bold font-mono text-black text-xs print:text-[8.5pt] bg-transparent border-b border-dotted border-slate-400 outline-none w-28 sm:w-32 hover:bg-slate-50 focus:bg-amber-50/60 px-1 print:border-none"
+                  placeholder="លេខទូរស័ព្ទ"
+                />
+              </div>
             </div>
           </div>
         </div>
