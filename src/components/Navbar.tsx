@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Menu, School, Plus, Clock, Sparkles, Undo2, Redo2, RotateCw } from 'lucide-react';
+import { Menu, Plus, Clock, Sparkles, Undo2, Redo2, RotateCw } from 'lucide-react';
 import type { ClassRoom, TeacherSettings } from '../types';
 import { useUndoRedo } from '../context/UndoRedoContext';
 import {
@@ -116,34 +116,17 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       {/* Main Navigation Bar */}
       <div className="bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-6 2xl:px-8 py-2.5 flex items-center justify-between gap-4 shadow-xs">
-        {/* Left side: Hamburger button + School Name */}
-        <div className="flex items-center space-x-3">
+        {/* Left side: Hamburger button + Class Switcher Dropdown */}
+        <div className="flex items-center space-x-2 sm:space-x-3">
           <button
             onClick={onToggleSidebar}
-            className="p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 lg:hidden cursor-pointer"
+            className="p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 lg:hidden cursor-pointer shrink-0"
             aria-label="Toggle Menu"
           >
             <Menu className="w-5 h-5" />
           </button>
 
-          <div className="hidden sm:flex items-center space-x-2 text-slate-700">
-            <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
-              <School className="w-4 h-4" />
-            </div>
-            <div>
-              <p className="text-sm sm:text-base font-bold text-slate-800 leading-tight truncate max-w-[260px]">
-                {settings?.schoolName || 'វិទ្យាល័យ ហ៊ុន សែន កំពង់ត្រឡាច'}
-              </p>
-              <p className="text-xs text-slate-500 font-medium">
-                ឆ្នាំសិក្សា {settings?.academicYear || '២០២៤-២០២៥'}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Center / Class Switcher Dropdown (Organized by Grade, Rooms/Buildings Removed) */}
-        <div className="flex items-center space-x-2">
-          <label htmlFor="class-select" className="hidden md:inline-block text-xs font-semibold text-slate-500 whitespace-nowrap">
+          <label htmlFor="class-select" className="hidden sm:inline-block text-xs font-bold text-slate-600 whitespace-nowrap">
             ជ្រើសរើសថ្នាក់៖
           </label>
           <div className="relative flex items-center space-x-1.5">
@@ -223,7 +206,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               window.location.href = window.location.pathname + '?v=' + Date.now();
             }}
             className="p-2 bg-slate-100 hover:bg-blue-50 text-blue-600 hover:text-blue-700 rounded-xl border border-slate-200 transition-all cursor-pointer shadow-2xs flex items-center justify-center hover:rotate-180 active:scale-95"
-            title="ចុចដើម្បី Refresh & Update កំណែថ្មីបំផុត (v6.28)"
+            title="ចុចដើម្បី Refresh & Update កំណែថ្មីបំផុត (v6.29)"
           >
             <RotateCw className="w-4 h-4 text-blue-600" />
           </button>

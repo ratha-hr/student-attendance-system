@@ -13,6 +13,7 @@ import {
   Settings,
   Target,
   User,
+  School,
 } from 'lucide-react';
 import type { ClassRoom, TeacherSettings } from '../types';
 
@@ -154,17 +155,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
           isOpen ? 'translate-x-0' : '-translate-x-full'
         } no-print`}
       >
-        {/* App Logo & Header */}
+        {/* App Logo & Header: School Name & Academic Year (Moved from Navbar as requested) */}
         <div className="p-4 border-b border-slate-800/80 flex items-center space-x-3 bg-slate-950/40">
           <div className="w-10 h-10 rounded-2xl bg-linear-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shrink-0 shadow-md shadow-blue-900/40">
-            <BookOpenCheck className="w-5 h-5 text-white" />
+            <School className="w-5 h-5 text-white" />
           </div>
           <div className="overflow-hidden min-w-0">
-            <h1 className="font-bold text-sm text-white truncate tracking-wide">
-              គ្រប់គ្រងសិស្ស
+            <h1
+              className="font-bold text-xs sm:text-sm text-white truncate tracking-wide"
+              title={settings?.schoolName || 'វិទ្យាល័យ ហ៊ុន សែន កំពង់ត្រឡាច'}
+            >
+              {settings?.schoolName || 'វិទ្យាល័យ ហ៊ុន សែន កំពង់ត្រឡាច'}
             </h1>
-            <p className="text-xs text-blue-300 truncate font-semibold">
-              {activeClass ? `ថ្នាក់ ${activeClass.name}` : 'គ្រប់ថ្នាក់ទាំងអស់'}
+            <p className="text-[11px] text-blue-300 truncate font-semibold">
+              ឆ្នាំសិក្សា {settings?.academicYear || '២០២៤-២០២៥'}
             </p>
           </div>
         </div>
