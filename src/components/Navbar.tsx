@@ -219,10 +219,10 @@ export const Navbar: React.FC<NavbarProps> = ({
               window.location.href = window.location.pathname + '?v=' + Date.now();
             }}
             className="p-1 sm:px-2 sm:py-1 bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-700 rounded-xl border border-slate-200 text-xs font-bold transition-colors cursor-pointer shadow-2xs flex items-center space-x-1"
-            title="ចុចដើម្បីសម្អាត Cache និងទាញយកកំណែថ្មីបំផុត (v6.1)"
+            title="ចុចដើម្បីសម្អាត Cache និងទាញយកកំណែថ្មីបំផុត (v6.2)"
           >
             <RotateCw className="w-3.5 h-3.5 text-blue-600" />
-            <span className="hidden sm:inline text-[11px] text-blue-700 font-black">v6.1</span>
+            <span className="hidden sm:inline text-[11px] text-blue-700 font-black">v6.2</span>
           </button>
 
           {/* Settings button & Teacher Profile */}

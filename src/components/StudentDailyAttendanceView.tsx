@@ -62,7 +62,7 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
   const [selectedSession, setSelectedSession] = useState<'morning' | 'afternoon'>(
     initialSession || 'morning'
   );
-  const [statusFilter, setStatusFilter] = useState<'all' | 'present' | 'permission' | 'absent' | 'unmarked'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'present' | 'permission' | 'absent' | 'late' | 'unmarked'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [soundOn, setSoundOn] = useState(true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -161,15 +161,16 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
     // 2. If URL payload exists, overlay records for students without Dexie records
     if (urlPayloadMap.size > 0 && classStudents.length > 0) {
       classStudents.forEach((stu) => {
-        const payloadStatus = urlPayloadMap.get(stu.rollNo);
-        if (payloadStatus && !map.has(stu.id)) {
+        const payloadItem = urlPayloadMap.get(stu.rollNo);
+        if (payloadItem && !map.has(stu.id)) {
           map.set(stu.id, {
             id: `payload-${stu.id}`,
             classId: selectedClassId,
             studentId: stu.id,
             date: selectedDate,
             session: selectedSession,
-            status: payloadStatus,
+            status: payloadItem.status,
+            reason: payloadItem.reason || '',
             createdAt: new Date().toISOString(),
           });
         }
@@ -209,6 +210,7 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
       if (statusFilter === 'present') matchesStatus = status === 'present';
       else if (statusFilter === 'permission') matchesStatus = status === 'permission';
       else if (statusFilter === 'absent') matchesStatus = status === 'absent';
+      else if (statusFilter === 'late') matchesStatus = status === 'late';
       else if (statusFilter === 'unmarked') matchesStatus = !status;
 
       const q = searchQuery.trim().toLowerCase();
@@ -290,7 +292,7 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
       if (status === 'present') soundEffects.playPresentChime();
       else if (status === 'permission') soundEffects.playPermissionChime();
       else if (status === 'absent') soundEffects.playAbsentChime();
-      else soundEffects.playClickChime();
+      else soundEffects.playClick();
     }
 
     const existing = dailyRecordMap.get(studentId);
@@ -310,6 +312,31 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
         date: selectedDate,
         session: selectedSession,
         status,
+        reason: existing?.reason || '',
+        createdAt: new Date().toISOString(),
+      };
+      await db.attendance.add(newRec);
+    }
+
+    onRefresh();
+  };
+
+  // Set reason for student (Available only when unlocked!)
+  const handleSetReason = async (studentId: string, reason: string) => {
+    if (!currentClass || !isEditUnlocked) return;
+
+    const existing = dailyRecordMap.get(studentId);
+    if (existing && !existing.id.startsWith('payload-')) {
+      await db.attendance.update(existing.id, { reason });
+    } else {
+      const newRec: AttendanceRecord = {
+        id: 'att-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
+        classId: currentClass.id,
+        studentId,
+        date: selectedDate,
+        session: selectedSession,
+        status: existing?.status || 'absent',
+        reason,
         createdAt: new Date().toISOString(),
       };
       await db.attendance.add(newRec);
@@ -377,7 +404,7 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
     const text = `📋 តារាងវត្តមានប្រចាំថ្ងៃ ${currentClass?.name || ''} (${selectedSession === 'morning' ? 'វេនព្រឹក' : 'វេនរសៀល'})
 📅 ${formatKhmerDate(selectedDate, true)}
 👨‍🏫 គ្រូទទួលបន្ទុក៖ ${homeroom}
-📊 ស្ថិតិ៖ សរុប ${stats.total} នាក់ | មក ${stats.present} | ច្បាប់ ${stats.permission} | អវត្តមាន ${stats.absent}
+📊 ស្ថិតិ៖ សរុប ${stats.total} នាក់ | មក ${stats.present} | ច្បាប់ ${stats.permission} | អវត្តមាន ${stats.absent}${stats.late > 0 ? ` | យឺត ${stats.late}` : ''}
 🔒 បញ្ជីវត្តមានត្រូវបានចាក់សោសុវត្ថិភាព (សិស្សមិនអាចកែប្រែបានឡើយ)
 
 👉 ចុចតំណភ្ជាប់ខាងក្រោមដើម្បីពិនិត្យមើលវត្តមាន៖`;
@@ -585,6 +612,20 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
               <span className="font-mono font-black ml-1 px-1.5 py-0.2 bg-black/10 rounded-full">{stats.absent}</span>
             </button>
 
+            {/* យឺត */}
+            <button
+              type="button"
+              onClick={() => setStatusFilter('late')}
+              className={`px-2.5 py-1.5 rounded-xl transition-all cursor-pointer shrink-0 flex items-center space-x-1 ${
+                statusFilter === 'late'
+                  ? 'bg-blue-600 text-white font-black shadow-xs'
+                  : 'bg-blue-50 text-blue-800 border border-blue-200 hover:bg-blue-100'
+              }`}
+            >
+              <span>⏰ យឺត</span>
+              <span className="font-mono font-black ml-1 px-1.5 py-0.2 bg-black/10 rounded-full">{stats.late}</span>
+            </button>
+
             {/* មិនទាន់ស្រង់ */}
             {stats.unmarked > 0 && (
               <button
@@ -653,123 +694,164 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
               return (
                 <div
                   key={stu.id}
-                  className={`bg-white rounded-xl p-2.5 sm:p-3 border transition-all shadow-2xs flex items-center justify-between gap-2 ${
+                  className={`bg-white rounded-xl p-2.5 sm:p-3 border transition-all shadow-2xs flex flex-col gap-1.5 ${
                     currentStatus === 'present'
                       ? 'border-emerald-200 bg-emerald-50/20'
                       : currentStatus === 'permission'
                       ? 'border-amber-200 bg-amber-50/20'
                       : currentStatus === 'absent'
                       ? 'border-rose-200 bg-rose-50/20'
+                      : currentStatus === 'late'
+                      ? 'border-blue-200 bg-blue-50/20'
                       : 'border-slate-200 hover:border-slate-300'
                   }`}
                 >
-                  {/* Left: Roll No + Student Name + Gender + Code */}
-                  <div className="flex items-center space-x-2.5 min-w-0">
-                    <span className="w-7 h-7 rounded-lg bg-slate-100 text-slate-800 font-mono font-black text-xs flex items-center justify-center shrink-0">
-                      {stu.rollNo || index + 1}
-                    </span>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    {/* Left: Roll No + Student Name + Gender + Code */}
+                    <div className="flex items-center space-x-2.5 min-w-0">
+                      <span className="w-7 h-7 rounded-lg bg-slate-100 text-slate-800 font-mono font-black text-xs flex items-center justify-center shrink-0">
+                        {stu.rollNo || index + 1}
+                      </span>
 
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-bold text-xs sm:text-sm text-slate-900 truncate">
-                          {stu.nameKh}
-                        </span>
-                        <span
-                          className={`px-1 py-0.2 rounded text-[9px] font-bold ${
-                            stu.gender === 'ស្រី'
-                              ? 'bg-pink-100 text-pink-700'
-                              : 'bg-blue-100 text-blue-700'
-                          }`}
-                        >
-                          {stu.gender}
-                        </span>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-xs sm:text-sm text-slate-900 truncate">
+                            {stu.nameKh}
+                          </span>
+                          <span
+                            className={`px-1 py-0.2 rounded text-[9px] font-bold ${
+                              stu.gender === 'ស្រី'
+                                ? 'bg-pink-100 text-pink-700'
+                                : 'bg-blue-100 text-blue-700'
+                            }`}
+                          >
+                            {stu.gender}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-400 font-mono">
+                          {fromKhmerNum(stu.studentCode)}
+                        </p>
                       </div>
-                      <p className="text-[10px] text-slate-400 font-mono">
-                        {fromKhmerNum(stu.studentCode)}
-                      </p>
+                    </div>
+
+                    {/* Right: Read-Only Badge OR Edit Mode Buttons */}
+                    <div className="flex items-center space-x-1 shrink-0 self-end sm:self-auto">
+                      {!isEditUnlocked ? (
+                        /* READ-ONLY BADGES: Clear, Beautiful, Unclickable */
+                        <div>
+                          {currentStatus === 'present' && (
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-300 font-bold text-xs">
+                              <CheckCircle className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+                              <span>មក</span>
+                            </span>
+                          )}
+                          {currentStatus === 'permission' && (
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-amber-50 text-amber-900 border border-amber-300 font-bold text-xs">
+                              <AlertCircle className="w-3.5 h-3.5 mr-1 text-amber-600" />
+                              <span>ច្បាប់</span>
+                            </span>
+                          )}
+                          {currentStatus === 'absent' && (
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-rose-50 text-rose-900 border border-rose-300 font-bold text-xs">
+                              <XCircle className="w-3.5 h-3.5 mr-1 text-rose-600" />
+                              <span>អវត្តមាន</span>
+                            </span>
+                          )}
+                          {currentStatus === 'late' && (
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-blue-50 text-blue-900 border border-blue-300 font-bold text-xs">
+                              <Clock className="w-3.5 h-3.5 mr-1 text-blue-600" />
+                              <span>យឺត</span>
+                            </span>
+                          )}
+                          {!currentStatus && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-lg bg-slate-100 text-slate-500 border border-slate-200 text-xs">
+                              <Clock className="w-3 h-3 mr-1 text-slate-400" />
+                              <span>មិនទាន់ស្រង់</span>
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        /* EDIT MODE: 4 clean touch buttons for monitor/teacher */
+                        <div className="flex flex-wrap items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleSetStatus(stu.id, 'present')}
+                            className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center space-x-1 ${
+                              currentStatus === 'present'
+                                ? 'bg-emerald-600 text-white font-black ring-2 ring-emerald-500 shadow-xs'
+                                : 'bg-slate-100 text-slate-700 hover:bg-emerald-50 hover:text-emerald-700'
+                            }`}
+                          >
+                            <CheckCircle className="w-3.5 h-3.5" />
+                            <span>មក</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleSetStatus(stu.id, 'permission')}
+                            className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center space-x-1 ${
+                              currentStatus === 'permission'
+                                ? 'bg-amber-500 text-white font-black ring-2 ring-amber-400 shadow-xs'
+                                : 'bg-slate-100 text-slate-700 hover:bg-amber-50 hover:text-amber-700'
+                            }`}
+                          >
+                            <AlertCircle className="w-3.5 h-3.5" />
+                            <span>ច្បាប់</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleSetStatus(stu.id, 'absent')}
+                            className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center space-x-1 ${
+                              currentStatus === 'absent'
+                                ? 'bg-rose-600 text-white font-black ring-2 ring-rose-500 shadow-xs'
+                                : 'bg-slate-100 text-slate-700 hover:bg-rose-50 hover:text-rose-700'
+                            }`}
+                          >
+                            <XCircle className="w-3.5 h-3.5" />
+                            <span>អវត្តមាន</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleSetStatus(stu.id, 'late')}
+                            className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center space-x-1 ${
+                              currentStatus === 'late'
+                                ? 'bg-blue-600 text-white font-black ring-2 ring-blue-500 shadow-xs'
+                                : 'bg-slate-100 text-slate-700 hover:bg-blue-50 hover:text-blue-700'
+                            }`}
+                          >
+                            <Clock className="w-3.5 h-3.5" />
+                            <span>យឺត</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
 
-                  {/* Right: Read-Only Badge OR Edit Mode Buttons */}
-                  <div className="flex items-center space-x-1 shrink-0">
-                    {!isEditUnlocked ? (
-                      /* READ-ONLY BADGES: Clear, Beautiful, Unclickable */
-                      <div>
-                        {currentStatus === 'present' && (
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-300 font-bold text-xs">
-                            <CheckCircle className="w-3.5 h-3.5 mr-1 text-emerald-600" />
-                            <span>មក</span>
-                          </span>
-                        )}
-                        {currentStatus === 'permission' && (
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-amber-50 text-amber-900 border border-amber-300 font-bold text-xs">
-                            <AlertCircle className="w-3.5 h-3.5 mr-1 text-amber-600" />
-                            <span>ច្បាប់</span>
-                          </span>
-                        )}
-                        {currentStatus === 'absent' && (
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-rose-50 text-rose-900 border border-rose-300 font-bold text-xs">
-                            <XCircle className="w-3.5 h-3.5 mr-1 text-rose-600" />
-                            <span>អវត្តមាន</span>
-                          </span>
-                        )}
-                        {currentStatus === 'late' && (
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-blue-50 text-blue-900 border border-blue-300 font-bold text-xs">
-                            <Clock className="w-3.5 h-3.5 mr-1 text-blue-600" />
-                            <span>យឺត</span>
-                          </span>
-                        )}
-                        {!currentStatus && (
-                          <span className="inline-flex items-center px-2 py-1 rounded-lg bg-slate-100 text-slate-500 border border-slate-200 text-xs">
-                            <Clock className="w-3 h-3 mr-1 text-slate-400" />
-                            <span>មិនទាន់ស្រង់</span>
-                          </span>
-                        )}
-                      </div>
-                    ) : (
-                      /* EDIT MODE: 3 clean touch buttons for monitor/teacher */
-                      <div className="flex items-center space-x-1">
-                        <button
-                          type="button"
-                          onClick={() => handleSetStatus(stu.id, 'present')}
-                          className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center space-x-1 ${
-                            currentStatus === 'present'
-                              ? 'bg-emerald-600 text-white font-black ring-2 ring-emerald-500 shadow-xs'
-                              : 'bg-slate-100 text-slate-700 hover:bg-emerald-50 hover:text-emerald-700'
-                          }`}
-                        >
-                          <CheckCircle className="w-3.5 h-3.5" />
-                          <span>មក</span>
-                        </button>
+                  {/* Reason display in Read-Only Mode */}
+                  {!isEditUnlocked && rec?.reason && (
+                    <div className="pt-1.5 border-t border-slate-100 flex items-center gap-1.5 text-xs text-amber-900 bg-amber-50/70 px-2.5 py-1 rounded-lg border border-amber-200/60 font-medium">
+                      <span className="font-bold text-amber-800 whitespace-nowrap">មូលហេតុ៖</span>
+                      <span className="truncate">{rec.reason}</span>
+                    </div>
+                  )}
 
-                        <button
-                          type="button"
-                          onClick={() => handleSetStatus(stu.id, 'permission')}
-                          className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center space-x-1 ${
-                            currentStatus === 'permission'
-                              ? 'bg-amber-500 text-white font-black ring-2 ring-amber-400 shadow-xs'
-                              : 'bg-slate-100 text-slate-700 hover:bg-amber-50 hover:text-amber-700'
-                          }`}
-                        >
-                          <AlertCircle className="w-3.5 h-3.5" />
-                          <span>ច្បាប់</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleSetStatus(stu.id, 'absent')}
-                          className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center space-x-1 ${
-                            currentStatus === 'absent'
-                              ? 'bg-rose-600 text-white font-black ring-2 ring-rose-500 shadow-xs'
-                              : 'bg-slate-100 text-slate-700 hover:bg-rose-50 hover:text-rose-700'
-                          }`}
-                        >
-                          <XCircle className="w-3.5 h-3.5" />
-                          <span>អវត្តមាន</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                  {/* Reason input in Edit Mode */}
+                  {isEditUnlocked && (
+                    <div className="pt-1.5 border-t border-slate-100 flex items-center gap-2">
+                      <label className="text-[11px] font-bold text-slate-500 whitespace-nowrap">
+                        មូលហេតុ៖
+                      </label>
+                      <input
+                        type="text"
+                        value={rec?.reason || ''}
+                        onChange={(e) => handleSetReason(stu.id, e.target.value)}
+                        placeholder="មូលហេតុឈប់ ឬយឺត..."
+                        className="flex-1 px-2.5 py-1 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:ring-1 focus:ring-indigo-500 font-medium"
+                      />
+                    </div>
+                  )}
                 </div>
               );
             })

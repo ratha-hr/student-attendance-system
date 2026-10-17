@@ -196,7 +196,7 @@ export const StudentAttendanceShareModal: React.FC<StudentAttendanceShareModalPr
   const handleOpenTelegram = () => {
     // Keep message short and clean to strictly avoid Nginx 400 Bad Request URL limit
     const homeroom = currentClass?.homeroomTeacher || settings?.teacherName || 'លោកគ្រូ-អ្នកគ្រូ';
-    const shortSummary = `📋 តារាងវត្តមានប្រចាំថ្ងៃ ${currentClass?.name || 'ថ្នាក់រៀន'} (${sessionLabel})\n📅 ${formatKhmerDate(selectedDate, true)}\n👨‍🏫 គ្រូទទួលបន្ទុក៖ ${homeroom}\n📊 ស្ថិតិ៖ សរុប ${total} នាក់ | មក ${presentCount} | ច្បាប់ ${permissionCount} | អវត្តមាន ${absentCount}\n🔒 បញ្ជីវត្តមានត្រូវបានចាក់សោសុវត្ថិភាព (សិស្សមិនអាចកែប្រែបានឡើយ)\n\n👉 សូមចុចតំណភ្ជាប់ខាងក្រោមដើម្បីពិនិត្យមើលវត្តមាន៖`;
+    const shortSummary = `📋 តារាងវត្តមានប្រចាំថ្ងៃ ${currentClass?.name || 'ថ្នាក់រៀន'} (${sessionLabel})\n📅 ${formatKhmerDate(selectedDate, true)}\n👨‍🏫 គ្រូទទួលបន្ទុក៖ ${homeroom}\n📊 ស្ថិតិ៖ សរុប ${total} នាក់ | មក ${presentCount} | ច្បាប់ ${permissionCount} | អវត្តមាន ${absentCount}${lateCount > 0 ? ` | យឺត ${lateCount}` : ''}\n🔒 បញ្ជីវត្តមានត្រូវបានចាក់សោសុវត្ថិភាព (សិស្សមិនអាចកែប្រែបានឡើយ)\n\n👉 សូមចុចតំណភ្ជាប់ខាងក្រោមដើម្បីពិនិត្យមើលវត្តមាន៖`;
     const tgUrl = `https://t.me/share/url?url=${encodeURIComponent(studentReadOnlyUrl)}&text=${encodeURIComponent(shortSummary)}`;
     window.open(tgUrl, '_blank', 'noopener,noreferrer');
   };
@@ -257,7 +257,7 @@ export const StudentAttendanceShareModal: React.FC<StudentAttendanceShareModalPr
           </div>
 
           {/* Daily Quick Counts (Latin/Normal Numbers) */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-4 pt-3 border-t border-white/15 text-center text-xs">
+          <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 mt-4 pt-3 border-t border-white/15 text-center text-xs">
             <div className="bg-white/10 rounded-xl p-2 backdrop-blur-xs">
               <span className="text-indigo-200 block text-[11px]">👥 សិស្សសរុប</span>
               <span className="text-base font-black text-white">{total}</span>
@@ -274,7 +274,11 @@ export const StudentAttendanceShareModal: React.FC<StudentAttendanceShareModalPr
               <span className="text-rose-200 block text-[11px]">❌ ឥតច្បាប់</span>
               <span className="text-base font-black text-rose-300">{absentCount}</span>
             </div>
-            <div className="bg-slate-500/20 border border-slate-400/30 rounded-xl p-2 backdrop-blur-xs col-span-2 sm:col-span-1">
+            <div className="bg-blue-500/20 border border-blue-400/30 rounded-xl p-2 backdrop-blur-xs">
+              <span className="text-blue-200 block text-[11px]">⏰ មកយឺត</span>
+              <span className="text-base font-black text-blue-300">{lateCount}</span>
+            </div>
+            <div className="bg-slate-500/20 border border-slate-400/30 rounded-xl p-2 backdrop-blur-xs">
               <span className="text-slate-300 block text-[11px]">⏳ មិនទាន់ស្រង់</span>
               <span className="text-base font-black text-slate-200">{unmarkedCount}</span>
             </div>

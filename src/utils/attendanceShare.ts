@@ -1,5 +1,10 @@
 import type { AttendanceRecord, AttendanceStatus, Student } from '../types';
 
+export interface DecodedAttendanceItem {
+  status: AttendanceStatus;
+  reason?: string;
+}
+
 /**
  * Compact encoding of attendance records for URL sharing.
  * Maps student roll numbers to status letters:
@@ -8,8 +13,8 @@ import type { AttendanceRecord, AttendanceStatus, Student } from '../types';
  * A = absent
  * T = late (Tardy)
  *
- * Example output: "1P.2L.3A.4P..."
- * Compact, URL-safe, typically ~90-120 characters for 35 students.
+ * Optional reason is appended with '~': e.g. "1P.2L~ឈឺក្បាល.3A~មានការរវល់.4T"
+ * Compact, URL-safe, backwards-compatible.
  */
 export function encodeAttendanceForUrl(
   students: Student[],
@@ -20,24 +25,28 @@ export function encodeAttendanceForUrl(
   const sessionRecords = records.filter(
     (r) => r.date === selectedDate && r.session === selectedSession
   );
-  const recordMap = new Map(sessionRecords.map((r) => [r.studentId, r.status]));
+  const recordMap = new Map(sessionRecords.map((r) => [r.studentId, r]));
 
   const chunks: string[] = [];
   students.forEach((stu) => {
-    const status = recordMap.get(stu.id);
-    if (status) {
+    const rec = recordMap.get(stu.id);
+    if (rec && rec.status) {
       const code =
-        status === 'present'
+        rec.status === 'present'
           ? 'P'
-          : status === 'permission'
+          : rec.status === 'permission'
           ? 'L'
-          : status === 'absent'
+          : rec.status === 'absent'
           ? 'A'
-          : status === 'late'
+          : rec.status === 'late'
           ? 'T'
           : '';
       if (code) {
-        chunks.push(`${stu.rollNo}${code}`);
+        if (rec.reason && rec.reason.trim()) {
+          chunks.push(`${stu.rollNo}${code}~${encodeURIComponent(rec.reason.trim())}`);
+        } else {
+          chunks.push(`${stu.rollNo}${code}`);
+        }
       }
     }
   });
@@ -46,20 +55,35 @@ export function encodeAttendanceForUrl(
 }
 
 /**
- * Decodes attendance string from URL back to a map of rollNo -> status
+ * Decodes attendance string from URL back to a map of rollNo -> { status, reason }
  */
 export function decodeAttendanceFromUrl(
   encoded: string | null | undefined
-): Map<number, AttendanceStatus> {
-  const map = new Map<number, AttendanceStatus>();
+): Map<number, DecodedAttendanceItem> {
+  const map = new Map<number, DecodedAttendanceItem>();
   if (!encoded) return map;
 
-  const parts = encoded.split(/[._-]/);
+  // Split on '.' by default, or fallback to '_' if old URL without '.'
+  const separator = encoded.includes('.') ? '.' : encoded.includes('_') && !encoded.includes('~') ? '_' : '.';
+  const parts = encoded.split(separator);
+
   for (const part of parts) {
-    const match = part.match(/^(\d+)([PLATU])$/i);
+    if (!part) continue;
+    // Format: "1P", "2L~sick", "3A", "4T~traffic"
+    const match = part.match(/^(\d+)([PLATU])(?:~(.+))?$/i);
     if (match) {
       const rollNo = parseInt(match[1], 10);
       const code = match[2].toUpperCase();
+      const rawReason = match[3];
+      let reason = '';
+      if (rawReason) {
+        try {
+          reason = decodeURIComponent(rawReason);
+        } catch {
+          reason = rawReason;
+        }
+      }
+
       let status: AttendanceStatus | null = null;
       if (code === 'P') status = 'present';
       else if (code === 'L') status = 'permission';
@@ -67,7 +91,7 @@ export function decodeAttendanceFromUrl(
       else if (code === 'T') status = 'late';
 
       if (status && !isNaN(rollNo)) {
-        map.set(rollNo, status);
+        map.set(rollNo, { status, reason });
       }
     }
   }
