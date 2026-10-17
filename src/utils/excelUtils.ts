@@ -367,13 +367,10 @@ export async function parseExcelStudents(file: File, classId: string): Promise<P
             if (!isNaN(parsedRoll) && parsedRoll > 0) rollNo = parsedRoll;
           }
 
-          // 5. Extract Code
+          // 5. Extract Code (Leave blank if not provided)
           let studentCode = '';
           if (colMap.studentCode !== undefined && cells[colMap.studentCode]) {
             studentCode = String(cells[colMap.studentCode]).trim();
-          }
-          if (!studentCode) {
-            studentCode = `STU-${String(rollNo).padStart(3, '0')}`;
           }
 
           parsedStudents.push({
@@ -885,7 +882,7 @@ export function parsePastedExcelText(
     }
 
     const rollNo = row.rollNo !== undefined ? Number(row.rollNo) : currentRoll;
-    const studentCode = row.studentCode || `STU-${String(currentRoll).padStart(3, '0')}`;
+    const studentCode = (row.studentCode || '').trim();
     const gender: Gender = row.gender === 'ស្រី' ? 'ស្រី' : 'ប្រុស';
     const dob = row.dob || '';
     const age = row.age !== undefined ? Number(row.age) : dob ? calculateAge(dob) : 0;

@@ -144,7 +144,7 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({
       } else {
         const targetClass = defaultClassId !== 'ALL' ? defaultClassId : (classes[0]?.id ?? '');
         setClassId(targetClass);
-        setStudentCode(`STU-${String(Date.now()).slice(-4)}`);
+        setStudentCode('');
         setNameKh('');
         setNameEn('');
         setGender('ប្រុស');
@@ -286,7 +286,7 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({
         id: studentToEdit?.id || `stu-${Date.now()}`,
         classId,
         rollNo: studentToEdit?.rollNo || 1, // Keep existing rollNo if editing, otherwise row 1
-        studentCode: studentCode.trim() || `STU-${String(Date.now()).slice(-4)}`,
+        studentCode: studentCode.trim(),
         nameKh: nameKh.trim(),
         nameEn: nameEn.trim(),
         gender,
@@ -438,7 +438,7 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({
                   type="text"
                   value={studentCode}
                   onChange={(e) => setStudentCode(e.target.value)}
-                  placeholder="STU-001"
+                  placeholder="ឧ. 1024 ឬ ទុកនៅទំនេរ"
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all"
                 />
               </div>

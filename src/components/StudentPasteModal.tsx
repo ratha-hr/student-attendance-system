@@ -92,7 +92,7 @@ export const StudentPasteModal: React.FC<StudentPasteModalProps> = ({
             id: `stu-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 6)}`,
             classId,
             rollNo: targetRoll,
-            studentCode: p.studentCode || `STU-${String(targetRoll).padStart(3, '0')}`,
+            studentCode: (p.studentCode || '').trim(),
             nameKh: p.nameKh || `សិស្ស ${targetRoll}`,
             nameEn: p.nameEn || '',
             gender: p.gender || 'ប្រុស',

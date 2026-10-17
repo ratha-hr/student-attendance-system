@@ -234,6 +234,44 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
     showToast(`✨ បានផ្លាស់ទីឈ្មោះភូមិ ${toKhmerNum(corruptedAddressNamesList.length)} ទៅជួរ «ភូមិកំណើត» រួចរាល់!`);
   };
 
+  // One-time automatic cleanup of legacy auto-generated STU-xxx student codes
+  useEffect(() => {
+    const hasCleaned = localStorage.getItem('app_cleaned_auto_stu_codes_v1');
+    if (!hasCleaned) {
+      db.students.toArray().then(async (allStudents) => {
+        const autoCoded = allStudents.filter(
+          (s) => s.studentCode && /^STU-/i.test(s.studentCode)
+        );
+        if (autoCoded.length > 0) {
+          const updates = autoCoded.map((s) => ({ ...s, studentCode: '' }));
+          await db.students.bulkPut(updates);
+          onRefresh();
+        }
+        localStorage.setItem('app_cleaned_auto_stu_codes_v1', 'true');
+      });
+    }
+  }, [onRefresh]);
+
+  // Check if current class has any auto STU- codes
+  const hasAutoStuCode = useMemo(() => {
+    return currentClassStudents.some((s) => s.studentCode && /^STU-/i.test(s.studentCode));
+  }, [currentClassStudents]);
+
+  const handleClearAutoStudentCodes = async () => {
+    const autoCoded = currentClassStudents.filter(
+      (s) => s.studentCode && /^STU-/i.test(s.studentCode)
+    );
+    if (autoCoded.length === 0) {
+      showToast('ℹ️ មិនមានអត្តលេខស្វ័យប្រវត្ត STU- ត្រូវសម្អាតទេ');
+      return;
+    }
+    await pushSnapshot(`សម្អាតអត្តលេខស្វ័យប្រវត្តិ (${autoCoded.length} នាក់)`);
+    const updates = autoCoded.map((s) => ({ ...s, studentCode: '' }));
+    await db.students.bulkPut(updates);
+    onRefresh();
+    showToast(`✨ បានសម្អាតអត្តលេខស្វ័យប្រវត្តិ STU- ចំនួន ${toKhmerNum(autoCoded.length)} នាក់រួចរាល់!`);
+  };
+
   const activeEditingCellRef = useRef<string | null>(null);
 
   // Direct Inline Cell Edit Handler (Auto-Save on blur or change)
@@ -270,7 +308,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
         id: 'stu-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
         classId: targetClassId,
         rollNo: targetRollNo,
-        studentCode: field === 'studentCode' ? value : `STU-${String(targetRollNo).padStart(3, '0')}`,
+        studentCode: field === 'studentCode' ? (value || '').trim() : '',
         nameKh: field === 'nameKh' ? value : `សិស្ស ${targetRollNo}`,
         nameEn: field === 'nameEn' ? value : '',
         gender: field === 'gender' ? value : 'ប្រុស',
@@ -402,7 +440,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
           id: `stu-${Date.now()}-${rIdx}-${Math.random().toString(36).substring(2, 6)}`,
           classId: targetClassId,
           rollNo: targetRollNo,
-          studentCode: rowData.studentCode || `STU-${String(targetRollNo).padStart(3, '0')}`,
+          studentCode: (rowData.studentCode || '').trim(),
           nameEn: rowData.nameEn || '',
           gender: rowData.gender === 'ស្រី' ? 'ស្រី' : 'ប្រុស',
           dob: rowData.dob || '',
@@ -562,7 +600,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
       ...s,
       id: 'stu-' + Date.now(),
       rollNo: nextRoll,
-      studentCode: `${s.studentCode}-កូពី`,
+      studentCode: s.studentCode ? `${s.studentCode}-កូពី` : '',
       nameKh: `${s.nameKh} (ចម្លង)`,
       createdAt: new Date().toISOString(),
     };
@@ -696,7 +734,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
       const reordered = remaining.map((s, idx) => ({
         ...s,
         rollNo: idx + 1,
-        studentCode: s.studentCode && s.studentCode.startsWith('STU-') ? `STU-${String(idx + 1).padStart(3, '0')}` : s.studentCode,
+        studentCode: s.studentCode || '',
       }));
       await db.students.bulkPut(reordered);
 
@@ -762,7 +800,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
             id: `stu_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 6)}`,
             classId: targetClassId,
             rollNo: targetRollNo,
-            studentCode: p.studentCode || `STU-${String(targetRollNo).padStart(3, '0')}`,
+            studentCode: (p.studentCode || '').trim(),
             nameKh: p.nameKh || `សិស្ស ${targetRollNo}`,
             nameEn: p.nameEn || '',
             gender: p.gender || 'ប្រុស',
@@ -845,7 +883,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
         <td className="py-1 px-1 border-r border-slate-200">
           <input
             type="text"
-            placeholder="STU-..."
+            placeholder=""
             data-cell={`${rowIdx}-studentCode`}
             onFocus={() => {
               setSelectedCell({ rowIdx, colKey: 'studentCode', colName: 'អត្តលេខ' });
@@ -1373,6 +1411,19 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
               )}
             </button>
 
+            {/* Clear Auto STU- Codes Button */}
+            {hasAutoStuCode && (
+              <button
+                type="button"
+                onClick={handleClearAutoStudentCodes}
+                className="inline-flex items-center px-2.5 py-1.5 text-xs font-bold rounded-xl border bg-rose-50 hover:bg-rose-100 text-rose-800 border-rose-200 transition-all cursor-pointer shrink-0"
+                title="សម្អាតអត្តលេខស្វ័យប្រវត្តិ (STU-...) ទាំងអស់ក្នុងថ្នាក់នេះឱ្យនៅទំនេរ"
+              >
+                <Trash2 className="w-3.5 h-3.5 mr-1 text-rose-600" />
+                <span>សម្អាតកូដ STU-</span>
+              </button>
+            )}
+
             {/* Direct Link to Continuous Assessment (30%) Grade Sheet */}
             <button
               type="button"
@@ -1782,7 +1833,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                             type="text"
                             value={fromKhmerNum(stu.studentCode)}
                             title={fromKhmerNum(stu.studentCode)}
-                            placeholder="STU-001"
+                            placeholder=""
                             data-cell={`${index}-studentCode`}
                             onFocus={() => {
                               setSelectedCell({ rowIdx: index, colKey: 'studentCode', colName: 'អត្តលេខ' });
