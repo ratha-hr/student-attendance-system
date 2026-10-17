@@ -59,11 +59,40 @@
 }
 
 .font-kantumruy {
-  font-family: 'Kantumruy Pro', sans-serif;
+  font-family: 'Kantumruy Pro', 'Battambang', 'Noto Sans Khmer', sans-serif;
 }
 
 .font-battambang {
-  font-family: 'Battambang', sans-serif;
+  font-family: 'Battambang', 'Kantumruy Pro', 'Noto Sans Khmer', sans-serif;
+}
+
+.font-siemreap {
+  font-family: 'Siemreap', 'Khmer OS Siemreap', 'Kantumruy Pro', sans-serif;
+}
+
+/* Full-App Dynamic Font Family Overrides (ប្តូរពុម្ពអក្សរតាមចិត្ត) */
+body.font-kantumruy,
+body.font-kantumruy input,
+body.font-kantumruy select,
+body.font-kantumruy textarea,
+body.font-kantumruy button {
+  font-family: 'Kantumruy Pro', 'Battambang', 'Noto Sans Khmer', sans-serif !important;
+}
+
+body.font-battambang,
+body.font-battambang input,
+body.font-battambang select,
+body.font-battambang textarea,
+body.font-battambang button {
+  font-family: 'Battambang', 'Kantumruy Pro', 'Noto Sans Khmer', sans-serif !important;
+}
+
+body.font-siemreap,
+body.font-siemreap input,
+body.font-siemreap select,
+body.font-siemreap textarea,
+body.font-siemreap button {
+  font-family: 'Siemreap', 'Khmer OS Siemreap', 'Kantumruy Pro', sans-serif !important;
 }
 
 .font-clock {
