@@ -1423,8 +1423,8 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
 
       {/* Official Plan Sheet Container (Matches Excel Template Exactly for Display & Print) */}
       <div className="official-sheet bg-white rounded-2xl p-4 sm:p-6 lg:p-8 border border-slate-200 shadow-sm print:p-0 print:border-none print:shadow-none space-y-2">
-        {/* Official Kingdom & Ministry Administrative Header (បាវចនាជាតិនៅខាងលើកណ្តាល • ការិ.អយក និង វិទ្យាល័យ តម្រឹមខាងឆ្វេង) */}
-        <div className="w-full relative mb-3 print:mb-2 pt-1 pb-1">
+        {/* Official Kingdom & Ministry Administrative Header (បាវចនាជាតិនៅខាងលើកណ្តាល • ការិ.អយក និង វិទ្យាល័យ តម្រឹមខាងឆ្វេង ទម្លាក់មកបន្ទាត់ទី ៣) */}
+        <div className="w-full relative mb-4 print:mb-3 pt-1 pb-1 min-h-[96px] print:min-h-[86px]">
           {/* Top Center: National Motto (បាវចនាជាតិនៅខាងលើកណ្តាល) */}
           <div className="w-full text-center">
             <h2 className="font-moul text-sm sm:text-base print:text-[13pt] text-black tracking-wide leading-relaxed select-none">
@@ -1441,18 +1441,18 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
             </div>
           </div>
 
-          {/* Top Left: Office & School (ការិ.អយក និង វិទ្យាល័យ តម្រឹមខាងឆ្វេង) */}
-          <div className="sm:absolute sm:left-0 sm:top-0 print:absolute print:left-0 print:top-0 text-left text-black space-y-0.5 max-w-[42%]">
+          {/* Left: Office & School (ទម្លាក់មកក្រោម មកបន្ទាត់ទី៣ ស្របនឹង ❖ ❖ ❖) */}
+          <div className="sm:absolute sm:left-0 sm:top-[44px] print:absolute print:left-0 print:top-[38px] text-left text-black space-y-0.5 max-w-[42%]">
             <input
               type="text"
-              value={plan.districtOffice || 'ការិ.អយកស្រុកកំពង់ត្របែក'}
+              value={plan.districtOffice || settings?.districtOffice || 'ការិ.អយកស្រុកកំពង់ត្រឡាច'}
               onChange={(e) => setPlan((p) => ({ ...p, districtOffice: e.target.value }))}
               className="font-moul text-[10.5px] sm:text-[11.5px] print:text-[9.5pt] text-black bg-transparent border-none outline-none w-full p-0 hover:bg-amber-50 focus:bg-white rounded cursor-text"
               title="ចុចដើម្បីកែសម្រួលឈ្មោះការិយាល័យអប់រំ"
             />
             <input
               type="text"
-              value={plan.schoolName || 'វិទ្យាល័យ ហ៊ុន សែន កំពង់ត្របែក'}
+              value={plan.schoolName || settings?.schoolName || 'វិទ្យាល័យ ហ៊ុន សែន កំពង់ត្រឡាច'}
               onChange={(e) => setPlan((p) => ({ ...p, schoolName: e.target.value }))}
               className="font-moul text-[10px] sm:text-[11px] print:text-[9pt] text-black bg-transparent border-none outline-none w-full p-0 hover:bg-amber-50 focus:bg-white rounded cursor-text"
               title="ចុចដើម្បីកែសម្រួលឈ្មោះវិទ្យាល័យ"
