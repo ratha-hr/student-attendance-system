@@ -137,6 +137,17 @@ export class TeacherDatabase extends Dexie {
         createdAt: new Date().toISOString(),
       });
     }
+
+    // Clean up any orphaned attendance records referencing non-existent students or classes
+    const validStudentIds = new Set((await this.students.toArray()).map((s) => s.id));
+    const validClassIds = new Set((await this.classes.toArray()).map((c) => c.id));
+    const allAttendance = await this.attendance.toArray();
+    const orphanedAttIds = allAttendance
+      .filter((a) => !validStudentIds.has(a.studentId) || !validClassIds.has(a.classId))
+      .map((a) => a.id);
+    if (orphanedAttIds.length > 0) {
+      await this.attendance.bulkDelete(orphanedAttIds);
+    }
   }
 
   async ensureStandardClasses() {

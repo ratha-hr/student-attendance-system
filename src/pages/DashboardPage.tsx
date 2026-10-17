@@ -17,7 +17,7 @@ import {
   PieChart,
   Activity,
 } from 'lucide-react';
-import type { Student, ClassRoom, AttendanceRecord, TeacherSettings } from '../types';
+import type { Student, ClassRoom, AttendanceRecord, TeacherSettings, AttendanceStatus } from '../types';
 import type { NavTab } from '../components/Sidebar';
 import { toKhmerNum, formatKhmerDate, getTodayDateString } from '../utils/dateUtils';
 import { parseGradeNumber } from '../utils/classUtils';
@@ -27,6 +27,7 @@ interface DashboardPageProps {
   classes: ClassRoom[];
   attendanceRecords: AttendanceRecord[];
   settings: TeacherSettings | null;
+  selectedClassId?: string;
   onNavigateTab: (tab: NavTab) => void;
   onSelectClass: (classId: string) => void;
   onSelectStudentForLetter?: (studentId: string) => void;
@@ -37,40 +38,76 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   classes,
   attendanceRecords,
   settings,
+  selectedClassId = 'ALL',
   onNavigateTab,
   onSelectClass,
   onSelectStudentForLetter,
 }) => {
   const today = getTodayDateString();
 
-  // Statistics calculation
+  // Active class filter scope (ALL or specific class)
+  const activeClass = selectedClassId !== 'ALL' ? classes.find((c) => c.id === selectedClassId) : null;
+  const activeStudents = useMemo(() => {
+    if (!selectedClassId || selectedClassId === 'ALL') return students;
+    return students.filter((s) => s.classId === selectedClassId);
+  }, [students, selectedClassId]);
+
+  const activeClasses = useMemo(() => {
+    if (!selectedClassId || selectedClassId === 'ALL') return classes;
+    return classes.filter((c) => c.id === selectedClassId);
+  }, [classes, selectedClassId]);
+
+  const activeStudentIds = useMemo(() => new Set(activeStudents.map((s) => s.id)), [activeStudents]);
+  const activeClassIds = useMemo(() => new Set(activeClasses.map((c) => c.id)), [activeClasses]);
+
+  // Statistics calculation - strictly grounded on actual existing students & classes
   const stats = useMemo(() => {
-    const totalStudents = students.length;
-    const femaleStudents = students.filter((s) => s.gender === 'ស្រី').length;
+    const totalStudents = activeStudents.length;
+    const femaleStudents = activeStudents.filter((s) => s.gender === 'ស្រី').length;
     const maleStudents = totalStudents - femaleStudents;
 
-    // Today attendance records
-    const todayRecords = attendanceRecords.filter((r) => r.date === today);
-    const presentToday = todayRecords.filter((r) => r.status === 'present').length;
-    const permissionToday = todayRecords.filter((r) => r.status === 'permission').length;
-    const absentToday = todayRecords.filter((r) => r.status === 'absent').length;
-    const lateToday = todayRecords.filter((r) => r.status === 'late').length;
+    // Filter today attendance records strictly belonging to active students and classes
+    const todayRecords = attendanceRecords.filter(
+      (r) => r.date === today && activeStudentIds.has(r.studentId) && activeClassIds.has(r.classId)
+    );
 
-    // Attendance rate
+    // Deduplicate by studentId so each student is counted exactly ONCE per day (regardless of morning/afternoon sessions)
+    const studentStatusMap = new Map<string, AttendanceStatus>();
+    todayRecords.forEach((r) => {
+      const prev = studentStatusMap.get(r.studentId);
+      if (!prev) {
+        studentStatusMap.set(r.studentId, r.status);
+      } else if (r.status === 'absent' || (r.status === 'permission' && prev !== 'absent')) {
+        studentStatusMap.set(r.studentId, r.status);
+      }
+    });
+
+    let presentToday = 0;
+    let permissionToday = 0;
+    let absentToday = 0;
+    let lateToday = 0;
+
+    studentStatusMap.forEach((status) => {
+      if (status === 'present') presentToday++;
+      else if (status === 'permission') permissionToday++;
+      else if (status === 'absent') absentToday++;
+      else if (status === 'late') lateToday++;
+    });
+
     const totalRecorded = presentToday + permissionToday + absentToday + lateToday;
     const rate = totalRecorded > 0
       ? Math.round(((presentToday + lateToday) / totalRecorded) * 100)
-      : 97; // Default healthy baseline
+      : (totalStudents > 0 ? 100 : 0);
 
-    // At risk students (absent >= 3 times)
+    // At risk students (absent >= 2 times strictly among active students)
     const absenceCountMap = new Map<string, number>();
     attendanceRecords.forEach((r) => {
-      if (r.status === 'absent') {
+      if (r.status === 'absent' && activeStudentIds.has(r.studentId)) {
         absenceCountMap.set(r.studentId, (absenceCountMap.get(r.studentId) || 0) + 1);
       }
     });
 
-    const atRiskList = students
+    const atRiskList = activeStudents
       .filter((s) => (absenceCountMap.get(s.id) || 0) >= 2)
       .map((s) => ({
         student: s,
@@ -80,12 +117,21 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       .sort((a, b) => b.absenceCount - a.absenceCount)
       .slice(0, 5);
 
-    // Class performance overview
-    const classStats = classes.map((c) => {
+    // Class performance overview for currently active classes
+    const classStats = activeClasses.map((c) => {
       const classStudents = students.filter((s) => s.classId === c.id);
       const classTodayRecords = todayRecords.filter((r) => r.classId === c.id);
-      const present = classTodayRecords.filter((r) => r.status === 'present').length;
-      const absent = classTodayRecords.filter((r) => r.status === 'absent').length;
+
+      const cStatusMap = new Map<string, AttendanceStatus>();
+      classTodayRecords.forEach((r) => cStatusMap.set(r.studentId, r.status));
+
+      let present = 0;
+      let absent = 0;
+      cStatusMap.forEach((st) => {
+        if (st === 'present' || st === 'late') present++;
+        else if (st === 'absent') absent++;
+      });
+
       return {
         id: c.id,
         name: c.name,
@@ -105,19 +151,20 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       permissionToday,
       absentToday,
       lateToday,
+      totalRecorded,
       rate,
       atRiskList,
       classStats,
     };
-  }, [students, classes, attendanceRecords, today]);
+  }, [activeStudents, activeClasses, activeStudentIds, activeClassIds, attendanceRecords, today, classes, students]);
 
   // Grade Distribution Calculation (Grades 7, 8, 9, 10, 11, 12)
   const gradeDistribution = useMemo(() => {
     const grades = ['7', '8', '9', '10', '11', '12'];
     const counts = grades.map((g) => {
-      const gClasses = classes.filter((c) => parseGradeNumber(c.grade || c.name) === parseInt(g, 10));
+      const gClasses = activeClasses.filter((c) => parseGradeNumber(c.grade || c.name) === parseInt(g, 10));
       const gClassIds = new Set(gClasses.map((c) => c.id));
-      const count = students.filter((s) => gClassIds.has(s.classId)).length;
+      const count = activeStudents.filter((s) => gClassIds.has(s.classId)).length;
       return { grade: g, count, classesCount: gClasses.length };
     });
 
@@ -128,12 +175,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       label: `ទី ${item.grade}`,
       count: item.count,
       classesCount: item.classesCount,
-      heightPct: Math.round((item.count / maxVal) * 100),
+      heightPct: item.count > 0 ? Math.max(8, Math.round((item.count / maxVal) * 100)) : 0,
     }));
-  }, [students, classes]);
+  }, [activeStudents, activeClasses]);
 
   // Attendance breakdown percentages for Diagram 1
-  const totalRecordedToday = stats.presentToday + stats.permissionToday + stats.lateToday + stats.absentToday;
+  const totalRecordedToday = stats.totalRecorded;
   const presentPct = totalRecordedToday > 0 ? Math.round((stats.presentToday / totalRecordedToday) * 100) : 0;
   const latePct = totalRecordedToday > 0 ? Math.round((stats.lateToday / totalRecordedToday) * 100) : 0;
   const permPct = totalRecordedToday > 0 ? Math.round((stats.permissionToday / totalRecordedToday) * 100) : 0;
@@ -235,12 +282,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 <div className="flex items-baseline space-x-1">
                   <span className="text-[11px] font-bold text-blue-200 whitespace-nowrap">ថ្នាក់រៀន៖</span>
                   <span className="text-base sm:text-lg font-black text-purple-200">
-                    {toKhmerNum(classes.length)}
+                    {toKhmerNum(activeClasses.length)}
                   </span>
                   <span className="text-[10px] text-blue-300">ថ្នាក់</span>
                 </div>
                 <p className="text-[10px] text-purple-200/80 truncate">
-                  ថ្នាក់ទី ៧ ដល់ ទី ១២
+                  {activeClass ? activeClass.name : 'ថ្នាក់ទី ៧ ដល់ ទី ១២'}
                 </p>
               </div>
             </div>
@@ -457,7 +504,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   សិស្សតាមកម្រិតថ្នាក់
                 </h3>
                 <p className="text-[11px] text-slate-400">
-                  {toKhmerNum(classes.length)} ថ្នាក់រៀន
+                  {toKhmerNum(activeClasses.length)} ថ្នាក់រៀន
                 </p>
               </div>
             </div>

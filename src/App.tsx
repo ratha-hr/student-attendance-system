@@ -194,6 +194,7 @@ export function App() {
               classes={classes}
               attendanceRecords={attendanceRecords}
               settings={settings}
+              selectedClassId={selectedClassId}
               onNavigateTab={setCurrentTab}
               onSelectClass={setSelectedClassId}
               onSelectStudentForLetter={handleSelectStudentForLetter}

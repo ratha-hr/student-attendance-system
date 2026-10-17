@@ -12,6 +12,9 @@ import {
   Users,
   User,
   AlertTriangle,
+  ChevronDown,
+  ChevronUp,
+  Sliders,
 } from 'lucide-react';
 import type { ClassRoom, Student, ClassStream } from '../types';
 import { db } from '../db/db';
@@ -51,6 +54,10 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
   const { pushSnapshot } = useUndoRedo();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGradeFilter, setSelectedGradeFilter] = useState<string>('ALL');
+
+  // Collapsible panels state for a clean, non-cluttered view (opens only when requested)
+  const [isAddFormOpen, setIsAddFormOpen] = useState<boolean>(classes.length === 0);
+  const [isQuickMenuOpen, setIsQuickMenuOpen] = useState<boolean>(false);
 
   // Add Class Form State
   const [formClassName, setFormClassName] = useState('');
@@ -135,6 +142,7 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
     await pushSnapshot(`បន្ថែមថ្នាក់ថ្មី "${fullName}"`);
     await db.classes.add(newClass);
     setFormClassName('');
+    setIsAddFormOpen(false);
     onSelectClass(newClass.id);
     onRefresh();
     showFeedback('success', `បានបន្ថែម "${fullName}" ${stream !== 'general' ? `(${streamInfo.badgeKh})` : ''} ដោយជោគជ័យ!`);
@@ -165,6 +173,7 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
 
     await pushSnapshot(`បន្ថែមរហ័សថ្នាក់ "${fullName}"`);
     await db.classes.add(newClass);
+    setIsQuickMenuOpen(false);
     onSelectClass(newClass.id);
     onRefresh();
     showFeedback('success', `បានបង្កើត "${fullName}" ${stream !== 'general' ? `(${streamInfo.badgeKh})` : ''} ដោយជោគជ័យ!`);
@@ -292,15 +301,16 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
 
     await pushSnapshot(`បន្ថែមថ្នាក់ទី ${grade} (${toAdd.length} ថ្នាក់)`);
     await db.classes.bulkAdd(toAdd);
+    setIsQuickMenuOpen(false);
     onRefresh();
     showFeedback('success', `បានបន្ថែមថ្នាក់ទី ${grade} (${toAdd.length} ថ្នាក់) ដោយជោគជ័យ!`);
   };
-
 
   // Reset or regenerate all 49 standard classes
   const handleRestoreStandardClasses = async () => {
     await pushSnapshot('កំណត់ថ្នាក់ស្តង់ដារឡើងវិញ');
     await db.ensureStandardClasses();
+    setIsQuickMenuOpen(false);
     onRefresh();
     showFeedback('success', 'បានបង្កើតថ្នាក់ស្តង់ដារទាំង ៤៩ ថ្នាក់រួចរាល់!');
   };
@@ -309,11 +319,11 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="🏫 គ្រប់គ្រងថ្នាក់រៀន (បន្ថែម • បន្ថយ • កែប្រែ)"
-      subtitle={`សរុប ${classes.length} ថ្នាក់ | មានគ្រូទទួលបន្ទុកថ្នាក់ និងគ្មានបន្ទប់/អគារ`}
+      title="🏫 គ្រប់គ្រងថ្នាក់រៀន (ថ្នាក់ • គ្រូទទួលបន្ទុក • ជំនាញ)"
+      subtitle={`សរុប ${classes.length} ថ្នាក់ | ងាយស្រួលមើល គ្រប់គ្រង និងកែសម្រួល`}
       maxWidth="4xl"
     >
-      <div className="space-y-4">
+      <div className="space-y-3.5">
         {/* Feedback Alert */}
         {feedbackMsg && (
           <div
@@ -330,155 +340,265 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
           </div>
         )}
 
-        {/* TOP SECTION: Form បញ្ចូលថ្នាក់ថ្មី (Requested by user) */}
-        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs">
-                <Plus className="w-4 h-4" />
-              </div>
-              <div>
-                <h4 className="text-xs sm:text-sm font-bold text-slate-900">
-                  ទម្រង់បញ្ចូលថ្នាក់រៀនថ្មី (Add Class Form)
-                </h4>
-                <p className="text-[11px] text-slate-500">
-                  សូមបំពេញឈ្មោះថ្នាក់ កម្រិតថ្នាក់ និងគ្រូទទួលបន្ទុកថ្នាក់
-                </p>
-              </div>
-            </div>
-
-            <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200">
-              ឆ្នាំសិក្សា៖ {academicYear}
-            </span>
+        {/* TOP BAR: Search & Action Buttons */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-slate-50 p-2.5 sm:p-3 rounded-2xl border border-slate-200">
+          {/* Search Box */}
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="ស្វែងរកតាមឈ្មោះថ្នាក់ ឬឈ្មោះគ្រូទទួលបន្ទុក..."
+              className="w-full pl-9 pr-3 py-2 text-xs sm:text-sm font-bold bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 shadow-2xs"
+            />
           </div>
 
-          {/* Dedicated Add Class Form */}
-          <form onSubmit={handleAddClassSubmit} className="space-y-3 pt-1">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-              {/* 1. ឈ្មោះថ្នាក់ */}
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                  ឈ្មោះថ្នាក់ <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formClassName}
-                  onChange={(e) => setFormClassName(e.target.value)}
-                  placeholder="ឧ. 7F, 10M, 12K..."
-                  className="w-full px-3 py-1.5 text-xs sm:text-sm font-bold bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 shadow-2xs"
-                />
+          {/* Action Buttons: Add Class & Quick Options */}
+          <div className="flex items-center space-x-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                setIsAddFormOpen((prev) => !prev);
+                if (!isAddFormOpen) setIsQuickMenuOpen(false);
+              }}
+              className={`inline-flex items-center px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer shadow-2xs ${
+                isAddFormOpen
+                  ? 'bg-blue-700 text-white shadow-xs'
+                  : 'bg-blue-600 hover:bg-blue-700 text-white'
+              }`}
+            >
+              <Plus className="w-4 h-4 mr-1.5" />
+              <span>+ បន្ថែមថ្នាក់ថ្មី</span>
+              {isAddFormOpen ? <ChevronUp className="w-3.5 h-3.5 ml-1.5" /> : <ChevronDown className="w-3.5 h-3.5 ml-1.5" />}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsQuickMenuOpen((prev) => !prev);
+                if (!isQuickMenuOpen) setIsAddFormOpen(false);
+              }}
+              className={`inline-flex items-center px-3 py-2 rounded-xl text-xs sm:text-sm font-bold border transition-all cursor-pointer shadow-2xs ${
+                isQuickMenuOpen
+                  ? 'bg-amber-100 text-amber-900 border-amber-300 shadow-xs'
+                  : 'bg-white hover:bg-amber-50 text-slate-700 border-slate-300'
+              }`}
+              title="ជម្រើសបន្ថែមរហ័ស និងស្តារថ្នាក់ស្តង់ដារ"
+            >
+              <Sparkles className="w-4 h-4 mr-1.5 text-amber-500" />
+              <span>ជម្រើសរហ័ស</span>
+              {isQuickMenuOpen ? <ChevronUp className="w-3.5 h-3.5 ml-1" /> : <ChevronDown className="w-3.5 h-3.5 ml-1" />}
+            </button>
+          </div>
+        </div>
+
+        {/* COLLAPSIBLE 1: Form បញ្ចូលថ្នាក់ថ្មី (Opens when requested) */}
+        {isAddFormOpen && (
+          <div className="bg-blue-50/70 p-3.5 sm:p-4 rounded-2xl border-2 border-blue-200 shadow-xs space-y-3 animate-fade-in">
+            <div className="flex items-center justify-between border-b border-blue-200/80 pb-2">
+              <div className="flex items-center space-x-2">
+                <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs">
+                  <Plus className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs sm:text-sm font-bold text-slate-900">
+                    ទម្រង់បញ្ចូលថ្នាក់រៀនថ្មី (Add Class)
+                  </h4>
+                  <p className="text-[11px] text-slate-500">
+                    សូមបំពេញឈ្មោះថ្នាក់ កម្រិតថ្នាក់ និងគ្រូទទួលបន្ទុកថ្នាក់
+                  </p>
+                </div>
               </div>
 
-              {/* 2. កម្រិតថ្នាក់ */}
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                  កម្រិតថ្នាក់ <span className="text-rose-500">*</span>
-                </label>
-                <select
-                  value={formGrade}
-                  onChange={(e) => setFormGrade(e.target.value)}
-                  className="w-full px-3 py-1.5 text-xs sm:text-sm font-bold bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 shadow-2xs cursor-pointer"
+              <div className="flex items-center space-x-2">
+                <span className="text-[11px] font-bold text-blue-700 bg-white px-2 py-0.5 rounded-lg border border-blue-200">
+                  ឆ្នាំសិក្សា៖ {academicYear}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsAddFormOpen(false)}
+                  className="p-1 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  title="បិទទម្រង់"
                 >
-                  <option value="7">ថ្នាក់ទី ៧ (អនុវិទ្យាល័យ)</option>
-                  <option value="8">ថ្នាក់ទី ៨ (អនុវិទ្យាល័យ)</option>
-                  <option value="9">ថ្នាក់ទី ៩ (អនុវិទ្យាល័យ)</option>
-                  <option value="10">ថ្នាក់ទី ១០ (វិទ្យាល័យ)</option>
-                  <option value="11">ថ្នាក់ទី ១១ (វិទ្យាល័យ)</option>
-                  <option value="12">ថ្នាក់ទី ១២ (វិទ្យាល័យ)</option>
-                  <option value="ទូទៅ">ថ្នាក់ទូទៅ</option>
-                </select>
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-
-              {/* 3. គ្រូទទួលបន្ទុកថ្នាក់ */}
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                  គ្រូទទួលបន្ទុកថ្នាក់ <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formHomeroomTeacher}
-                  onChange={(e) => setFormHomeroomTeacher(e.target.value)}
-                  placeholder="ឈ្មោះគ្រូទទួលបន្ទុក (ឧ. ហ៊ុន រដ្ឋា)"
-                  className="w-full px-3 py-1.5 text-xs sm:text-sm font-bold bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 shadow-2xs"
-                />
-              </div>
-
-              {/* If Grade 7 to 10: Strictly General Class indicator */}
-              {(formGrade === '7' || formGrade === '8' || formGrade === '9' || formGrade === '10' || formGrade === 'ទូទៅ') && (
-                <div className="col-span-1 sm:col-span-3 bg-slate-100/90 p-2.5 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-base">🎓</span>
-                    <span className="text-slate-700 font-bold">
-                      ប្រភេទថ្នាក់៖ <strong className="text-blue-700">ថ្នាក់ទូទៅ (General)</strong> — ថ្នាក់ទី ៧ ដល់ ទី ១០ ជាចំណេះទូទៅ គ្មានបែងចែកវិទ្យាសាស្ត្រ/សង្គមទេ។
-                    </span>
-                  </div>
-                  <span className="px-2.5 py-0.5 rounded-md bg-blue-100 text-blue-800 text-[10px] font-black border border-blue-200">
-                    ទូទៅ
-                  </span>
-                </div>
-              )}
-
-              {/* If Grade 11 or 12: Stream selector (Science vs Social Science) */}
-              {(formGrade === '11' || formGrade === '12') && (
-                <div className="col-span-1 sm:col-span-3 bg-linear-to-r from-emerald-50 via-teal-50 to-amber-50 p-3 rounded-xl border-2 border-teal-300 shadow-2xs space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-black text-slate-800 flex items-center">
-                      <span className="mr-1.5 text-base">🎓</span>
-                      <span>បែងចែកប្រភេទថ្នាក់ (ថ្នាក់ទី {formGrade})៖</span>
-                    </span>
-                    <span className="text-[10px] font-bold text-teal-800 bg-white/90 px-2 py-0.5 rounded-md border border-teal-200">
-                      លោកគ្រូអ្នកគ្រូជាអ្នកកំណត់ផ្ទាល់
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <label className={`flex items-center space-x-2 cursor-pointer px-3.5 py-2 rounded-xl border-2 transition-all shadow-2xs ${
-                      formStream === 'science'
-                        ? 'bg-emerald-600 text-white border-emerald-700 font-black scale-102'
-                        : 'bg-white text-emerald-800 border-emerald-300 hover:bg-emerald-50 font-bold'
-                    }`}>
-                      <input
-                        type="radio"
-                        name="formStream"
-                        value="science"
-                        checked={formStream === 'science'}
-                        onChange={() => setFormStream('science')}
-                        className="hidden"
-                      />
-                      <span className="text-base">🔬</span>
-                      <span className="text-xs">ថ្នាក់វិទ្យាសាស្ត្រ (Science)</span>
-                    </label>
-
-                    <label className={`flex items-center space-x-2 cursor-pointer px-3.5 py-2 rounded-xl border-2 transition-all shadow-2xs ${
-                      formStream === 'social'
-                        ? 'bg-amber-600 text-white border-amber-700 font-black scale-102'
-                        : 'bg-white text-amber-900 border-amber-300 hover:bg-amber-50 font-bold'
-                    }`}>
-                      <input
-                        type="radio"
-                        name="formStream"
-                        value="social"
-                        checked={formStream === 'social'}
-                        onChange={() => setFormStream('social')}
-                        className="hidden"
-                      />
-                      <span className="text-base">📚</span>
-                      <span className="text-xs">ថ្នាក់វិទ្យាសាស្ត្រសង្គម (Social Science)</span>
-                    </label>
-                  </div>
-                </div>
-              )}
             </div>
 
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 border-t border-slate-200/80">
-              {/* Quick letter presets */}
-              <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                <span className="text-[11px] font-bold text-slate-500">បង្កើតរហ័ស៖</span>
+            <form onSubmit={handleAddClassSubmit} className="space-y-3 pt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                {/* 1. ឈ្មោះថ្នាក់ */}
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    ឈ្មោះថ្នាក់ <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formClassName}
+                    onChange={(e) => setFormClassName(e.target.value)}
+                    placeholder="ឧ. 7F, 10M, 12K..."
+                    className="w-full px-3 py-1.5 text-xs sm:text-sm font-bold bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 shadow-2xs"
+                  />
+                </div>
+
+                {/* 2. កម្រិតថ្នាក់ */}
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    កម្រិតថ្នាក់ <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={formGrade}
+                    onChange={(e) => setFormGrade(e.target.value)}
+                    className="w-full px-3 py-1.5 text-xs sm:text-sm font-bold bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 shadow-2xs cursor-pointer"
+                  >
+                    <option value="7">ថ្នាក់ទី ៧ (អនុវិទ្យាល័យ)</option>
+                    <option value="8">ថ្នាក់ទី ៨ (អនុវិទ្យាល័យ)</option>
+                    <option value="9">ថ្នាក់ទី ៩ (អនុវិទ្យាល័យ)</option>
+                    <option value="10">ថ្នាក់ទី ១០ (វិទ្យាល័យ)</option>
+                    <option value="11">ថ្នាក់ទី ១១ (វិទ្យាល័យ)</option>
+                    <option value="12">ថ្នាក់ទី ១២ (វិទ្យាល័យ)</option>
+                    <option value="ទូទៅ">ថ្នាក់ទូទៅ</option>
+                  </select>
+                </div>
+
+                {/* 3. គ្រូទទួលបន្ទុកថ្នាក់ */}
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    គ្រូទទួលបន្ទុកថ្នាក់ <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formHomeroomTeacher}
+                    onChange={(e) => setFormHomeroomTeacher(e.target.value)}
+                    placeholder="ឈ្មោះគ្រូទទួលបន្ទុក (ឧ. ហ៊ុន រដ្ឋា)"
+                    className="w-full px-3 py-1.5 text-xs sm:text-sm font-bold bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 shadow-2xs"
+                  />
+                </div>
+
+                {/* If Grade 7 to 10: Strictly General Class indicator */}
+                {(formGrade === '7' || formGrade === '8' || formGrade === '9' || formGrade === '10' || formGrade === 'ទូទៅ') && (
+                  <div className="col-span-1 sm:col-span-3 bg-white/80 p-2.5 rounded-xl border border-blue-200 flex items-center justify-between text-xs">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-base">🎓</span>
+                      <span className="text-slate-700 font-bold">
+                        ប្រភេទថ្នាក់៖ <strong className="text-blue-700">ថ្នាក់ទូទៅ (General)</strong> — ថ្នាក់ទី ៧ ដល់ ទី ១០ ជាចំណេះទូទៅ គ្មានបែងចែកវិទ្យាសាស្ត្រ/សង្គមទេ។
+                      </span>
+                    </div>
+                    <span className="px-2.5 py-0.5 rounded-md bg-blue-100 text-blue-800 text-[10px] font-black border border-blue-200">
+                      ទូទៅ
+                    </span>
+                  </div>
+                )}
+
+                {/* If Grade 11 or 12: Stream selector (Science vs Social Science) */}
+                {(formGrade === '11' || formGrade === '12') && (
+                  <div className="col-span-1 sm:col-span-3 bg-linear-to-r from-emerald-50 via-teal-50 to-amber-50 p-2.5 sm:p-3 rounded-xl border-2 border-teal-300 shadow-2xs space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black text-slate-800 flex items-center">
+                        <span className="mr-1.5 text-base">🎓</span>
+                        <span>បែងចែកប្រភេទថ្នាក់ (ថ្នាក់ទី {formGrade})៖</span>
+                      </span>
+                      <span className="text-[10px] font-bold text-teal-800 bg-white/90 px-2 py-0.5 rounded-md border border-teal-200">
+                        លោកគ្រូអ្នកគ្រូជាអ្នកកំណត់ផ្ទាល់
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <label className={`flex items-center space-x-2 cursor-pointer px-3 py-1.5 rounded-xl border-2 transition-all shadow-2xs ${
+                        formStream === 'science'
+                          ? 'bg-emerald-600 text-white border-emerald-700 font-black'
+                          : 'bg-white text-emerald-800 border-emerald-300 hover:bg-emerald-50 font-bold'
+                      }`}>
+                        <input
+                          type="radio"
+                          name="formStream"
+                          value="science"
+                          checked={formStream === 'science'}
+                          onChange={() => setFormStream('science')}
+                          className="hidden"
+                        />
+                        <span className="text-sm">🔬</span>
+                        <span className="text-xs">ថ្នាក់វិទ្យាសាស្ត្រ (Science)</span>
+                      </label>
+
+                      <label className={`flex items-center space-x-2 cursor-pointer px-3 py-1.5 rounded-xl border-2 transition-all shadow-2xs ${
+                        formStream === 'social'
+                          ? 'bg-amber-600 text-white border-amber-700 font-black'
+                          : 'bg-white text-amber-900 border-amber-300 hover:bg-amber-50 font-bold'
+                      }`}>
+                        <input
+                          type="radio"
+                          name="formStream"
+                          value="social"
+                          checked={formStream === 'social'}
+                          onChange={() => setFormStream('social')}
+                          className="hidden"
+                        />
+                        <span className="text-sm">📚</span>
+                        <span className="text-xs">ថ្នាក់វិទ្យាសាស្ត្រសង្គម (Social Science)</span>
+                      </label>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-end space-x-2 pt-2 border-t border-blue-200/80">
+                <button
+                  type="button"
+                  onClick={() => setIsAddFormOpen(false)}
+                  className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold cursor-pointer transition-colors"
+                >
+                  បោះបង់
+                </button>
+                <button
+                  type="submit"
+                  className="inline-flex items-center px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs transition-colors cursor-pointer"
+                >
+                  <Plus className="w-4 h-4 mr-1.5" />
+                  <span>រក្សាទុកថ្នាក់ថ្មី</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* COLLAPSIBLE 2: Quick Presets & Bulk Actions (Opens when requested) */}
+        {isQuickMenuOpen && (
+          <div className="bg-amber-50/70 p-3.5 sm:p-4 rounded-2xl border-2 border-amber-200 shadow-xs space-y-3 animate-fade-in">
+            <div className="flex items-center justify-between border-b border-amber-200 pb-2">
+              <div className="flex items-center space-x-2">
+                <div className="w-7 h-7 rounded-lg bg-amber-500 text-white flex items-center justify-center shadow-xs">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs sm:text-sm font-bold text-slate-900">
+                    ជម្រើសរហ័ស & ឧបករណ៍ជំនួយ (Quick Presets)
+                  </h4>
+                  <p className="text-[11px] text-slate-500">
+                    បង្កើតថ្នាក់តាមអក្សរ បង្កើតតាមកម្រិត ឬស្តារថ្នាក់ស្តង់ដារឡើងវិញ
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsQuickMenuOpen(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 cursor-pointer"
+                title="បិទ"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Quick single-letter generator */}
+            <div className="bg-white p-2.5 rounded-xl border border-amber-200/80 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <span className="text-[11px] font-bold text-slate-600">បង្កើតមួយថ្នាក់រហ័ស៖</span>
                 <select
                   value={quickGrade}
                   onChange={(e) => setQuickGrade(e.target.value)}
-                  className="bg-white border border-slate-300 rounded-lg px-2 py-0.5 text-xs font-black text-slate-800 cursor-pointer shadow-2xs"
+                  className="bg-slate-50 border border-slate-300 rounded-lg px-2 py-1 text-xs font-black text-slate-800 cursor-pointer"
                 >
                   {['7', '8', '9', '10', '11', '12'].map((g) => (
                     <option key={g} value={g}>ទី {g}</option>
@@ -487,50 +607,37 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
                 <select
                   value={quickLetter}
                   onChange={(e) => setQuickLetter(e.target.value)}
-                  className="bg-white border border-slate-300 rounded-lg px-2 py-0.5 text-xs font-black text-slate-800 cursor-pointer shadow-2xs"
+                  className="bg-slate-50 border border-slate-300 rounded-lg px-2 py-1 text-xs font-black text-slate-800 cursor-pointer"
                 >
                   {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P'].map((l) => (
                     <option key={l} value={l}>{l}</option>
                   ))}
                 </select>
-                {/* If Grade 11 or 12: Stream selector */}
                 {(quickGrade === '11' || quickGrade === '12') && (
                   <select
                     value={formStream}
                     onChange={(e) => setFormStream(e.target.value as ClassStream)}
-                    className="bg-white border border-teal-300 rounded-lg px-2 py-0.5 text-xs font-bold text-teal-900 cursor-pointer shadow-2xs"
-                    title="ជ្រើសរើសផ្នែកសម្រាប់ថ្នាក់ទី ១១ ឬ ១២ (វិទ្យាសាស្ត្រ ឬ សង្គម)"
+                    className="bg-white border border-teal-300 rounded-lg px-2 py-1 text-xs font-bold text-teal-900 cursor-pointer"
                   >
                     <option value="science">🔬 វិទ្យាសាស្ត្រ</option>
                     <option value="social">📚 វិទ្យាសាស្ត្រសង្គម</option>
                   </select>
                 )}
-
                 <button
                   type="button"
                   onClick={handleQuickAddClass}
-                  className="inline-flex items-center px-2.5 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer shadow-2xs"
+                  className="inline-flex items-center px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer shadow-2xs"
                 >
-                  <Sparkles className="w-3 h-3 mr-1" />
+                  <Plus className="w-3.5 h-3.5 mr-1" />
                   + ថ្នាក់ទី {quickGrade}{quickLetter}
                 </button>
               </div>
-
-              <button
-                type="submit"
-                className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs transition-colors cursor-pointer self-end sm:self-auto"
-              >
-                <Plus className="w-4 h-4 mr-1.5" />
-                <span>រក្សាទុកថ្នាក់ថ្មី</span>
-              </button>
             </div>
-          </form>
 
-          {/* Quick Grade Batch Generators (ថ្នាក់ទី ៧, ៨, ៩, ១០, ១១, ១២) */}
-          <div className="pt-2 border-t border-slate-200/80 flex flex-col gap-2">
-            <div className="flex flex-wrap items-center justify-between gap-2">
+            {/* Quick Grade Batch Generators */}
+            <div className="space-y-1.5">
+              <span className="text-[11px] font-bold text-slate-600 block">បង្កើតម្តងមួយកម្រិតទាំងមូល (Bulk Add)៖</span>
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-[11px] font-bold text-slate-500 mr-1">បន្ថែមតាមកម្រិត៖</span>
                 {[
                   { grade: '7', label: 'ថ្នាក់ទី ៧ (7A-7E)' },
                   { grade: '8', label: 'ថ្នាក់ទី ៨ (8A-8E)' },
@@ -543,69 +650,46 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
                     key={g.grade}
                     type="button"
                     onClick={() => handleAddGradeClasses(g.grade)}
-                    className="px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-md text-[11px] font-bold cursor-pointer transition-colors"
+                    className="px-2.5 py-1 bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-[11px] font-bold cursor-pointer transition-colors shadow-2xs"
                   >
                     + {g.label}
                   </button>
                 ))}
               </div>
-
-              <div className="flex items-center space-x-2">
-                <button
-                  type="button"
-                  onClick={handleRestoreStandardClasses}
-                  className="inline-flex items-center px-2.5 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-bold transition-colors cursor-pointer shadow-2xs"
-                  title="បង្កើត ឬស្តារថ្នាក់ស្តង់ដារទាំង ៤៩ ថ្នាក់ឡើងវិញ"
-                >
-                  <RotateCcw className="w-3 h-3 mr-1" />
-                  ស្តារ ៤៩ ថ្នាក់ស្តង់ដារ
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleDeleteAllClasses}
-                  className="inline-flex items-center px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold transition-colors cursor-pointer shadow-2xs"
-                  title="លុបថ្នាក់ទាំងអស់"
-                >
-                  <Trash2 className="w-3 h-3 mr-1 text-rose-600" />
-                  លុបថ្នាក់ទាំងអស់ ({classes.length})
-                </button>
-              </div>
             </div>
 
-            <div className="text-[11px] text-teal-900 bg-teal-50/90 border border-teal-200 px-3 py-1.5 rounded-xl flex items-center gap-2">
-              <span className="text-sm">💡</span>
-              <span><strong>កំណត់សម្គាល់៖</strong> ថ្នាក់ទី ៧ ដល់ ទី ១០ ជា <strong>«ថ្នាក់ទូទៅ»</strong>។ ចំពោះថ្នាក់ទី ១១ និង ១២ លោកគ្រូអ្នកគ្រូអាចជ្រើសរើស <strong>[🔬 វិទ្យាសាស្ត្រ]</strong> ឬ <strong>[📚 វិទ្យាសាស្ត្រសង្គម]</strong> ក្នុងទម្រង់បង្កើតខាងលើ ឬចុចលើស្លាកសញ្ញាលើថ្នាក់នីមួយៗក្នុងបញ្ជីខាងក្រោម ដើម្បីប្តូរភ្លាមៗ (1-Click Toggle)។</span>
+            {/* Bottom bulk actions: Restore Standard Classes & Clear all */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-amber-200/80">
+              <button
+                type="button"
+                onClick={handleRestoreStandardClasses}
+                className="inline-flex items-center px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-2xs"
+                title="បង្កើត ឬស្តារថ្នាក់ស្តង់ដារទាំង ៤៩ ថ្នាក់ឡើងវិញ"
+              >
+                <RotateCcw className="w-3.5 h-3.5 mr-1.5 text-blue-600" />
+                ស្តារ ៤៩ ថ្នាក់ស្តង់ដារ
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDeleteAllClasses}
+                className="inline-flex items-center px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-2xs"
+                title="លុបថ្នាក់ទាំងអស់"
+              >
+                <Trash2 className="w-3.5 h-3.5 mr-1.5 text-rose-600" />
+                លុបថ្នាក់ទាំងអស់ ({classes.length})
+              </button>
             </div>
           </div>
-        </div>
+        )}
 
-        {/* MIDDLE SECTION: Search & Grade Tabs */}
-        <div className="space-y-2.5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            {/* Search Input */}
-            <div className="relative flex-1">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="ស្វែងរកតាមឈ្មោះថ្នាក់ ឬឈ្មោះគ្រូទទួលបន្ទុក..."
-                className="w-full pl-9 pr-3 py-1.5 text-xs sm:text-sm font-bold bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 shadow-2xs"
-              />
-            </div>
-
-            <span className="text-xs font-bold text-slate-500 whitespace-nowrap self-end sm:self-auto">
-              បង្ហាញ៖ <strong className="text-blue-700">{filteredClasses.length}</strong> / {classes.length} ថ្នាក់
-            </span>
-          </div>
-
-          {/* Grade Filter Chips */}
+        {/* GRADE FILTER TABS */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1">
           <div className="flex flex-wrap items-center gap-1.5 text-xs font-bold">
             <button
               type="button"
               onClick={() => setSelectedGradeFilter('ALL')}
-              className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
+              className={`px-3 py-1 rounded-xl transition-all cursor-pointer ${
                 selectedGradeFilter === 'ALL'
                   ? 'bg-blue-600 text-white font-black shadow-2xs'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -620,7 +704,7 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
                   key={g}
                   type="button"
                   onClick={() => setSelectedGradeFilter(g)}
-                  className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
+                  className={`px-2.5 py-1 rounded-xl transition-all cursor-pointer ${
                     selectedGradeFilter === g
                       ? 'bg-blue-600 text-white font-black shadow-2xs'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -631,16 +715,46 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
               );
             })}
           </div>
+
+          <span className="text-[11px] font-bold text-slate-500 whitespace-nowrap self-end sm:self-auto">
+            បង្ហាញ៖ <strong className="text-blue-700">{filteredClasses.length}</strong> / {classes.length} ថ្នាក់
+          </span>
         </div>
 
-        {/* BOTTOM SECTION: Class List with Homeroom Teacher, Edit and Delete options */}
-        <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-2xs">
-          <div className="max-h-72 sm:max-h-80 overflow-y-auto divide-y divide-slate-100">
+        {/* MAIN CLASS LIST (ROOMY & PROMINENT) */}
+        <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-xs">
+          <div className="max-h-[50vh] sm:max-h-[55vh] overflow-y-auto divide-y divide-slate-100">
             {filteredClasses.length === 0 ? (
-              <div className="p-8 text-center text-slate-400 space-y-1">
-                <BookOpen className="w-8 h-8 mx-auto text-slate-300" />
-                <p className="text-xs font-bold text-slate-600">រកមិនឃើញថ្នាក់រៀនទេ</p>
-                <p className="text-[11px]">សូមបំពេញទម្រង់បន្ថែមថ្នាក់ថ្មីខាងលើ</p>
+              <div className="p-8 text-center text-slate-400 space-y-2">
+                <BookOpen className="w-10 h-10 mx-auto text-slate-300" />
+                <p className="text-sm font-bold text-slate-700">មិនមានថ្នាក់រៀនទេ</p>
+                <p className="text-xs text-slate-500">
+                  {searchQuery ? 'រកមិនឃើញថ្នាក់ដែលត្រូវនឹងពាក្យស្វែងរកទេ' : 'មិនទាន់មានថ្នាក់រៀនក្នុងបញ្ជីនៅឡើយទេ'}
+                </p>
+                <div className="pt-2 flex items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsAddFormOpen(true);
+                      setIsQuickMenuOpen(false);
+                    }}
+                    className="inline-flex items-center px-3.5 py-1.5 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 cursor-pointer shadow-2xs"
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    + បន្ថែមថ្នាក់ថ្មី
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsQuickMenuOpen(true);
+                      setIsAddFormOpen(false);
+                    }}
+                    className="inline-flex items-center px-3.5 py-1.5 bg-amber-50 text-amber-900 border border-amber-300 rounded-xl text-xs font-bold hover:bg-amber-100 cursor-pointer shadow-2xs"
+                  >
+                    <Sparkles className="w-4 h-4 mr-1 text-amber-600" />
+                    ជម្រើសរហ័ស
+                  </button>
+                </div>
               </div>
             ) : (
               filteredClasses.map((c) => {
