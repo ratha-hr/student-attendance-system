@@ -262,9 +262,14 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
     const saved = localStorage.getItem('app_model_school_start_year');
     if (saved) {
       const p = parseInt(saved, 10);
+      // Migrate legacy years (< 2026) to 2026
+      if (p < 2026) {
+        localStorage.setItem('app_model_school_start_year', '2026');
+        return 2026;
+      }
       if (!isNaN(p) && p >= 1990 && p <= 2100) return p;
     }
-    return 2023;
+    return 2026;
   });
 
   const handleStartYearChange = (newYear: number) => {
@@ -279,8 +284,20 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
     return getModelSchoolBenchmarks(modelSchoolStartYear);
   }, [modelSchoolStartYear]);
 
-  // Model Standard School Benchmark Year Selection ('year1' to 'year6')
-  const [benchmarkYear, setBenchmarkYear] = useState<BenchmarkYearKey>('year4');
+  // Model Standard School Benchmark Year Selection ('year1' to 'year6', defaults to 'year1' 2026)
+  const [benchmarkYear, setBenchmarkYear] = useState<BenchmarkYearKey>(() => {
+    const saved = localStorage.getItem('app_model_school_benchmark_year') as BenchmarkYearKey | null;
+    if (saved && MODEL_SCHOOL_YEAR_KEYS.includes(saved)) {
+      return saved;
+    }
+    return 'year1';
+  });
+
+  const handleSelectBenchmarkYear = (yKey: BenchmarkYearKey) => {
+    setBenchmarkYear(yKey);
+    localStorage.setItem('app_model_school_benchmark_year', yKey);
+  };
+
   const [showBenchmarkMatrix, setShowBenchmarkMatrix] = useState<boolean>(true);
 
   // Paper Print Orientation State (Default to 'portrait' as requested)
@@ -288,6 +305,7 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
 
   // Apply Model Standard School (សាលារៀនគំរូ) Benchmark to Plan
   const handleApplyModelSchoolBenchmark = (yearKey: BenchmarkYearKey) => {
+    handleSelectBenchmarkYear(yearKey);
     const benchmark = benchmarks[yearKey];
     if (!benchmark) return;
 
@@ -1144,7 +1162,7 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
                   <button
                     key={yKey}
                     type="button"
-                    onClick={() => setBenchmarkYear(yKey)}
+                    onClick={() => handleSelectBenchmarkYear(yKey)}
                     className={`px-2.5 py-1.5 rounded-lg text-xs transition-all cursor-pointer flex items-center gap-1.5 ${
                       isSelected
                         ? 'bg-blue-600 text-white shadow-xs font-black'
@@ -1255,7 +1273,7 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
                           className={`border-r border-slate-300 px-2 py-1.5 font-bold text-[#8B2500] cursor-pointer transition-colors ${
                             isSelected ? 'bg-amber-50/90 font-black' : 'hover:bg-slate-100'
                           }`}
-                          onClick={() => setBenchmarkYear(yKey)}
+                          onClick={() => handleSelectBenchmarkYear(yKey)}
                         >
                           {b.yearName} ({b.calendarYear})
                         </th>
@@ -1272,7 +1290,7 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
                           className={`border-r border-slate-300 px-2 py-1 text-[11px] text-[#8B2500] font-normal cursor-pointer ${
                             isSelected ? 'bg-amber-50/90 font-bold' : ''
                           }`}
-                          onClick={() => setBenchmarkYear(yKey)}
+                          onClick={() => handleSelectBenchmarkYear(yKey)}
                         >
                           <div>ក្រុមគោលដៅ</div>
                           <div className="font-bold">ABC( {b.targetABC}% )</div>
@@ -1301,7 +1319,7 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
                             className={`border-r border-slate-300 px-2 py-1.5 font-mono text-xs cursor-pointer ${
                               isSelected ? 'bg-amber-50/70 font-black' : ''
                             } ${isRed ? 'text-red-600 font-bold' : 'text-slate-800 font-medium'}`}
-                            onClick={() => setBenchmarkYear(yKey)}
+                            onClick={() => handleSelectBenchmarkYear(yKey)}
                           >
                             {val}%
                           </td>

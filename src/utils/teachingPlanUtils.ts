@@ -50,8 +50,8 @@ export type BenchmarkYearKey = 'year1' | 'year2' | 'year3' | 'year4' | 'year5' |
 
 export interface ModelSchoolBenchmark {
   yearName: string; // ឧ. ឆ្នាំទី១, ឆ្នាំទី២, ឆ្នាំទី៣, ឆ្នាំទី៤, ឆ្នាំទី៥, ឆ្នាំទី៦
-  calendarYear: string; // 2023, 2024, 2025, 2026, 2027, 2028
-  displayLabel: string; // ឆ្នាំទី១ (2023)
+  calendarYear: string; // 2026, 2027, 2028, 2029, 2030, 2031
+  displayLabel: string; // ឆ្នាំទី១ (2026)
   yearKey: BenchmarkYearKey;
   targetABC: number; // 17%, 24%, 40%, 52%, 66%, 80%
   title: string;
@@ -112,9 +112,9 @@ export const MODEL_SCHOOL_TARGET_DATA: Record<
  * Dynamically generate model school benchmarks given any Year 1 start year
  */
 export function getModelSchoolBenchmarks(
-  startYear: number = 2023
+  startYear: number = 2026
 ): Record<BenchmarkYearKey, ModelSchoolBenchmark> {
-  const safeStart = !isNaN(startYear) && startYear >= 1900 ? startYear : 2023;
+  const safeStart = !isNaN(startYear) && startYear >= 1900 ? startYear : 2026;
   const result = {} as Record<BenchmarkYearKey, ModelSchoolBenchmark>;
 
   MODEL_SCHOOL_YEAR_KEYS.forEach((yKey, index) => {
@@ -137,7 +137,7 @@ export function getModelSchoolBenchmarks(
 }
 
 export const MODEL_SCHOOL_BENCHMARKS: Record<BenchmarkYearKey, ModelSchoolBenchmark> =
-  getModelSchoolBenchmarks(2023);
+  getModelSchoolBenchmarks(2026);
 
 /**
  * Auto-balance an array of percentage numbers so their sum is exactly 100
@@ -163,7 +163,7 @@ export function createDefaultTeachingPlan(
 ): TeachingPlan {
   const className = selectedClass?.name || '៧ BS';
   const classId = selectedClass?.id || 'class-default';
-  const academicYear = selectedClass?.academicYear || settings?.academicYear || '២០២៤-២០២៥';
+  const academicYear = selectedClass?.academicYear || settings?.academicYear || '២០២៦-២០២៧';
   const subject = settings?.specialtySubject || 'គណិតវិទ្យា';
 
   // Balanced default rows: all columns sum to exactly 100%
