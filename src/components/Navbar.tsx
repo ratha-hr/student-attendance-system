@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Menu, School, User, Plus, Settings, Clock, Sparkles, Undo2, Redo2, RotateCw } from 'lucide-react';
+import { Menu, School, Plus, Clock, Sparkles, Undo2, Redo2, RotateCw } from 'lucide-react';
 import type { ClassRoom, TeacherSettings } from '../types';
 import { useUndoRedo } from '../context/UndoRedoContext';
 import {
@@ -223,29 +223,9 @@ export const Navbar: React.FC<NavbarProps> = ({
               window.location.href = window.location.pathname + '?v=' + Date.now();
             }}
             className="p-2 bg-slate-100 hover:bg-blue-50 text-blue-600 hover:text-blue-700 rounded-xl border border-slate-200 transition-all cursor-pointer shadow-2xs flex items-center justify-center hover:rotate-180 active:scale-95"
-            title="ចុចដើម្បី Refresh & Update កំណែថ្មីបំផុត (v6.27)"
+            title="ចុចដើម្បី Refresh & Update កំណែថ្មីបំផុត (v6.28)"
           >
             <RotateCw className="w-4 h-4 text-blue-600" />
-          </button>
-
-          {/* Settings button & Teacher Profile */}
-          <button
-            onClick={onOpenSettings}
-            className="flex items-center space-x-2 pl-2 border-l border-slate-200 cursor-pointer hover:opacity-80 transition-opacity"
-            title="ការកំណត់ & បម្រុងទុកទិន្នន័យ"
-          >
-            <div className="w-8 h-8 rounded-full bg-linear-to-tr from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
-              {settings?.teacherName ? settings.teacherName.charAt(0) : <User className="w-4 h-4" />}
-            </div>
-            <div className="hidden lg:block text-left">
-              <p className="text-xs font-bold text-slate-800 leading-tight">
-                {settings?.teacherName || 'ហ៊ុន រដ្ឋា'}
-              </p>
-              <div className="flex items-center text-[10px] text-slate-400 space-x-1">
-                <span>គ្រូបង្រៀន</span>
-                <Settings className="w-2.5 h-2.5 text-slate-400" />
-              </div>
-            </div>
           </button>
         </div>
       </div>

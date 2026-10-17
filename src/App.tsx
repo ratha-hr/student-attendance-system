@@ -175,6 +175,7 @@ export function App() {
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        settings={settings}
       />
 
       {/* Main Content Area */}

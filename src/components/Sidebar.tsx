@@ -12,8 +12,9 @@ import {
   MailWarning,
   Settings,
   Target,
+  User,
 } from 'lucide-react';
-import type { ClassRoom } from '../types';
+import type { ClassRoom, TeacherSettings } from '../types';
 
 export type NavTab =
   | 'dashboard'
@@ -37,6 +38,7 @@ interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
   onOpenSettings?: () => void;
+  settings?: TeacherSettings | null;
 }
 
 interface MenuItem {
@@ -57,6 +59,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isOpen,
   onClose,
   onOpenSettings,
+  settings,
 }) => {
   const menuSections: MenuSection[] = [
     {
@@ -204,18 +207,29 @@ export const Sidebar: React.FC<SidebarProps> = ({
           ))}
         </nav>
 
-        {/* Settings & Backup Footer */}
+        {/* Teacher Profile & Settings Card (Moved from Navbar to bottom-left Sidebar as requested) */}
         {onOpenSettings && (
-          <div className="p-3 border-t border-slate-800/80 bg-slate-950/30">
+          <div className="p-3 border-t border-slate-800/80 bg-slate-950/40">
             <button
               onClick={() => {
                 onOpenSettings();
                 onClose();
               }}
-              className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs text-slate-400 hover:text-white hover:bg-slate-800/70 transition-colors cursor-pointer font-medium"
+              className="w-full flex items-center space-x-3 p-2 rounded-2xl bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 hover:border-blue-500/50 text-slate-200 transition-all cursor-pointer group shadow-xs text-left"
+              title="ការកំណត់ & បម្រុងទុកទិន្នន័យ"
             >
-              <Settings className="w-4 h-4 text-slate-400" />
-              <span>ការកំណត់ & បម្រុងទុក</span>
+              <div className="w-9 h-9 rounded-full bg-linear-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+                {settings?.teacherName ? settings.teacherName.charAt(0) : <User className="w-4 h-4" />}
+              </div>
+              <div className="overflow-hidden min-w-0 flex-1">
+                <p className="text-xs font-bold text-white truncate leading-tight group-hover:text-blue-300 transition-colors">
+                  {settings?.teacherName || 'ហ៊ុន រដ្ឋា'}
+                </p>
+                <div className="flex items-center text-[10px] text-slate-400 space-x-1 mt-0.5">
+                  <span className="truncate">ការកំណត់ & បម្រុងទុក</span>
+                </div>
+              </div>
+              <Settings className="w-4 h-4 text-slate-400 group-hover:text-blue-400 group-hover:rotate-45 transition-all shrink-0" />
             </button>
           </div>
         )}
