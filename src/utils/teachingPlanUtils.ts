@@ -375,8 +375,9 @@ export function exportTeachingPlanToExcel(plan: TeachingPlan) {
   // Helper to append a table with exact 3-tier headers and cell merges
   const appendTable = (title: string, months: MonthColDef[]) => {
     const startRow = aoa.length;
-    const totalCols = 1 + 2 + months.length * 4 + 1;
-    const lastColIdx = totalCols - 1;
+    // Standard 16 columns across all tables: Grade(1) + Baseline(2) + 3 Months(12) + Target(1) = 16
+    const totalCols = 16;
+    const lastColIdx = 15;
 
     // Row 0 of table: Banner
     const bannerRow = new Array(totalCols).fill('');
@@ -443,26 +444,34 @@ export function exportTeachingPlanToExcel(plan: TeachingPlan) {
 
     // Data rows
     plan.rows.forEach((r) => {
-      const dataRow = [r.grade, r.baselineCount, `${r.baselinePct}%`];
-      months.forEach((m) => {
+      const dataRow = new Array(totalCols).fill('');
+      dataRow[0] = r.grade;
+      dataRow[1] = r.baselineCount;
+      dataRow[2] = `${r.baselinePct}%`;
+      months.forEach((m, mi) => {
         const d = r.monthly[m.key] || { planCount: 0, planPct: 0, actualCount: 0, actualPct: 0 };
-        dataRow.push(d.planCount, `${d.planPct}%`, d.actualCount, `${d.actualPct}%`);
+        dataRow[3 + mi * 4] = d.planCount;
+        dataRow[3 + mi * 4 + 1] = `${d.planPct}%`;
+        dataRow[3 + mi * 4 + 2] = d.actualCount;
+        dataRow[3 + mi * 4 + 3] = `${d.actualPct}%`;
       });
-      dataRow.push(`${r.yearEndTargetPct}%`);
+      dataRow[lastColIdx] = `${r.yearEndTargetPct}%`;
       aoa.push(dataRow);
     });
 
     // Sum row
-    const sumRow: any[] = ['សរុប'];
+    const sumRow = new Array(totalCols).fill('');
+    sumRow[0] = 'សរុប';
     let baseCountSum = 0;
     let basePctSum = 0;
     plan.rows.forEach((r) => {
       baseCountSum += r.baselineCount;
       basePctSum += r.baselinePct;
     });
-    sumRow.push(baseCountSum, `${basePctSum}%`);
+    sumRow[1] = baseCountSum;
+    sumRow[2] = `${basePctSum}%`;
 
-    months.forEach((m) => {
+    months.forEach((m, mi) => {
       let pcSum = 0;
       let ppSum = 0;
       let acSum = 0;
@@ -474,14 +483,17 @@ export function exportTeachingPlanToExcel(plan: TeachingPlan) {
         acSum += d.actualCount;
         apSum += d.actualPct;
       });
-      sumRow.push(pcSum, `${ppSum}%`, acSum, `${apSum}%`);
+      sumRow[3 + mi * 4] = pcSum;
+      sumRow[3 + mi * 4 + 1] = `${ppSum}%`;
+      sumRow[3 + mi * 4 + 2] = acSum;
+      sumRow[3 + mi * 4 + 3] = `${apSum}%`;
     });
 
     let targetPctSum = 0;
     plan.rows.forEach((r) => {
       targetPctSum += r.yearEndTargetPct;
     });
-    sumRow.push(`${targetPctSum}%`);
+    sumRow[lastColIdx] = `${targetPctSum}%`;
     aoa.push(sumRow);
     aoa.push([]);
   };
@@ -504,24 +516,24 @@ export function exportTeachingPlanToExcel(plan: TeachingPlan) {
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   ws['!merges'] = merges;
 
-  // Set column widths
+  // Set equal and balanced column widths across all 16 columns
   ws['!cols'] = [
-    { wch: 10 },
-    { wch: 10 },
-    { wch: 8 },
-    { wch: 10 },
-    { wch: 8 },
-    { wch: 12 },
-    { wch: 8 },
-    { wch: 10 },
-    { wch: 8 },
-    { wch: 12 },
-    { wch: 8 },
-    { wch: 10 },
-    { wch: 8 },
-    { wch: 12 },
-    { wch: 8 },
-    { wch: 16 },
+    { wch: 8 },  // Grade
+    { wch: 8 },  // Baseline Count
+    { wch: 7 },  // Baseline %
+    { wch: 8 },  // M1 Plan Count
+    { wch: 7 },  // M1 Plan %
+    { wch: 8 },  // M1 Actual Count
+    { wch: 7 },  // M1 Actual %
+    { wch: 8 },  // M2 Plan Count
+    { wch: 7 },  // M2 Plan %
+    { wch: 8 },  // M2 Actual Count
+    { wch: 7 },  // M2 Actual %
+    { wch: 8 },  // M3 Plan Count
+    { wch: 7 },  // M3 Plan %
+    { wch: 8 },  // M3 Actual Count
+    { wch: 7 },  // M3 Actual %
+    { wch: 14 }, // Target %
   ];
 
   XLSX.utils.book_append_sheet(wb, ws, 'ផែនការបង្រៀន');

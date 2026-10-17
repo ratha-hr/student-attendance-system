@@ -654,10 +654,32 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
 
     const yearTargetTotal = plan.rows.reduce((sum, r) => sum + (r.yearEndTargetPct || 0), 0);
     const totalCols = 1 + 2 + months.length * 4 + 1;
+    const is3Months = months.length === 3;
 
     return (
-      <div className="overflow-x-auto mb-4 print:mb-3 print:overflow-visible break-inside-avoid">
-        <table className="w-full text-center border-collapse border border-black text-xs font-sans print:text-[8px]">
+      <div className="overflow-x-auto mb-3.5 print:mb-2.5 print:overflow-visible break-inside-avoid">
+        <table className="w-full table-fixed text-center border-collapse border border-black text-xs font-sans print:text-[8.5px]">
+          <colgroup>
+            {/* Grade (និទ្ទេស): 6.0% */}
+            <col style={{ width: '6.0%' }} />
+            {/* Baseline (ទិន្នន័យមូលដ្ឋាន): ចំនួន 4.5%, % 4.5% */}
+            <col style={{ width: '4.5%' }} />
+            <col style={{ width: '4.5%' }} />
+            {/* Months (Total 78.0%) */}
+            {is3Months ? (
+              // 3 months: 12 sub-columns of exactly 6.5% each (total 78.0%)
+              Array.from({ length: 12 }).map((_, i) => (
+                <col key={i} style={{ width: '6.5%' }} />
+              ))
+            ) : (
+              // 2 months: 8 sub-columns of exactly 9.75% each (total 78.0%)
+              Array.from({ length: 8 }).map((_, i) => (
+                <col key={i} style={{ width: '9.75%' }} />
+              ))
+            )}
+            {/* Year-End Target (ផែនការ % ចុងឆ្នាំសិក្សា): 7.0% */}
+            <col style={{ width: '7.0%' }} />
+          </colgroup>
           <thead>
             {/* Banner Row 0 */}
             <tr>
@@ -671,19 +693,19 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
 
             {/* Header Tier 1 */}
             <tr className="bg-white text-black font-bold text-xs print:text-[8px]">
-              <th rowSpan={3} className="border border-black px-1 py-1 w-10 sm:w-12 align-middle text-center print:px-0.5 print:w-auto">
+              <th rowSpan={3} className="border border-black px-1 py-1 align-middle text-center print:px-0.5 print:py-0.5">
                 និទ្ទេស
               </th>
-              <th colSpan={2} rowSpan={2} className="border border-black px-1 py-0.5 align-middle text-center leading-tight print:px-0.5">
+              <th colSpan={2} rowSpan={2} className="border border-black px-1 py-0.5 align-middle text-center leading-tight print:px-0.5 print:py-0.5">
                 <div>ទិន្នន័យ</div>
                 <div>មូលដ្ឋាន</div>
               </th>
               {months.map((m) => (
-                <th key={m.key} colSpan={4} className="border border-black px-1 py-0.5 align-middle text-center print:px-0.5">
+                <th key={m.key} colSpan={4} className="border border-black px-1 py-0.5 align-middle text-center print:px-0.5 print:py-0.5">
                   {m.monthName}
                 </th>
               ))}
-              <th rowSpan={3} className="border border-black px-1 py-0.5 w-16 sm:w-20 align-middle text-center leading-tight print:px-0.5 print:w-auto">
+              <th rowSpan={3} className="border border-black px-1 py-0.5 align-middle text-center leading-tight print:px-0.5 print:py-0.5">
                 <div>ផែនការ %</div>
                 <div>ចុងឆ្នាំសិក្សា</div>
               </th>
@@ -693,10 +715,10 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
             <tr className="bg-white text-black font-bold text-xs print:text-[8px]">
               {months.map((m) => (
                 <React.Fragment key={m.key}>
-                  <th colSpan={2} className="border border-black px-1 py-0.5 text-center print:px-0.5">
+                  <th colSpan={2} className="border border-black px-1 py-0.5 text-center print:px-0.5 print:py-0.5">
                     ផែនការ
                   </th>
-                  <th colSpan={2} className="border border-black px-1 py-0.5 text-center print:px-0.5">
+                  <th colSpan={2} className="border border-black px-1 py-0.5 text-center print:px-0.5 print:py-0.5">
                     {m.actualName}
                   </th>
                 </React.Fragment>
@@ -705,14 +727,14 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
 
             {/* Header Tier 3 (Subheaders: ចំនួន vs %) */}
             <tr className="bg-white font-bold text-[11px] print:text-[8px]">
-              <th className="border border-black px-0.5 py-0.5 min-w-[24px] print:min-w-0 text-center text-black">ចំនួន</th>
-              <th className="border border-black px-0.5 py-0.5 min-w-[20px] print:min-w-0 text-center text-red-600">%</th>
+              <th className="border border-black px-0.5 py-0.5 text-center text-black print:py-0.5">ចំនួន</th>
+              <th className="border border-black px-0.5 py-0.5 text-center text-red-600 print:py-0.5">%</th>
               {months.map((m) => (
                 <React.Fragment key={m.key}>
-                  <th className="border border-black px-0.5 py-0.5 min-w-[24px] print:min-w-0 text-center text-black">ចំនួន</th>
-                  <th className="border border-black px-0.5 py-0.5 min-w-[20px] print:min-w-0 text-center text-red-600">%</th>
-                  <th className="border border-black px-0.5 py-0.5 min-w-[24px] print:min-w-0 text-center text-black">ចំនួន</th>
-                  <th className="border border-black px-0.5 py-0.5 min-w-[20px] print:min-w-0 text-center text-red-600">%</th>
+                  <th className="border border-black px-0.5 py-0.5 text-center text-black print:py-0.5">ចំនួន</th>
+                  <th className="border border-black px-0.5 py-0.5 text-center text-red-600 print:py-0.5">%</th>
+                  <th className="border border-black px-0.5 py-0.5 text-center text-black print:py-0.5">ចំនួន</th>
+                  <th className="border border-black px-0.5 py-0.5 text-center text-red-600 print:py-0.5">%</th>
                 </React.Fragment>
               ))}
             </tr>
@@ -897,23 +919,23 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
           table {
             width: 100% !important;
             max-width: 100% !important;
-            table-layout: auto !important;
+            table-layout: fixed !important;
             border-collapse: collapse !important;
             page-break-inside: avoid !important;
             break-inside: avoid !important;
           }
           th, td {
             border: 1px solid #000000 !important;
-            padding: ${printOrientation === 'portrait' ? '1.5px 1px' : '3px 2px'} !important;
-            font-size: ${printOrientation === 'portrait' ? '8px' : '9px'} !important;
-            line-height: 1.15 !important;
+            padding: ${printOrientation === 'portrait' ? '3px 1px' : '4px 2px'} !important;
+            font-size: ${printOrientation === 'portrait' ? '8.5px' : '9.5px'} !important;
+            line-height: 1.25 !important;
           }
           th {
-            font-size: ${printOrientation === 'portrait' ? '8px' : '9px'} !important;
+            font-size: ${printOrientation === 'portrait' ? '8.5px' : '9.5px'} !important;
             font-weight: bold !important;
           }
           td span {
-            font-size: ${printOrientation === 'portrait' ? '8.5px' : '10px'} !important;
+            font-size: ${printOrientation === 'portrait' ? '8.5px' : '9.5px'} !important;
           }
           .bg-\\[\\#FCE4D6\\] {
             background-color: #FCE4D6 !important;
@@ -1583,26 +1605,35 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
         </div>
 
         {/* Score Rubric Box (Exact 2-Row Bordered Table from Screenshot) */}
-        <div className="overflow-x-auto my-2.5 print:my-1.5 print:overflow-visible break-inside-avoid">
-          <table className="w-full text-center border-collapse border border-black text-[11px] print:text-[8px]">
+        <div className="overflow-x-auto my-2.5 print:my-2 print:overflow-visible break-inside-avoid">
+          <table className="w-full table-fixed text-center border-collapse border border-black text-[11px] print:text-[8px]">
+            <colgroup>
+              <col style={{ width: '16%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '14%' }} />
+            </colgroup>
             <tbody>
               <tr className="bg-white">
-                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 font-bold text-black w-24 print:w-auto">កម្រិតពិន្ទុ</td>
-                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black">F ក្រោម ៥០ ពិន្ទុ</td>
-                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black">E ពី ៥១ - ៦០ ពិន្ទុ</td>
-                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black">D ពី ៦១ - ៧០ ពិន្ទុ</td>
-                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black">C ពី ៧១ - ៧៩ ពិន្ទុ</td>
-                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black">B ពី ៨០ - ៨៩ ពិន្ទុ</td>
-                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black font-bold">A ពី ៩០ - ១០០ ពិន្ទុ</td>
+                <td className="border border-black px-1.5 py-0.5 print:px-1 print:py-0.5 font-bold text-black">កម្រិតពិន្ទុ</td>
+                <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black">F ក្រោម ៥០ ពិន្ទុ</td>
+                <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black">E ពី ៥១ - ៦០ ពិន្ទុ</td>
+                <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black">D ពី ៦១ - ៧០ ពិន្ទុ</td>
+                <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black">C ពី ៧១ - ៧៩ ពិន្ទុ</td>
+                <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black">B ពី ៨០ - ៨៩ ពិន្ទុ</td>
+                <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black font-bold">A ពី ៩០ - ១០០ ពិន្ទុ</td>
               </tr>
               <tr className="bg-white">
-                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 font-bold text-black w-24 print:w-auto">កម្រិតពិន្ទុ</td>
-                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black">F ក្រោម ២៥ ពិន្ទុ</td>
-                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black">E ពី ២៥ - ២៩ ពិន្ទុ</td>
-                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black">D ពី ៣០ - ៣៤ ពិន្ទុ</td>
-                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black">C ពី ៣៥ - ៣៩ ពិន្ទុ</td>
-                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black">B ពី ៤០ - ៤៤ ពិន្ទុ</td>
-                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black font-bold">A ពី ៤៥ - ៥០ ពិន្ទុ</td>
+                <td className="border border-black px-1.5 py-0.5 print:px-1 print:py-0.5 font-bold text-black">កម្រិតពិន្ទុ</td>
+                <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black">F ក្រោម ២៥ ពិន្ទុ</td>
+                <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black">E ពី ២៥ - ២៩ ពិន្ទុ</td>
+                <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black">D ពី ៣០ - ៣៤ ពិន្ទុ</td>
+                <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black">C ពី ៣៥ - ៣៩ ពិន្ទុ</td>
+                <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black">B ពី ៤០ - ៤៤ ពិន្ទុ</td>
+                <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black font-bold">A ពី ៤៥ - ៥០ ពិន្ទុ</td>
               </tr>
             </tbody>
           </table>
@@ -1618,14 +1649,14 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
         {renderTableBlock('តារាងទី ៣', TABLE_3_MONTHS)}
 
         {/* Official Signatures (Kingdom of Cambodia Format) */}
-        <div className="pt-6 pb-2 grid grid-cols-2 text-center text-xs text-black break-inside-avoid">
+        <div className="pt-5 pb-1 print:pt-4 print:pb-0 grid grid-cols-2 text-center text-xs text-black break-inside-avoid">
           {/* Left: Deputy Technical Director */}
           <div className="space-y-1">
             <div className="font-bold">បានឃើញ និងឯកភាព</div>
             <div className="text-slate-600">ថ្ងៃទី...........ខែ...........ឆ្នាំ២០២...</div>
             <div className="font-bold font-moul text-xs pt-1">នាយករងបច្ចេកទេស</div>
             <div className="text-[11px] text-slate-500 italic">(ហត្ថលេខា និងត្រា)</div>
-            <div className="h-16" />
+            <div className="h-16 print:h-20" />
             <div className="font-bold text-sm text-black">{plan.deputyDirectorName}</div>
           </div>
 
@@ -1634,7 +1665,7 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
             <div className="text-slate-600">ថ្ងៃទី...........ខែ...........ឆ្នាំ២០២...</div>
             <div className="font-bold font-moul text-xs pt-1">គ្រូបង្រៀនមុខវិជ្ជា</div>
             <div className="text-[11px] text-slate-500 italic">(ហត្ថលេខា)</div>
-            <div className="h-16" />
+            <div className="h-16 print:h-20" />
             <div className="font-bold text-sm text-black">{plan.teacherName}</div>
           </div>
         </div>
