@@ -46,6 +46,68 @@ export const POPULAR_SUBJECTS = [
   'កីឡា',
 ];
 
+export interface ModelSchoolBenchmark {
+  yearName: string; // ឧ. ឆ្នាំទី១, ឆ្នាំទី២, ឆ្នាំទី៣, ឆ្នាំទី៤, ឆ្នាំទី៥
+  yearKey: 'year1' | 'year2' | 'year3' | 'year4' | 'year5';
+  title: string;
+  description: string;
+  targets: Record<'A' | 'B' | 'C' | 'D' | 'E' | 'F', number>; // Must sum to 100%
+}
+
+export const MODEL_SCHOOL_BENCHMARKS: Record<'year1' | 'year2' | 'year3' | 'year4' | 'year5', ModelSchoolBenchmark> = {
+  year1: {
+    yearName: 'ឆ្នាំទី១',
+    yearKey: 'year1',
+    title: 'ផែនការសាលារៀនគំរូ ឆ្នាំទី១ (ពង្រឹងមូលដ្ឋាន)',
+    description: 'កម្រិតល្អប្រសើរ (A+B+C) ≥ ៤០%, មធ្យម (D) ២៧%, អន្តរាគមន៍ (E+F) ≤ ៣៣%',
+    targets: { A: 8, B: 15, C: 20, D: 27, E: 20, F: 10 }, // 8+15+20+27+20+10 = 100%
+  },
+  year2: {
+    yearName: 'ឆ្នាំទី២',
+    yearKey: 'year2',
+    title: 'ផែនការសាលារៀនគំរូ ឆ្នាំទី២ (ពង្រីកគុណភាព)',
+    description: 'កម្រិតល្អប្រសើរ (A+B+C) ≥ ៥៥%, មធ្យម (D) ២៥%, អន្តរាគមន៍ (E+F) ≤ ២០%',
+    targets: { A: 12, B: 18, C: 25, D: 25, E: 15, F: 5 }, // 12+18+25+25+15+5 = 100%
+  },
+  year3: {
+    yearName: 'ឆ្នាំទី៣',
+    yearKey: 'year3',
+    title: 'ផែនការសាលារៀនគំរូ ឆ្នាំទី៣ (ស្តង់ដារពេញលេញ)',
+    description: 'កម្រិតល្អប្រសើរ (A+B+C) ≥ ៦៥%, មធ្យម (D) ២២%, អន្តរាគមន៍ (E+F) ≤ ១៣%',
+    targets: { A: 15, B: 22, C: 28, D: 22, E: 10, F: 3 }, // 15+22+28+22+10+3 = 100%
+  },
+  year4: {
+    yearName: 'ឆ្នាំទី៤',
+    yearKey: 'year4',
+    title: 'ផែនការសាលារៀនគំរូ ឆ្នាំទី៤ (គុណភាពកម្រិតខ្ពស់)',
+    description: 'កម្រិតល្អប្រសើរ (A+B+C) ≥ ៧៣%, មធ្យម (D) ១៨%, អន្តរាគមន៍ (E+F) ≤ ៩%',
+    targets: { A: 18, B: 25, C: 30, D: 18, E: 7, F: 2 }, // 18+25+30+18+7+2 = 100%
+  },
+  year5: {
+    yearName: 'ឆ្នាំទី៥',
+    yearKey: 'year5',
+    title: 'ផែនការសាលារៀនគំរូ ឆ្នាំទី៥ (ឧត្តមភាព និងនិរន្តរភាព)',
+    description: 'កម្រិតល្អប្រសើរ (A+B+C) ≥ ៨០%, មធ្យម (D) ១៥%, អន្តរាគមន៍ (E+F) ≤ ៥%',
+    targets: { A: 20, B: 28, C: 32, D: 15, E: 4, F: 1 }, // 20+28+32+15+4+1 = 100%
+  },
+};
+
+/**
+ * Auto-balance an array of percentage numbers so their sum is exactly 100
+ */
+export function balancePctList(values: number[]): number[] {
+  const sum = values.reduce((a, b) => a + b, 0);
+  if (sum === 100 || sum === 0) return [...values];
+  const diff = 100 - sum;
+  const res = [...values];
+  let maxIdx = 0;
+  for (let i = 1; i < res.length; i++) {
+    if (res[i] > res[maxIdx]) maxIdx = i;
+  }
+  res[maxIdx] = Math.max(0, res[maxIdx] + diff);
+  return res;
+}
+
 export function createDefaultTeachingPlan(
   selectedClass?: ClassRoom | null,
   totalStudents: number = 61,
@@ -57,6 +119,7 @@ export function createDefaultTeachingPlan(
   const academicYear = selectedClass?.academicYear || settings?.academicYear || '២០២៤-២០២៥';
   const subject = settings?.specialtySubject || 'គណិតវិទ្យា';
 
+  // Balanced default rows: all columns sum to exactly 100%
   const defaultRows: TeachingPlanGradeRow[] = [
     {
       grade: 'A',
@@ -113,10 +176,10 @@ export function createDefaultTeachingPlan(
       monthly: {
         dec: { planCount: 5, planPct: 8, actualCount: 7, actualPct: 11 },
         jan: { planCount: 15, planPct: 25, actualCount: 5, actualPct: 8 },
-        feb: { planCount: 18, planPct: 30, actualCount: 14, actualPct: 23 },
+        feb: { planCount: 18, planPct: 29, actualCount: 14, actualPct: 23 },
         mar: { planCount: 5, planPct: 8, actualCount: 0, actualPct: 0 },
         apr: { planCount: 15, planPct: 25, actualCount: 0, actualPct: 0 },
-        may: { planCount: 18, planPct: 30, actualCount: 0, actualPct: 0 },
+        may: { planCount: 18, planPct: 29, actualCount: 0, actualPct: 0 },
         jun: { planCount: 18, planPct: 30, actualCount: 0, actualPct: 0 },
         jul: { planCount: 18, planPct: 30, actualCount: 0, actualPct: 0 },
       },
@@ -128,10 +191,10 @@ export function createDefaultTeachingPlan(
       baselinePct: 26,
       monthly: {
         dec: { planCount: 39, planPct: 64, actualCount: 12, actualPct: 20 },
-        jan: { planCount: 26, planPct: 43, actualCount: 4, actualPct: 7 },
+        jan: { planCount: 26, planPct: 42, actualCount: 4, actualPct: 7 },
         feb: { planCount: 12, planPct: 20, actualCount: 9, actualPct: 15 },
         mar: { planCount: 39, planPct: 64, actualCount: 0, actualPct: 0 },
-        apr: { planCount: 26, planPct: 43, actualCount: 0, actualPct: 0 },
+        apr: { planCount: 26, planPct: 42, actualCount: 0, actualPct: 0 },
         may: { planCount: 12, planPct: 20, actualCount: 0, actualPct: 0 },
         jun: { planCount: 15, planPct: 25, actualCount: 0, actualPct: 0 },
         jul: { planCount: 13, planPct: 21, actualCount: 0, actualPct: 0 },
@@ -141,11 +204,11 @@ export function createDefaultTeachingPlan(
     {
       grade: 'F',
       baselineCount: 26,
-      baselinePct: 43,
+      baselinePct: 42,
       monthly: {
-        dec: { planCount: 11, planPct: 18, actualCount: 8, actualPct: 13 },
-        jan: { planCount: 9, planPct: 15, actualCount: 8, actualPct: 13 },
-        feb: { planCount: 6, planPct: 10, actualCount: 8, actualPct: 13 },
+        dec: { planCount: 11, planPct: 18, actualCount: 8, actualPct: 14 },
+        jan: { planCount: 9, planPct: 15, actualCount: 8, actualPct: 14 },
+        feb: { planCount: 6, planPct: 10, actualCount: 8, actualPct: 14 },
         mar: { planCount: 11, planPct: 18, actualCount: 0, actualPct: 0 },
         apr: { planCount: 9, planPct: 15, actualCount: 0, actualPct: 0 },
         may: { planCount: 6, planPct: 10, actualCount: 0, actualPct: 0 },

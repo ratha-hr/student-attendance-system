@@ -14,6 +14,9 @@ import {
   Phone,
   Layers,
   ChevronDown,
+  AlertTriangle,
+  Scale,
+  Award,
 } from 'lucide-react';
 import type { ClassRoom, Student, TeacherSettings, TeachingPlan, TeachingPlanGradeRow } from '../types';
 import { db } from '../db/db';
@@ -21,7 +24,10 @@ import {
   TABLE_1_MONTHS,
   TABLE_2_MONTHS,
   TABLE_3_MONTHS,
+  ALL_MONTH_KEYS,
   POPULAR_SUBJECTS,
+  MODEL_SCHOOL_BENCHMARKS,
+  balancePctList,
   createDefaultTeachingPlan,
   calculateTotals,
   exportTeachingPlanToExcel,
@@ -244,6 +250,146 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
     }
   };
 
+  // Model Standard School Benchmark Year Selection ('year1' | 'year2' | 'year3' | 'year4' | 'year5')
+  const [benchmarkYear, setBenchmarkYear] = useState<'year1' | 'year2' | 'year3' | 'year4' | 'year5'>('year1');
+
+  // Apply Model Standard School (សាលារៀនគំរូ) Benchmark to Plan
+  const handleApplyModelSchoolBenchmark = (yearKey: 'year1' | 'year2' | 'year3' | 'year4' | 'year5') => {
+    const benchmark = MODEL_SCHOOL_BENCHMARKS[yearKey];
+    if (!benchmark) return;
+
+    const total = plan.totalStudents || 61;
+    const targetMap = benchmark.targets;
+
+    setPlan((prev) => {
+      // 1. Update yearEndTargetPct to benchmark targets (exact 100%)
+      const newRows = prev.rows.map((r) => {
+        const gradeKey = r.grade as 'A' | 'B' | 'C' | 'D' | 'E' | 'F';
+        return {
+          ...r,
+          yearEndTargetPct: targetMap[gradeKey] ?? r.yearEndTargetPct,
+        };
+      });
+
+      // 2. Distribute monthly plan targets progressively from baseline to yearEndTarget
+      const months = ['dec', 'jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul'];
+      months.forEach((mKey, mIdx) => {
+        const factor = (mIdx + 1) / months.length;
+        const rawPcts: number[] = newRows.map((r) => {
+          const b = r.baselinePct || 0;
+          const t = r.yearEndTargetPct || 0;
+          return Math.round(b + (t - b) * factor);
+        });
+
+        const balanced = balancePctList(rawPcts);
+
+        newRows.forEach((r, idx) => {
+          const p = balanced[idx];
+          const c = Math.round((p / 100) * total);
+          const currentMonthly = r.monthly[mKey] || {
+            planCount: 0,
+            planPct: 0,
+            actualCount: 0,
+            actualPct: 0,
+          };
+          r.monthly[mKey] = {
+            ...currentMonthly,
+            planPct: p,
+            planCount: c,
+          };
+        });
+      });
+
+      const updated = { ...prev, rows: newRows };
+      handleSave(updated);
+      return updated;
+    });
+
+    showToast(`បានអនុវត្តគោលដៅភាគរយ «${benchmark.title}» បានជោគជ័យ!`);
+  };
+
+  // Auto-balance all percentage columns to sum to exactly 100%
+  const handleAutoBalanceAll = () => {
+    const total = plan.totalStudents || 61;
+    setPlan((prev) => {
+      const newRows = [...prev.rows];
+
+      // 1. Balance Baseline
+      const basePcts = newRows.map((r) => r.baselinePct || 0);
+      const balancedBase = balancePctList(basePcts);
+      newRows.forEach((r, idx) => {
+        r.baselinePct = balancedBase[idx];
+        r.baselineCount = Math.round((balancedBase[idx] / 100) * total);
+      });
+
+      // 2. Balance Months
+      const months = ['dec', 'jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul'];
+      months.forEach((mKey) => {
+        const planPcts = newRows.map((r) => r.monthly[mKey]?.planPct || 0);
+        const balancedPlan = balancePctList(planPcts);
+        newRows.forEach((r, idx) => {
+          const p = balancedPlan[idx];
+          const c = Math.round((p / 100) * total);
+          const cur = r.monthly[mKey] || { planCount: 0, planPct: 0, actualCount: 0, actualPct: 0 };
+          r.monthly[mKey] = { ...cur, planPct: p, planCount: c };
+        });
+
+        // Balance actual if filled
+        const hasActual = newRows.some((r) => (r.monthly[mKey]?.actualCount || 0) > 0);
+        if (hasActual) {
+          const actualPcts = newRows.map((r) => r.monthly[mKey]?.actualPct || 0);
+          const balancedActual = balancePctList(actualPcts);
+          newRows.forEach((r, idx) => {
+            const p = balancedActual[idx];
+            const cur = r.monthly[mKey] || { planCount: 0, planPct: 0, actualCount: 0, actualPct: 0 };
+            r.monthly[mKey] = { ...cur, actualPct: p };
+          });
+        }
+      });
+
+      // 3. Balance Year Target
+      const targetPcts = newRows.map((r) => r.yearEndTargetPct || 0);
+      const balancedTarget = balancePctList(targetPcts);
+      newRows.forEach((r, idx) => {
+        r.yearEndTargetPct = balancedTarget[idx];
+      });
+
+      const updated = { ...prev, rows: newRows };
+      handleSave(updated);
+      return updated;
+    });
+
+    showToast('បានថ្លឹងភាគរយគ្រប់ជួរឈរឱ្យស្មើ ១០០% គត់ដោយជោគជ័យ!');
+  };
+
+  // Detect all columns where percentage sum > 100%
+  const warningColumns = useMemo(() => {
+    const list: { name: string; sum: number }[] = [];
+    const basePctSum = plan.rows.reduce((sum, r) => sum + (r.baselinePct || 0), 0);
+    if (basePctSum > 100) {
+      list.push({ name: 'ទិន្នន័យមូលដ្ឋាន', sum: basePctSum });
+    }
+
+    const monthList = [...TABLE_1_MONTHS, ...TABLE_2_MONTHS, ...TABLE_3_MONTHS];
+    monthList.forEach((m) => {
+      const ppSum = plan.rows.reduce((sum, r) => sum + (r.monthly[m.key]?.planPct || 0), 0);
+      if (ppSum > 100) {
+        list.push({ name: `ផែនការ ${m.monthName}`, sum: ppSum });
+      }
+      const apSum = plan.rows.reduce((sum, r) => sum + (r.monthly[m.key]?.actualPct || 0), 0);
+      if (apSum > 100) {
+        list.push({ name: `ជាក់ស្តែង ${m.actualName}`, sum: apSum });
+      }
+    });
+
+    const ytSum = plan.rows.reduce((sum, r) => sum + (r.yearEndTargetPct || 0), 0);
+    if (ytSum > 100) {
+      list.push({ name: 'ភាគរយចុងឆ្នាំ', sum: ytSum });
+    }
+
+    return list;
+  }, [plan.rows]);
+
   // Auto-fill from actual student grades in db.grades
   const handleAutoFillFromGrades = async () => {
     if (!activeClass) return;
@@ -355,47 +501,73 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
     </td>
   );
 
-  // Helper to render percentage cell (red font)
+  // Helper to render percentage cell (red font) with >100% warning
   const renderPercentCell = (
     value: number,
     onChange: (val: number) => void
-  ) => (
-    <td className="border border-black p-0 text-center font-bold font-mono text-red-600 text-xs">
-      <div className="flex items-center justify-center w-full h-full min-h-[26px] print:hidden">
-        <input
-          type="number"
-          min={0}
-          max={100}
-          value={value}
-          onChange={(e) => onChange(parseInt(e.target.value) || 0)}
-          className="w-7 text-right font-mono font-bold text-red-600 text-xs bg-transparent border-none outline-none p-0 focus:bg-amber-100 rounded"
-        />
-        <span className="text-red-600 font-bold text-[11px] ml-0.5 select-none">%</span>
-      </div>
-      <span className="hidden print:inline-block font-bold font-mono text-red-600 text-[11px]">
-        {value}%
-      </span>
-    </td>
-  );
+  ) => {
+    const isOver100 = value > 100;
+    return (
+      <td
+        className={`border border-black p-0 text-center font-bold font-mono text-xs ${
+          isOver100 ? 'bg-rose-100 text-rose-700 ring-2 ring-rose-500 ring-inset' : 'text-red-600'
+        }`}
+        title={isOver100 ? `⚠️ សញ្ញាព្រមាន៖ ភាគរយ ${value}% លើសពី ១០០%!` : undefined}
+      >
+        <div className="flex items-center justify-center w-full h-full min-h-[26px] print:hidden px-0.5">
+          {isOver100 && (
+            <span className="text-[10px] text-rose-600 mr-0.5 animate-bounce select-none" title="លើសពី ១០០%">
+              ⚠️
+            </span>
+          )}
+          <input
+            type="number"
+            min={0}
+            value={value}
+            onChange={(e) => onChange(parseInt(e.target.value) || 0)}
+            className={`w-7 text-right font-mono font-bold text-xs bg-transparent border-none outline-none p-0 rounded ${
+              isOver100 ? 'text-rose-700 font-black' : 'text-red-600'
+            } focus:bg-amber-100`}
+          />
+          <span className={`font-bold text-[11px] ml-0.5 select-none ${isOver100 ? 'text-rose-700 font-black' : 'text-red-600'}`}>%</span>
+        </div>
+        <span className={`hidden print:inline-block font-bold font-mono text-[11px] ${isOver100 ? 'text-rose-700 font-black' : 'text-red-600'}`}>
+          {value}%
+        </span>
+      </td>
+    );
+  };
 
-  // Helper to render year-end target percentage cell (golden yellow for A, B, C; black text)
+  // Helper to render year-end target percentage cell (golden yellow for A, B, C; black text) with >100% warning
   const renderTargetCell = (
     value: number,
     grade: string,
     onChange: (val: number) => void
   ) => {
     const isHighGrade = ['A', 'B', 'C'].includes(grade);
-    const bgClass = isHighGrade ? 'bg-[#FFC000]' : 'bg-white';
+    const isOver100 = value > 100;
+    const bgClass = isOver100 ? 'bg-rose-100 ring-2 ring-rose-500 ring-inset' : isHighGrade ? 'bg-[#FFC000]' : 'bg-white';
     return (
-      <td className={`border border-black p-0 text-center font-bold font-mono text-black text-xs ${bgClass}`}>
-        <div className="flex items-center justify-center w-full h-full min-h-[26px] print:hidden">
+      <td
+        className={`border border-black p-0 text-center font-bold font-mono text-xs ${bgClass} ${
+          isOver100 ? 'text-rose-700 font-black' : 'text-black'
+        }`}
+        title={isOver100 ? `⚠️ សញ្ញាព្រមាន៖ ភាគរយ ${value}% លើសពី ១០០%!` : undefined}
+      >
+        <div className="flex items-center justify-center w-full h-full min-h-[26px] print:hidden px-0.5">
+          {isOver100 && (
+            <span className="text-[10px] text-rose-600 mr-0.5 animate-bounce select-none" title="លើសពី ១០០%">
+              ⚠️
+            </span>
+          )}
           <input
             type="number"
             min={0}
-            max={100}
             value={value}
             onChange={(e) => onChange(parseInt(e.target.value) || 0)}
-            className={`w-7 text-right font-mono font-bold text-black text-xs bg-transparent border-none outline-none p-0 focus:bg-amber-100 rounded ${bgClass}`}
+            className={`w-7 text-right font-mono font-bold text-xs bg-transparent border-none outline-none p-0 focus:bg-amber-100 rounded ${
+              isOver100 ? 'text-rose-700 font-black' : 'text-black'
+            }`}
           />
           <span className="text-black font-bold text-[11px] ml-0.5 select-none">%</span>
         </div>
@@ -543,7 +715,15 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
               <td className="border border-black px-1 py-1 text-center font-mono text-black text-xs">
                 {baselineTotals.countSum}
               </td>
-              <td className="border border-black px-1 py-1 text-center font-mono text-red-600 text-xs">
+              <td
+                className={`border border-black px-1 py-1 text-center font-mono text-xs ${
+                  baselineTotals.pctSum > 100
+                    ? 'bg-rose-100 text-rose-700 font-black'
+                    : 'text-red-600'
+                }`}
+                title={baselineTotals.pctSum > 100 ? `⚠️ សរុបលើសពី ១០០% (${baselineTotals.pctSum}%)!` : undefined}
+              >
+                {baselineTotals.pctSum > 100 && <span className="mr-0.5 select-none">⚠️</span>}
                 {baselineTotals.pctSum}%
               </td>
 
@@ -566,18 +746,33 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
                   0
                 );
 
+                const isPlanOver = ppSum > 100;
+                const isActualOver = apSum > 100;
+
                 return (
                   <React.Fragment key={m.key}>
                     <td className="border border-black px-1 py-1 text-center font-mono text-black text-xs">
                       {pcSum}
                     </td>
-                    <td className="border border-black px-1 py-1 text-center font-mono text-red-600 text-xs">
+                    <td
+                      className={`border border-black px-1 py-1 text-center font-mono text-xs ${
+                        isPlanOver ? 'bg-rose-100 text-rose-700 font-black' : 'text-red-600'
+                      }`}
+                      title={isPlanOver ? `⚠️ ផែនការ ${m.monthName} សរុប ${ppSum}% លើសពី ១០០%!` : undefined}
+                    >
+                      {isPlanOver && <span className="mr-0.5 select-none">⚠️</span>}
                       {ppSum}%
                     </td>
                     <td className="border border-black px-1 py-1 text-center font-mono text-black text-xs">
                       {acSum}
                     </td>
-                    <td className="border border-black px-1 py-1 text-center font-mono text-red-600 text-xs">
+                    <td
+                      className={`border border-black px-1 py-1 text-center font-mono text-xs ${
+                        isActualOver ? 'bg-rose-100 text-rose-700 font-black' : 'text-red-600'
+                      }`}
+                      title={isActualOver ? `⚠️ ជាក់ស្តែង ${m.actualName} សរុប ${apSum}% លើសពី ១០០%!` : undefined}
+                    >
+                      {isActualOver && <span className="mr-0.5 select-none">⚠️</span>}
                       {apSum}%
                     </td>
                   </React.Fragment>
@@ -585,7 +780,13 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
               })}
 
               {/* Year-End Target Sum */}
-              <td className="border border-black px-1 py-1 text-center font-mono text-black text-xs">
+              <td
+                className={`border border-black px-1 py-1 text-center font-mono text-xs ${
+                  yearTargetTotal > 100 ? 'bg-rose-100 text-rose-700 font-black' : 'text-black'
+                }`}
+                title={yearTargetTotal > 100 ? `⚠️ គោលដៅចុងឆ្នាំសរុប ${yearTargetTotal}% លើសពី ១០០%!` : undefined}
+              >
+                {yearTargetTotal > 100 && <span className="mr-0.5 select-none">⚠️</span>}
                 {yearTargetTotal}%
               </td>
             </tr>
@@ -776,12 +977,127 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
             </div>
           </div>
         </div>
+
+        {/* Model Standard School (សាលារៀនគំរូ) Benchmark Control Row */}
+        <div className="bg-gradient-to-r from-blue-50/90 via-indigo-50/90 to-blue-50/90 border border-blue-200 rounded-2xl p-3.5 space-y-2.5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2">
+              <Award className="w-4 h-4 text-blue-700 shrink-0" />
+              <span className="font-black text-xs sm:text-sm text-blue-950">
+                គោលដៅសាលាស្តង់ដារគំរូ (Model School Target Benchmarks)
+              </span>
+              <span className="text-[10px] bg-blue-200/80 text-blue-900 px-2 py-0.5 rounded-full font-bold">
+                ក្រសួងអប់រំ យុវជន និងកីឡា
+              </span>
+            </div>
+
+            {/* Year Selector Tabs: ឆ្នាំទី១, ឆ្នាំទី២, ឆ្នាំទី៣, ឆ្នាំទី៤, ឆ្នាំទី៥ */}
+            <div className="inline-flex items-center bg-white p-1 rounded-xl border border-blue-200 text-xs font-bold shadow-2xs">
+              {(['year1', 'year2', 'year3', 'year4', 'year5'] as const).map((yKey) => {
+                const b = MODEL_SCHOOL_BENCHMARKS[yKey];
+                return (
+                  <button
+                    key={yKey}
+                    type="button"
+                    onClick={() => setBenchmarkYear(yKey)}
+                    className={`px-2.5 py-1 rounded-lg text-xs transition-all cursor-pointer ${
+                      benchmarkYear === yKey
+                        ? 'bg-blue-600 text-white shadow-2xs font-black'
+                        : 'text-slate-600 hover:text-slate-900 font-bold'
+                    }`}
+                  >
+                    {b.yearName}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 pt-2 border-t border-blue-100 text-xs text-blue-900">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+              <span className="font-bold text-slate-700">ភាគរយគោលដៅ {MODEL_SCHOOL_BENCHMARKS[benchmarkYear].yearName}៖</span>
+              <span className="bg-white px-2 py-0.5 rounded-md border border-blue-200 font-mono font-bold text-blue-800">
+                A: {MODEL_SCHOOL_BENCHMARKS[benchmarkYear].targets.A}%
+              </span>
+              <span className="bg-white px-2 py-0.5 rounded-md border border-blue-200 font-mono font-bold text-blue-800">
+                B: {MODEL_SCHOOL_BENCHMARKS[benchmarkYear].targets.B}%
+              </span>
+              <span className="bg-white px-2 py-0.5 rounded-md border border-blue-200 font-mono font-bold text-blue-800">
+                C: {MODEL_SCHOOL_BENCHMARKS[benchmarkYear].targets.C}%
+              </span>
+              <span className="bg-white px-2 py-0.5 rounded-md border border-blue-200 font-mono font-bold text-blue-800">
+                D: {MODEL_SCHOOL_BENCHMARKS[benchmarkYear].targets.D}%
+              </span>
+              <span className="bg-white px-2 py-0.5 rounded-md border border-blue-200 font-mono font-bold text-blue-800">
+                E: {MODEL_SCHOOL_BENCHMARKS[benchmarkYear].targets.E}%
+              </span>
+              <span className="bg-white px-2 py-0.5 rounded-md border border-blue-200 font-mono font-bold text-blue-800">
+                F: {MODEL_SCHOOL_BENCHMARKS[benchmarkYear].targets.F}%
+              </span>
+              <span className="text-[11px] text-emerald-700 font-black">
+                (សរុប = ១០០%)
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleApplyModelSchoolBenchmark(benchmarkYear)}
+                className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs flex items-center gap-1.5 self-start sm:self-auto hover:scale-105 active:scale-95"
+                title="អនុវត្តភាគរយគោលដៅតាមសាលារៀនគំរូ សម្រាប់ឆ្នាំនេះ"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                <span>អនុវត្តភាគរយគោលដៅ ({MODEL_SCHOOL_BENCHMARKS[benchmarkYear].yearName})</span>
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* Warning Banner: Displays prominently whenever any column percentage total > 100% */}
+      {warningColumns.length > 0 && (
+        <div className="bg-rose-50 border-2 border-rose-400 rounded-2xl p-4 text-rose-900 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3 animate-fade-in no-print">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-rose-200 text-rose-800 flex items-center justify-center font-bold text-xl shrink-0 mt-0.5">
+              ⚠️
+            </div>
+            <div>
+              <h4 className="font-black text-sm text-rose-950 flex items-center gap-2">
+                <span>សញ្ញាព្រមាន៖ ភាគរយលើសពី ១០០% ត្រូវបានរកឃើញ!</span>
+                <span className="text-xs bg-rose-200 text-rose-800 px-2 py-0.5 rounded-full font-bold">
+                  {warningColumns.length} ជួរឈរ
+                </span>
+              </h4>
+              <p className="text-xs text-rose-800 mt-1 leading-relaxed">
+                ជួរឈរដែលមានផលបូកលើសពី ១០០%៖{' '}
+                {warningColumns.map((c, i) => (
+                  <span key={i} className="inline-block bg-rose-200/80 text-rose-900 px-1.5 py-0.5 rounded text-[11px] font-bold mr-1 my-0.5">
+                    {c.name}: {c.sum}%
+                  </span>
+                ))}
+              </p>
+              <p className="text-[11px] text-rose-700 mt-0.5">
+                * តាមគោលការណ៍សាលារៀនគំរូ ផលបូកភាគរយនៃគ្រប់និទ្ទេសត្រូវតែស្មើ <strong>១០០% គត់</strong> (មិនអាចលើសពី ១០០% ឡើយ)។
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleAutoBalanceAll}
+            className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer shadow-xs flex items-center gap-1.5 self-start md:self-auto hover:scale-105 active:scale-95"
+            title="កែសម្រួលភាគរយក្នុងជួរឈរទាំងអស់ឱ្យស្មើ ១០០% គត់ដោយស្វ័យប្រវត្តិ"
+          >
+            <Scale className="w-4 h-4 text-white" />
+            <span>⚖️ ថ្លឹងភាគរយឱ្យស្មើ ១០០% ស្វ័យប្រវត្ត</span>
+          </button>
+        </div>
+      )}
 
       {/* Official Plan Sheet Container (Matches Excel Template Exactly for Display & Print) */}
       <div className="official-sheet bg-white rounded-2xl p-4 sm:p-6 lg:p-8 border border-slate-200 shadow-sm print:p-0 print:border-none print:shadow-none space-y-2">
-        {/* Kingdom & Ministry Header */}
-        <div className="relative pt-1 pb-1">
+        {/* Kingdom & Ministry Header (Hidden on screen as requested in Image 1, appears ONLY when printing as official Kingdom format) */}
+        <div className="hidden print:block relative pt-1 pb-1 mb-2">
           {/* Top Left Organization */}
           <div className="sm:absolute sm:top-0 sm:left-0 text-xs text-black font-bold space-y-0.5 mb-2 sm:mb-0">
             <div className="flex items-center">
@@ -814,13 +1130,13 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
               ❖ ❖ ❖
             </div>
           </div>
+        </div>
 
-          {/* Red Document Title */}
-          <div className="text-center mt-3 mb-2">
-            <h1 className="font-moul text-sm sm:text-base text-red-600 tracking-wide leading-relaxed">
-              ផែនការបង្រៀនប្រចាំឆ្នាំរបស់គ្រូ មុខវិជ្ជា {plan.subject} ( ឆ្នាំសិក្សា{plan.academicYear} )
-            </h1>
-          </div>
+        {/* Red Document Title */}
+        <div className="text-center mt-1 mb-2">
+          <h1 className="font-moul text-sm sm:text-base text-red-600 tracking-wide leading-relaxed">
+            ផែនការបង្រៀនប្រចាំឆ្នាំរបស់គ្រូ មុខវិជ្ជា {plan.subject} ( ឆ្នាំសិក្សា{plan.academicYear} )
+          </h1>
         </div>
 
         {/* Metadata Details Section (Exact Excel Layout) */}

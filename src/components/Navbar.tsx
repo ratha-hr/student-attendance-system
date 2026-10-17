@@ -268,7 +268,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           </div>
 
-          {/* Cache-Clear & Force Reload Button */}
+          {/* Cache-Clear & Force Reload Button (Keep only arrow icon as requested) */}
           <button
             type="button"
             onClick={async () => {
@@ -283,11 +283,10 @@ export const Navbar: React.FC<NavbarProps> = ({
               localStorage.removeItem('app_installed_ver');
               window.location.href = window.location.pathname + '?v=' + Date.now();
             }}
-            className="p-1 sm:px-2 sm:py-1 bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-700 rounded-xl border border-slate-200 text-xs font-bold transition-colors cursor-pointer shadow-2xs flex items-center space-x-1"
-            title="ចុចដើម្បីសម្អាត Cache និងទាញយកកំណែថ្មីបំផុត (v6.23)"
+            className="p-2 bg-slate-100 hover:bg-blue-50 text-blue-600 hover:text-blue-700 rounded-xl border border-slate-200 transition-all cursor-pointer shadow-2xs flex items-center justify-center hover:rotate-180 active:scale-95"
+            title="ចុចដើម្បី Refresh & Update កំណែថ្មីបំផុត (v6.24)"
           >
-            <RotateCw className="w-3.5 h-3.5 text-blue-600" />
-            <span className="hidden sm:inline text-xs text-blue-700 font-black">v6.23</span>
+            <RotateCw className="w-4 h-4 text-blue-600" />
           </button>
 
           {/* Settings button & Teacher Profile */}
