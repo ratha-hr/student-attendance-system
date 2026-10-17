@@ -23,11 +23,14 @@ import {
   ChevronRight,
   AlertTriangle,
   RotateCcw,
+  ShieldCheck,
+  Zap,
+  RotateCw,
 } from 'lucide-react';
 import type { TeacherSettings } from '../types';
 import { db } from '../db/db';
 import { toKhmerNum } from '../utils/dateUtils';
-import { getPinForDate, getDateBasedPin, getDailySecurityPin, type PinMode } from '../utils/pinUtils';
+import { getPinForDate, getDateBasedPin, getDailySecurityPin, generateOneTimeSharePin, type PinMode } from '../utils/pinUtils';
 import { useUndoRedo } from '../context/UndoRedoContext';
 
 interface SettingsPageProps {
@@ -54,7 +57,15 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ settings, onRefresh 
   const [academicYear, setAcademicYear] = useState(settings?.academicYear || '២០២៦-២០២៧');
   const [absenceWarningThreshold, setAbsenceWarningThreshold] = useState(settings?.absenceWarningThreshold || 3);
   const [studentAttendancePin, setStudentAttendancePin] = useState(settings?.studentAttendancePin || '1234');
-  const [pinMode, setPinMode] = useState<PinMode>(settings?.pinMode || 'daily');
+  const [pinMode, setPinMode] = useState<PinMode>(settings?.pinMode || 'per_share');
+  const [testSharePin, setTestSharePin] = useState<string>(() => generateOneTimeSharePin());
+  const [isSimulating, setIsSimulating] = useState(false);
+
+  const handleSimulateNewPin = () => {
+    setIsSimulating(true);
+    setTestSharePin(generateOneTimeSharePin());
+    setTimeout(() => setIsSimulating(false), 450);
+  };
 
   const [savedSuccess, setSavedSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -65,12 +76,15 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ settings, onRefresh 
   }, []);
 
   const currentEffectivePin = React.useMemo(() => {
+    if (pinMode === 'per_share') {
+      return testSharePin;
+    }
     return getPinForDate(todayStr, {
       ...settings,
       pinMode,
       studentAttendancePin,
     } as TeacherSettings);
-  }, [todayStr, settings, pinMode, studentAttendancePin]);
+  }, [todayStr, settings, pinMode, studentAttendancePin, testSharePin]);
 
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -437,111 +451,256 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ settings, onRefresh 
         {/* TAB 3: 🔒 សុវត្ថិភាព & កូដ PIN */}
         {activeTab === 'security' && (
           <div className="space-y-4 animate-in fade-in duration-200">
-            <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/90 shadow-xs space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
-                <div>
-                  <h4 className="text-xs sm:text-sm font-black text-slate-800 flex items-center">
-                    <Lock className="w-4 h-4 text-indigo-600 mr-2" />
-                    សុវត្ថិភាពទប់ស្កាត់ការលួចកែវត្តមាន (លេខសម្ងាត់ PIN)
-                  </h4>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    ការពារមិនឱ្យសិស្ស ឬអ្នកដទៃលួចកែប្រែវត្តមានពេលបើកតំណ
-                  </p>
+            <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/90 shadow-xs space-y-5">
+              {/* Header with High-Tech Shield Badge */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                    <ShieldCheck className="w-5 h-5 text-amber-300" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs sm:text-sm font-black text-slate-800 flex items-center gap-2">
+                      <span>សុវត្ថិភាពទប់ស្កាត់ការលួចកែវត្តមាន (កូដសម្ងាត់ OTP & PIN)</span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
+                        Smart Shield 2.0
+                      </span>
+                    </h4>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      ប្រព័ន្ធការពារទំនើប ធានាសិស្សមិនអាចលួចកែប្រែវត្តមានតាមចិត្តពេលបើកតំណ
+                    </p>
+                  </div>
                 </div>
-                <div className="inline-flex items-center px-3 py-1 bg-indigo-50 text-indigo-800 rounded-xl border border-indigo-200 text-xs font-bold font-mono">
-                  🔑 កូដថ្ងៃនេះ៖ <span className="font-black ml-1 text-indigo-900">{currentEffectivePin}</span>
+
+                <div className="inline-flex items-center px-3.5 py-1.5 bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-900 rounded-xl border border-indigo-200 text-xs font-bold shadow-2xs self-start sm:self-auto">
+                  <span className="text-amber-500 mr-1.5">🔑</span>
+                  <span>
+                    {pinMode === 'per_share' ? 'កូដ OTP លើកនេះ៖ ' : 'កូដថ្ងៃនេះ៖ '}
+                    <strong className="font-mono text-indigo-950 font-black text-sm ml-1">{currentEffectivePin}</strong>
+                  </span>
                 </div>
               </div>
 
-              {/* Mode Selection Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
-                {/* Daily Dynamic */}
-                <label
-                  className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between ${
-                    pinMode === 'daily'
-                      ? 'bg-indigo-50/70 border-indigo-600 shadow-xs'
-                      : 'bg-slate-50/60 border-slate-200 hover:border-slate-300'
-                  }`}
-                >
-                  <div className="flex items-center space-x-2.5">
-                    <input
-                      type="radio"
-                      name="pinMode"
-                      value="daily"
-                      checked={pinMode === 'daily'}
-                      onChange={() => setPinMode('daily')}
-                      className="w-4 h-4 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                    />
-                    <span className="font-black text-xs sm:text-sm text-slate-900">
-                      🌟 ប្តូររៀងរាល់ថ្ងៃ
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
-                    កូដ ៤ ខ្ទង់សុវត្ថិភាពប្តូរស្វ័យប្រវត្តិតាមកាលបរិច្ឆេទ (ថ្ងៃនេះ៖ <strong className="font-mono text-indigo-700">{getDailySecurityPin(todayStr, studentAttendancePin)}</strong>)
-                  </p>
+              {/* 4 Mode Selection Cards */}
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-slate-700">
+                  ជ្រើសរើសរបៀបការពារកូដសម្ងាត់ (Security Modes) ៖
                 </label>
 
-                {/* Date-based DDMM */}
-                <label
-                  className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between ${
-                    pinMode === 'date_format'
-                      ? 'bg-indigo-50/70 border-indigo-600 shadow-xs'
-                      : 'bg-slate-50/60 border-slate-200 hover:border-slate-300'
-                  }`}
-                >
-                  <div className="flex items-center space-x-2.5">
-                    <input
-                      type="radio"
-                      name="pinMode"
-                      value="date_format"
-                      checked={pinMode === 'date_format'}
-                      onChange={() => setPinMode('date_format')}
-                      className="w-4 h-4 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                    />
-                    <span className="font-black text-xs sm:text-sm text-slate-900">
-                      📅 តាមថ្ងៃ-ខែ (DDMM)
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
-                    ងាយចាំ យកថ្ងៃ និងខែបច្ចុប្បន្នធ្វើជាកូដ (ឧ. <strong className="font-mono text-indigo-700">{getDateBasedPin(todayStr, 'DDMM')}</strong>)
-                  </p>
-                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  {/* Mode 1: Per-Share Dynamic OTP (Recommended) */}
+                  <label
+                    className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between relative overflow-hidden ${
+                      pinMode === 'per_share'
+                        ? 'bg-gradient-to-b from-indigo-50/90 to-purple-50/80 border-indigo-600 shadow-sm ring-2 ring-indigo-500/20'
+                        : 'bg-slate-50/70 border-slate-200 hover:border-indigo-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-indigo-600 text-white shadow-2xs">
+                          ✨ ណែនាំខ្ពស់បំផុត
+                        </span>
+                        <input
+                          type="radio"
+                          name="pinMode"
+                          value="per_share"
+                          checked={pinMode === 'per_share'}
+                          onChange={() => setPinMode('per_share')}
+                          className="w-4 h-4 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                        />
+                      </div>
 
-                {/* Fixed Custom */}
-                <label
-                  className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between ${
-                    pinMode === 'fixed'
-                      ? 'bg-indigo-50/70 border-indigo-600 shadow-xs'
-                      : 'bg-slate-50/60 border-slate-200 hover:border-slate-300'
-                  }`}
-                >
-                  <div className="flex items-center space-x-2.5">
-                    <input
-                      type="radio"
-                      name="pinMode"
-                      value="fixed"
-                      checked={pinMode === 'fixed'}
-                      onChange={() => setPinMode('fixed')}
-                      className="w-4 h-4 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                    />
-                    <span className="font-black text-xs sm:text-sm text-slate-900">
-                      🔒 លេខកូដថេរផ្ទាល់ខ្លួន
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
-                    ប្រើលេខកូដថេរដដែលរាល់ថ្ងៃ ដែលលោកគ្រូកំណត់ដោយខ្លួនឯង
-                  </p>
-                </label>
+                      <div className="flex items-center space-x-1.5 mt-1">
+                        <Zap className="w-4 h-4 text-amber-500 shrink-0" />
+                        <span className="font-black text-xs sm:text-sm text-slate-900">
+                          ផ្ញើម្តង ប្តូរកូដម្តង
+                        </span>
+                      </div>
+
+                      <p className="text-[11px] text-slate-600 mt-2 leading-relaxed">
+                        រាល់ពេលចម្លងតំណ ឬផ្ញើទៅ Telegram ប្រព័ន្ធបង្កើតកូដ ៤ ខ្ទង់ថ្មីមួយភ្លាមៗ (Single-use OTP)។
+                      </p>
+                    </div>
+
+                    <div className="mt-3 pt-2 border-t border-indigo-100 flex items-center justify-between">
+                      <span className="text-[10px] text-indigo-700 font-bold">Dynamic OTP</span>
+                      <span className="text-[10px] font-black font-mono text-indigo-900 bg-white px-2 py-0.5 rounded-md border border-indigo-200">
+                        {testSharePin}
+                      </span>
+                    </div>
+                  </label>
+
+                  {/* Mode 2: Daily Dynamic */}
+                  <label
+                    className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between ${
+                      pinMode === 'daily'
+                        ? 'bg-indigo-50/80 border-indigo-600 shadow-sm ring-2 ring-indigo-500/20'
+                        : 'bg-slate-50/70 border-slate-200 hover:border-indigo-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">
+                          ស្វ័យប្រវត្តិ
+                        </span>
+                        <input
+                          type="radio"
+                          name="pinMode"
+                          value="daily"
+                          checked={pinMode === 'daily'}
+                          onChange={() => setPinMode('daily')}
+                          className="w-4 h-4 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                        />
+                      </div>
+
+                      <div className="flex items-center space-x-1.5 mt-1">
+                        <Sparkles className="w-4 h-4 text-indigo-600 shrink-0" />
+                        <span className="font-black text-xs sm:text-sm text-slate-900">
+                          ប្តូររៀងរាល់ថ្ងៃ
+                        </span>
+                      </div>
+
+                      <p className="text-[11px] text-slate-600 mt-2 leading-relaxed">
+                        កូដ ៤ ខ្ទង់ប្តូរស្វ័យប្រវត្តិតាមកាលបរិច្ឆេទថ្ងៃខែ (ស្អែកឡើងប្តូរកូដថ្មី)។
+                      </p>
+                    </div>
+
+                    <div className="mt-3 pt-2 border-t border-slate-200 flex items-center justify-between">
+                      <span className="text-[10px] text-slate-500 font-bold">ថ្ងៃនេះ</span>
+                      <span className="text-[10px] font-black font-mono text-indigo-900 bg-white px-2 py-0.5 rounded-md border border-slate-200">
+                        {getDailySecurityPin(todayStr, studentAttendancePin)}
+                      </span>
+                    </div>
+                  </label>
+
+                  {/* Mode 3: Date-based DDMM */}
+                  <label
+                    className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between ${
+                      pinMode === 'date_format'
+                        ? 'bg-indigo-50/80 border-indigo-600 shadow-sm ring-2 ring-indigo-500/20'
+                        : 'bg-slate-50/70 border-slate-200 hover:border-indigo-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">
+                          ងាយចាំ
+                        </span>
+                        <input
+                          type="radio"
+                          name="pinMode"
+                          value="date_format"
+                          checked={pinMode === 'date_format'}
+                          onChange={() => setPinMode('date_format')}
+                          className="w-4 h-4 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                        />
+                      </div>
+
+                      <div className="flex items-center space-x-1.5 mt-1">
+                        <Calendar className="w-4 h-4 text-blue-600 shrink-0" />
+                        <span className="font-black text-xs sm:text-sm text-slate-900">
+                          តាមថ្ងៃ-ខែ (DDMM)
+                        </span>
+                      </div>
+
+                      <p className="text-[11px] text-slate-600 mt-2 leading-relaxed">
+                        យកថ្ងៃ និងខែបច្ចុប្បន្នធ្វើជាកូដ ឧ. ថ្ងៃទី១៧ ខែ១០ = ១៧១០។
+                      </p>
+                    </div>
+
+                    <div className="mt-3 pt-2 border-t border-slate-200 flex items-center justify-between">
+                      <span className="text-[10px] text-slate-500 font-bold">DDMM</span>
+                      <span className="text-[10px] font-black font-mono text-indigo-900 bg-white px-2 py-0.5 rounded-md border border-slate-200">
+                        {getDateBasedPin(todayStr, 'DDMM')}
+                      </span>
+                    </div>
+                  </label>
+
+                  {/* Mode 4: Fixed Custom */}
+                  <label
+                    className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between ${
+                      pinMode === 'fixed'
+                        ? 'bg-indigo-50/80 border-indigo-600 shadow-sm ring-2 ring-indigo-500/20'
+                        : 'bg-slate-50/70 border-slate-200 hover:border-indigo-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">
+                          កូដថេរ
+                        </span>
+                        <input
+                          type="radio"
+                          name="pinMode"
+                          value="fixed"
+                          checked={pinMode === 'fixed'}
+                          onChange={() => setPinMode('fixed')}
+                          className="w-4 h-4 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                        />
+                      </div>
+
+                      <div className="flex items-center space-x-1.5 mt-1">
+                        <Lock className="w-4 h-4 text-slate-700 shrink-0" />
+                        <span className="font-black text-xs sm:text-sm text-slate-900">
+                          លេខកូដថេរផ្ទាល់ខ្លួន
+                        </span>
+                      </div>
+
+                      <p className="text-[11px] text-slate-600 mt-2 leading-relaxed">
+                        ប្រើលេខកូដថេរដដែលរាល់ថ្ងៃ ដែលលោកគ្រូកំណត់ដោយខ្លួនឯង។
+                      </p>
+                    </div>
+
+                    <div className="mt-3 pt-2 border-t border-slate-200 flex items-center justify-between">
+                      <span className="text-[10px] text-slate-500 font-bold">Custom</span>
+                      <span className="text-[10px] font-black font-mono text-indigo-900 bg-white px-2 py-0.5 rounded-md border border-slate-200">
+                        {studentAttendancePin || '1234'}
+                      </span>
+                    </div>
+                  </label>
+                </div>
               </div>
+
+              {/* Per-Share Live Demonstration Card */}
+              {pinMode === 'per_share' && (
+                <div className="bg-gradient-to-r from-indigo-50 via-purple-50 to-blue-50 border border-indigo-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-9 h-9 rounded-xl bg-white border border-indigo-200 text-indigo-600 flex items-center justify-center shrink-0 shadow-2xs">
+                      <Zap className="w-4 h-4 text-amber-500" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-800">សាកល្បងដំណើរការកូដផ្ញើម្តងប្តូរម្តង (Live OTP Demo) ៖</span>
+                        <span className="font-mono text-base font-black text-indigo-900 bg-white px-2.5 py-0.5 rounded-lg border border-indigo-300 shadow-2xs">
+                          {testSharePin}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        រាល់ពេលលោកគ្រូបើកផ្ទាំង Share Modal ឬចុច «ប្តូរកូដថ្មី» ប្រព័ន្ធនឹងបង្កើតលេខកូដថ្មីបែបនេះស្វ័យប្រវត្តិ។
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleSimulateNewPin}
+                    className="inline-flex items-center px-3 py-2 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold rounded-xl text-xs shadow-xs transition-all cursor-pointer shrink-0 self-end sm:self-auto"
+                    title="សាកល្បងចុចបង្កើតកូដ ៤ ខ្ទង់ថ្មីមួយទៀត"
+                  >
+                    <RotateCw className={`w-3.5 h-3.5 mr-1.5 ${isSimulating ? 'animate-spin' : ''}`} />
+                    <span>សាកល្បងប្តូរកូដ</span>
+                  </button>
+                </div>
+              )}
 
               {/* Master Key Input */}
-              <div className="pt-3 border-t border-slate-100">
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              <div className="pt-3 border-t border-slate-100 space-y-2">
+                <label className="block text-xs font-bold text-slate-700">
                   {pinMode === 'fixed'
                     ? 'វាយលេខកូដសម្ងាត់ថេរ (Fixed PIN ៤ ដល់ ៦ ខ្ទង់) ៖'
-                    : 'ពាក្យសម្ងាត់គ្រឹះសម្រាប់បំប្លែងកូដប្រចាំថ្ងៃ (Master Key / Seed) ៖'}
+                    : 'លេខកូដសម្ងាត់គ្រូបង្រៀន (Master Key / Teacher Secret Override) ៖'}
                 </label>
-                <div className="flex items-center space-x-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <div className="relative">
                     <Key className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
@@ -550,12 +709,52 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ settings, onRefresh 
                       value={studentAttendancePin}
                       onChange={(e) => setStudentAttendancePin(e.target.value)}
                       placeholder="1234"
-                      className="w-40 pl-9 pr-3 py-2 text-sm font-mono font-black text-indigo-700 tracking-widest text-center bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10"
+                      className="w-44 pl-9 pr-3 py-2 text-sm font-mono font-black text-indigo-700 tracking-widest text-center bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10"
                     />
                   </div>
                   <span className="text-xs text-slate-500 font-medium">
-                    {pinMode === 'fixed' ? '(លេខកូដថេរសម្រាប់ដោះសោ)' : '(ប្រើសម្រាប់បំប្លែងកូដរៀងរាល់ថ្ងៃ)'}
+                    {pinMode === 'fixed'
+                      ? '(លេខកូដថេរសម្រាប់ដោះសោកត់វត្តមាន)'
+                      : '(លេខកូដមេរបស់លោកគ្រូ អាចដោះសោបានគ្រប់ពេល ទោះបីសិស្សប្រើកូដ OTP ក៏ដោយ)'}
                   </span>
+                </div>
+              </div>
+
+              {/* High-Tech Security Protection Badges (Interactive Checklist) */}
+              <div className="pt-3 border-t border-slate-100">
+                <span className="block text-xs font-bold text-slate-700 mb-2.5">
+                  ខែលការពារសុវត្ថិភាពឌីជីថល (Security Shield Layers) ៖
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <div className="bg-slate-50 border border-slate-200/90 rounded-xl p-2.5 flex items-start space-x-2">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="text-xs font-bold text-slate-800 block">Token Hash 256-bit</span>
+                      <span className="text-[10px] text-slate-500 leading-tight block mt-0.5">
+                        តំណភ្ជាប់បំប្លែងកូដជា Token គ្មានសិស្សណាអាចបកស្រាយកូដពីក្នុង URL បានឡើយ
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50 border border-slate-200/90 rounded-xl p-2.5 flex items-start space-x-2">
+                    <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="text-xs font-bold text-slate-800 block">Anti-Brute Force</span>
+                      <span className="text-[10px] text-slate-500 leading-tight block mt-0.5">
+                        វាយកូដខុស ៥ ដង ប្រព័ន្ធចាក់សោរង់ចាំ ១៥ នាទីភ្លាមៗ ទប់ស្កាត់ការទាយកូដ
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50 border border-slate-200/90 rounded-xl p-2.5 flex items-start space-x-2">
+                    <Lock className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="text-xs font-bold text-slate-800 block">Auto-Lock 15 នាទី</span>
+                      <span className="text-[10px] text-slate-500 leading-tight block mt-0.5">
+                        បន្ទាប់ពីដោះសោរួច ប្រព័ន្ធនឹងចាក់សោឡើងវិញស្វ័យប្រវត្តិដើម្បីសុវត្ថិភាព
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

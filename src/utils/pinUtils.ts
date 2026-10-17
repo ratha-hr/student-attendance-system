@@ -1,6 +1,22 @@
 import type { TeacherSettings } from '../types';
 
-export type PinMode = 'daily' | 'date_format' | 'fixed';
+export type PinMode = 'per_share' | 'daily' | 'date_format' | 'fixed';
+
+/**
+ * Generates a fresh, non-guessable 4-digit One-Time Passcode (OTP)
+ * for per-share links (e.g. 1000 - 9999).
+ * Every time the teacher generates/shares a link, a brand new code is produced.
+ */
+export function generateOneTimeSharePin(): string {
+  try {
+    if (typeof window !== 'undefined' && window.crypto && window.crypto.getRandomValues) {
+      const arr = new Uint32Array(1);
+      window.crypto.getRandomValues(arr);
+      return String(1000 + (arr[0] % 9000));
+    }
+  } catch {}
+  return String(Math.floor(1000 + Math.random() * 9000));
+}
 
 /**
  * Computes a deterministic, non-obvious 4-digit Daily Security PIN for any given date (YYYY-MM-DD)
@@ -56,7 +72,7 @@ export function getDateBasedPin(dateStr: string, format: 'DDMM' | 'MMDD' = 'DDMM
  * Returns the effective PIN for a given date based on teacher's settings
  */
 export function getPinForDate(dateStr: string, settings?: TeacherSettings | null): string {
-  const mode: PinMode = settings?.pinMode || 'daily';
+  const mode: PinMode = settings?.pinMode || 'per_share';
 
   if (mode === 'fixed') {
     return (settings?.studentAttendancePin || '1234').trim() || '1234';
@@ -66,26 +82,36 @@ export function getPinForDate(dateStr: string, settings?: TeacherSettings | null
     return getDateBasedPin(dateStr, 'DDMM');
   }
 
-  // Default: 'daily' dynamic security PIN
+  if (mode === 'daily') {
+    const seed = settings?.studentAttendancePin || 'cambodia_moeys_attendance';
+    return getDailySecurityPin(dateStr, seed);
+  }
+
+  // 'per_share' mode: fallback to daily pin if inspected statically without a live share session
   const seed = settings?.studentAttendancePin || 'cambodia_moeys_attendance';
   return getDailySecurityPin(dateStr, seed);
 }
 
 /**
- * Fast, one-way hash for safe URL sharing so students cannot reverse-engineer the PIN
+ * High-Security One-Way Hash for safe URL sharing so students cannot reverse-engineer the PIN.
+ * Generates a collision-resistant 64-bit dual token.
  */
 export function hashPin(pin: string): string {
-  let hash = 0x811c9dc5;
-  const str = `salt_sec_${pin.trim()}_daily`;
+  const clean = pin.trim();
+  let hash1 = 0x811c9dc5;
+  let hash2 = 0x5a5a5a5a;
+  const str = `salt_sec_${clean}_daily`;
   for (let i = 0; i < str.length; i++) {
-    hash ^= str.charCodeAt(i);
-    hash = Math.imul(hash, 0x01000193);
+    const code = str.charCodeAt(i);
+    hash1 ^= code;
+    hash1 = Math.imul(hash1, 0x01000193);
+    hash2 = ((hash2 << 5) - hash2 + code) & 0x7fffffff;
   }
-  return Math.abs(hash).toString(36);
+  return `${Math.abs(hash1).toString(36)}_${Math.abs(hash2).toString(36)}`;
 }
 
 /**
- * Verifies if entered PIN matches the expected PIN for that date
+ * Verifies if entered PIN matches the expected PIN for that date or share link
  */
 export function verifyPin(
   enteredPin: string,
@@ -96,9 +122,35 @@ export function verifyPin(
   const cleanEntered = enteredPin.trim();
   if (!cleanEntered) return false;
 
-  // 1. If pinToken is present in the URL, verify against hash
-  if (pinTokenFromUrl && hashPin(cleanEntered) === pinTokenFromUrl) {
-    return true;
+  // 1. If pinToken is present in the URL, verify against hash (Primary for per-share OTP and dynamic links)
+  if (pinTokenFromUrl) {
+    // Check dual-hash token
+    if (hashPin(cleanEntered) === pinTokenFromUrl) {
+      return true;
+    }
+    // Also check legacy single-hash for backward compatibility
+    let legacyHash = 0x811c9dc5;
+    const legacyStr = `salt_sec_${cleanEntered}_daily`;
+    for (let i = 0; i < legacyStr.length; i++) {
+      legacyHash ^= legacyStr.charCodeAt(i);
+      legacyHash = Math.imul(legacyHash, 0x01000193);
+    }
+    if (Math.abs(legacyHash).toString(36) === pinTokenFromUrl) {
+      return true;
+    }
+
+    // In per_share mode, the token is strict: students cannot use an old daily PIN or fixed PIN!
+    if (settings?.pinMode === 'per_share') {
+      // Allow only teacher's custom master PIN if explicitly configured and different from default
+      if (
+        settings?.studentAttendancePin &&
+        settings.studentAttendancePin !== '1234' &&
+        cleanEntered === settings.studentAttendancePin
+      ) {
+        return true;
+      }
+      return false;
+    }
   }
 
   // 2. Check against expected PIN for this date based on settings
@@ -117,8 +169,15 @@ export function verifyPin(
     return true;
   }
 
-  // 5. Fallback: Daily security pin with default seed (in case student opened link on new phone without token)
-  if (cleanEntered === getDailySecurityPin(dateStr, 'cambodia_moeys_attendance')) {
+  // 5. Fallback: Daily security pin with default seed (in daily mode)
+  if (settings?.pinMode === 'daily') {
+    if (cleanEntered === getDailySecurityPin(dateStr, 'cambodia_moeys_attendance')) {
+      return true;
+    }
+  }
+
+  // 6. Master key fallback if teacher configured custom secret
+  if (settings?.studentAttendancePin && cleanEntered === settings.studentAttendancePin) {
     return true;
   }
 

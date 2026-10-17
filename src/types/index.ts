@@ -172,7 +172,7 @@ export interface TeacherSettings {
   phone: string;
   email?: string;
   studentAttendancePin?: string; // លេខកូដសម្ងាត់ PIN សម្រាប់ដោះសោស្រង់វត្តមាន (Default: 1234)
-  pinMode?: 'daily' | 'date_format' | 'fixed'; // របៀបលេខកូដសម្ងាត់: 'daily' (ប្តូររាល់ថ្ងៃ), 'date_format' (DDMM), 'fixed' (ថេរ)
+  pinMode?: 'per_share' | 'daily' | 'date_format' | 'fixed'; // របៀបលេខកូដសម្ងាត់: 'per_share' (ប្តូរកូដរាល់ពេលផ្ញើតំណ), 'daily' (ប្តូររាល់ថ្ងៃ), 'date_format' (DDMM), 'fixed' (ថេរ)
   customGradeCoefficients?: Record<string, Record<string, { maxScore: number; coefficient: number }>>;
   teacherAvatar?: string; // Sticker emoji or photo data URL for teacher
   schoolLogo?: string; // Sticker emoji or photo data URL for school

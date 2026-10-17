@@ -17,13 +17,14 @@ import {
   Lock,
   Key,
   ShieldCheck,
+  RotateCw,
 } from 'lucide-react';
 import { Modal } from './common/Modal';
 import type { Student, ClassRoom, AttendanceRecord, TeacherSettings } from '../types';
 import { formatKhmerDate, fromKhmerNum, toKhmerNum } from '../utils/dateUtils';
 import { generateStudentQRCodeSVG } from '../utils/qrCode';
 import { encodeAttendanceForUrl, encodeRosterForUrl } from '../utils/attendanceShare';
-import { getPinForDate, hashPin } from '../utils/pinUtils';
+import { getPinForDate, hashPin, generateOneTimeSharePin, getDateBasedPin, getDailySecurityPin } from '../utils/pinUtils';
 
 interface StudentAttendanceShareModalProps {
   isOpen: boolean;
@@ -56,9 +57,32 @@ export const StudentAttendanceShareModal: React.FC<StudentAttendanceShareModalPr
   const [copiedPin, setCopiedPin] = useState(false);
   const [includeStudentList, setIncludeStudentList] = useState(false);
 
+  // Dynamic One-Time Passcode (OTP) generated freshly on every share action / modal open
+  const [shareOtpPin, setShareOtpPin] = useState<string>(() => generateOneTimeSharePin());
+  const [isRotatingPin, setIsRotatingPin] = useState(false);
+
+  const handleRegeneratePin = () => {
+    setIsRotatingPin(true);
+    const fresh = generateOneTimeSharePin();
+    setShareOtpPin(fresh);
+    setTimeout(() => setIsRotatingPin(false), 450);
+  };
+
+  const isPerShare = !settings?.pinMode || settings?.pinMode === 'per_share';
+
   const activePinForSelectedDate = useMemo(() => {
-    return getPinForDate(selectedDate, settings);
-  }, [selectedDate, settings]);
+    if (settings?.pinMode === 'fixed') {
+      return (settings?.studentAttendancePin || '1234').trim() || '1234';
+    }
+    if (settings?.pinMode === 'date_format') {
+      return getDateBasedPin(selectedDate, 'DDMM');
+    }
+    if (settings?.pinMode === 'daily') {
+      return getDailySecurityPin(selectedDate, settings?.studentAttendancePin);
+    }
+    // Default & 'per_share': Dynamic OTP per share link
+    return shareOtpPin;
+  }, [settings?.pinMode, settings?.studentAttendancePin, selectedDate, shareOtpPin]);
 
   // Filter students for the current class
   const classStudents = useMemo(() => {
@@ -158,7 +182,10 @@ export const StudentAttendanceShareModal: React.FC<StudentAttendanceShareModalPr
     if (unmarkedCount > 0) lines.push(`• មិនទាន់ស្រង់៖ ${unmarkedCount} នាក់`);
     lines.push(`━━━━━━━━━━━━━━━━━━━━`);
     lines.push(`🔒 បញ្ជីវត្តមានត្រូវបានចាក់សោសុវត្ថិភាព`);
-    lines.push(`🔑 លេខកូដដោះសោស្រង់វត្តមានថ្ងៃនេះ៖ ${activePinForSelectedDate} (ប្តូររៀងរាល់ថ្ងៃ)`);
+    lines.push(`🔑 លេខកូដដោះសោលើកនេះ៖ ${activePinForSelectedDate} ${isPerShare ? '(កូដសុវត្ថិភាព OTP ផ្ញើម្តងប្តូរម្តង)' : '(លេខកូដសម្ងាត់)'}`);
+    if (isPerShare) {
+      lines.push(`⚡ លេខកូដនេះមានសុពលភាពសម្រាប់តែតំណភ្ជាប់ខាងក្រោមប៉ុណ្ណោះ!`);
+    }
     lines.push(`👉 តំណភ្ជាប់ស្រង់វត្តមាន៖`);
     lines.push(`${studentReadOnlyUrl}`);
     lines.push(`━━━━━━━━━━━━━━━━━━━━`);
@@ -182,6 +209,7 @@ export const StudentAttendanceShareModal: React.FC<StudentAttendanceShareModalPr
     lateCount,
     unmarkedCount,
     activePinForSelectedDate,
+    isPerShare,
     studentReadOnlyUrl,
   ]);
 
@@ -217,7 +245,10 @@ export const StudentAttendanceShareModal: React.FC<StudentAttendanceShareModalPr
   const handleOpenTelegram = () => {
     // Keep message short and clean to strictly avoid Nginx 400 Bad Request URL limit
     const homeroom = currentClass?.homeroomTeacher || settings?.teacherName || 'លោកគ្រូ-អ្នកគ្រូ';
-    const shortSummary = `📋 តារាងវត្តមានប្រចាំថ្ងៃ ${currentClass?.name || 'ថ្នាក់រៀន'} (${sessionLabel})\n📅 ${formatKhmerDate(selectedDate, true)}\n👨‍🏫 គ្រូទទួលបន្ទុក៖ ${homeroom}\n📊 ស្ថិតិ៖ សរុប ${total} នាក់ | មក ${presentCount} | ច្បាប់ ${permissionCount} | អវត្តមាន ${absentCount}${lateCount > 0 ? ` | យឺត ${lateCount}` : ''}\n🔒 បញ្ជីវត្តមានត្រូវបានចាក់សោសុវត្ថិភាព\n🔑 លេខកូដដោះសោស្រង់វត្តមានថ្ងៃនេះ៖ ${activePinForSelectedDate} (ប្តូររៀងរាល់ថ្ងៃ)\n\n👉 សូមចុចតំណភ្ជាប់ខាងក្រោមដើម្បីពិនិត្យមើលវត្តមាន៖`;
+    const pinNotice = isPerShare
+      ? `🔒 បញ្ជីវត្តមានត្រូវបានចាក់សោសុវត្ថិភាព\n🔑 លេខកូដដោះសោលើកនេះ៖ ${activePinForSelectedDate} (កូដសុវត្ថិភាព OTP ផ្ញើម្តងប្តូរម្តង)\n⚡ លេខកូដមានសុពលភាពសម្រាប់តែតំណភ្ជាប់ខាងក្រោមប៉ុណ្ណោះ!`
+      : `🔒 បញ្ជីវត្តមានត្រូវបានចាក់សោសុវត្ថិភាព\n🔑 លេខកូដដោះសោថ្ងៃនេះ៖ ${activePinForSelectedDate}`;
+    const shortSummary = `📋 តារាងវត្តមានប្រចាំថ្ងៃ ${currentClass?.name || 'ថ្នាក់រៀន'} (${sessionLabel})\n📅 ${formatKhmerDate(selectedDate, true)}\n👨‍🏫 គ្រូទទួលបន្ទុក៖ ${homeroom}\n📊 ស្ថិតិ៖ សរុប ${total} នាក់ | មក ${presentCount} | ច្បាប់ ${permissionCount} | អវត្តមាន ${absentCount}${lateCount > 0 ? ` | យឺត ${lateCount}` : ''}\n${pinNotice}\n\n👉 សូមចុចតំណភ្ជាប់ខាងក្រោមដើម្បីពិនិត្យមើល និងស្រង់វត្តមាន៖`;
     const tgUrl = `https://t.me/share/url?url=${encodeURIComponent(studentReadOnlyUrl)}&text=${encodeURIComponent(shortSummary)}`;
     window.open(tgUrl, '_blank', 'noopener,noreferrer');
   };
@@ -306,54 +337,74 @@ export const StudentAttendanceShareModal: React.FC<StudentAttendanceShareModalPr
           </div>
         </div>
 
-        {/* Daily PIN Security Code Display (Placed here in Share Modal per user request, Clean Regular Font - No Bold) */}
-        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 sm:p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-700">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-indigo-600 shrink-0 shadow-2xs">
-              <Key className="w-4 h-4 text-indigo-600" />
+        {/* High-Security Dynamic PIN & Per-Share OTP Card (ផ្ញើម្តង ប្តូរកូដម្តង) */}
+        <div className="bg-gradient-to-r from-indigo-50/90 via-purple-50/70 to-blue-50/90 border-2 border-indigo-200/90 rounded-2xl p-3.5 sm:p-4 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+          <div className="flex items-start sm:items-center space-x-3">
+            <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <Key className="w-5 h-5 text-amber-300" />
             </div>
             <div>
               <div className="flex items-center flex-wrap gap-2">
-                <span className="text-slate-600 font-normal">
-                  លេខកូដសម្ងាត់ដោះសោថ្ងៃនេះ ({formatKhmerDate(selectedDate, false)})៖
+                <span className="text-slate-800 font-bold text-xs sm:text-sm">
+                  {isPerShare
+                    ? 'លេខកូដសម្ងាត់លើកនេះ (ផ្ញើម្តង ប្តូរកូដម្តង) ៖'
+                    : `លេខកូដសម្ងាត់ដោះសោ (${formatKhmerDate(selectedDate, false)}) ៖`}
                 </span>
-                <span className="font-mono text-indigo-900 text-base sm:text-lg tracking-widest font-normal bg-white px-2.5 py-0.5 rounded-lg border border-slate-300 shadow-2xs">
-                  {activePinForSelectedDate}
+                <span className="font-mono text-indigo-950 text-lg sm:text-xl tracking-widest font-black bg-white px-3 py-0.5 rounded-xl border border-indigo-300 shadow-inner flex items-center gap-1.5">
+                  <span className="text-amber-500 text-sm">🔑</span>
+                  <span>{activePinForSelectedDate}</span>
                 </span>
-                <span className="text-[11px] text-emerald-700 font-normal bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                  ប្តូររៀងរាល់ថ្ងៃ
+                <span className="text-[10px] text-indigo-700 font-bold bg-indigo-100/90 px-2 py-0.5 rounded-full border border-indigo-200 flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-indigo-600" />
+                  <span>{isPerShare ? '⚡ OTP ផ្ញើម្តងប្តូរម្តង' : settings?.pinMode === 'fixed' ? 'Fixed PIN' : 'Daily PIN'}</span>
                 </span>
               </div>
-              <p className="text-[11px] text-slate-500 font-normal mt-0.5">
-                ផ្តល់ជូនតែប្រធានថ្នាក់ ឬសិស្សសម្រាប់ដោះសោស្រង់វត្តមានថ្ងៃនេះ (ដល់ថ្ងៃស្អែក ប្រព័ន្ធនឹងប្តូរលេខកូដថ្មីស្វ័យប្រវត្តិ)
+              <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
+                {isPerShare
+                  ? '🛡️ រាល់ពេលផ្ញើតំណ ឬចុច «ប្តូរកូដថ្មី» ប្រព័ន្ធបង្កើតកូដ ៤ ខ្ទង់ថ្មីភ្លាមៗ។ សិស្សមិនអាចយកកូដចាស់មកដោះសោលើតំណថ្មីបានឡើយ។'
+                  : 'ផ្តល់ជូនតែប្រធានថ្នាក់ ឬសិស្សសម្រាប់ដោះសោស្រង់វត្តមាន។'}
               </p>
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(activePinForSelectedDate);
-                setCopiedPin(true);
-                setTimeout(() => setCopiedPin(false), 2000);
-              } catch {}
-            }}
-            className="inline-flex items-center justify-center px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 font-normal border border-slate-300 transition-all shrink-0 cursor-pointer text-xs shadow-2xs active:scale-95"
-            title="ចម្លងលេខកូដសម្ងាត់ ៤ ខ្ទង់"
-          >
-            {copiedPin ? (
-              <>
-                <Check className="w-3.5 h-3.5 text-emerald-600 mr-1" />
-                <span className="text-emerald-700 font-normal">ចម្លងកូដរួច!</span>
-              </>
-            ) : (
-              <>
-                <Copy className="w-3.5 h-3.5 mr-1 text-slate-600" />
-                <span className="font-normal">ចម្លងលេខកូដ</span>
-              </>
+          <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
+            {isPerShare && (
+              <button
+                type="button"
+                onClick={handleRegeneratePin}
+                className="inline-flex items-center justify-center px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold transition-all cursor-pointer text-xs shadow-xs"
+                title="បង្កើតលេខកូដសម្ងាត់ ៤ ខ្ទង់ថ្មីមួយទៀតភ្លាមៗ"
+              >
+                <RotateCw className={`w-3.5 h-3.5 mr-1.5 ${isRotatingPin ? 'animate-spin' : ''}`} />
+                <span>ប្តូរកូដថ្មី</span>
+              </button>
             )}
-          </button>
+
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(activePinForSelectedDate);
+                  setCopiedPin(true);
+                  setTimeout(() => setCopiedPin(false), 2000);
+                } catch {}
+              }}
+              className="inline-flex items-center justify-center px-3 py-2 rounded-xl bg-white hover:bg-slate-100 active:scale-95 text-slate-700 font-bold border border-slate-300 transition-all cursor-pointer text-xs shadow-2xs"
+              title="ចម្លងលេខកូដសម្ងាត់ ៤ ខ្ទង់"
+            >
+              {copiedPin ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-600 mr-1" />
+                  <span className="text-emerald-700">ចម្លងកូដរួច!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3.5 h-3.5 mr-1 text-slate-600" />
+                  <span>ចម្លងកូដ</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* View Mode Tabs */}

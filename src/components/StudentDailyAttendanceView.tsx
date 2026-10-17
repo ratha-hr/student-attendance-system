@@ -343,7 +343,7 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
         setPinError('⚠️ បានបញ្ចូលខុស ៣ ដង! សូមរង់ចាំ ១ នាទី មុននឹងសាកល្បងម្ដងទៀត។');
       } else {
         const remaining = 3 - nextFailures;
-        setPinError(`❌ លេខកូដសម្ងាត់ប្រចាំថ្ងៃមិនត្រឹមត្រូវទេ! (សូមសួរលេខកូដថ្ងៃនេះពីលោកគ្រូ ឬប្រធានថ្នាក់) នៅសល់ ${remaining} ដងទៀត។`);
+        setPinError(`❌ លេខកូដសម្ងាត់មិនត្រឹមត្រូវទេ! សូមពិនិត្យមើលលេខកូដ OTP ៤ ខ្ទង់ដែលលោកគ្រូបានផ្ញើមកជាមួយតំណភ្ជាប់លើកនេះ (នៅសល់ ${remaining} ដងទៀត)។`);
       }
       if (soundOn) soundEffects.playAbsentChime();
     }
@@ -960,12 +960,27 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
         maxWidth="md"
       >
         <form onSubmit={handleVerifyPin} className="space-y-4">
-          <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-3.5 text-xs text-indigo-900 flex items-start space-x-2.5">
-            <Lock className="w-5 h-5 text-indigo-600 shrink-0 mt-0.5" />
-            <div className="leading-relaxed">
-              <p className="font-bold">ការពារសុវត្ថិភាពវត្តមាន (លេខកូដប្តូររាល់ថ្ងៃ)</p>
-              <p className="text-indigo-800 text-[11px] mt-0.5">
-                ដើម្បីការពារកុំឱ្យសិស្សលួចកែវត្តមានខ្លួនឯង សូមបញ្ចូលលេខកូដសម្ងាត់ ៤ ខ្ទង់ប្រចាំថ្ងៃ (ប្តូររាល់ថ្ងៃ) ដែលលោកគ្រូ-អ្នកគ្រូបានផ្តល់ជូនសម្រាប់ថ្ងៃនេះ។
+          <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-2xl p-3.5 text-xs text-indigo-900 flex items-start space-x-2.5 shadow-sm">
+            <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-sm mt-0.5">
+              <ShieldCheck className="w-5 h-5 text-white" />
+            </div>
+            <div className="leading-relaxed flex-1">
+              <div className="flex items-center justify-between mb-1">
+                <p className="font-bold text-indigo-950">ប្រព័ន្ធការពារសុវត្ថិភាពវត្តមាន</p>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-mono font-semibold">
+                  {initialPinToken ? '⚡ Dynamic OTP' : '🔒 PIN Protected'}
+                </span>
+              </div>
+              <p className="text-indigo-800 text-[11px] leading-relaxed">
+                {initialPinToken ? (
+                  <>
+                    ដើម្បីការពារកុំឱ្យសិស្សលួចកែវត្តមានខ្លួនឯង សូមបញ្ចូល <strong className="text-indigo-950 font-bold">លេខកូដសម្ងាត់ ៤ ខ្ទង់ (OTP)</strong> ដែលបានផ្ញើជូនតាមតំណភ្ជាប់នេះ ឬលេខកូដ Master Key របស់លោកគ្រូ-អ្នកគ្រូ។
+                  </>
+                ) : (
+                  <>
+                    ដើម្បីការពារកុំឱ្យសិស្សលួចកែវត្តមានខ្លួនឯង សូមបញ្ចូលលេខកូដសម្ងាត់ ៤ ខ្ទង់ដែលលោកគ្រូ-អ្នកគ្រូបានកំណត់ ឬបានផ្តល់ជូនសម្រាប់ថ្ងៃនេះ។
+                  </>
+                )}
               </p>
             </div>
           </div>
