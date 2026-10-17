@@ -266,6 +266,41 @@ export function getKhmerSolarDate(d: Date | string = new Date()): KhmerSolarInfo
 }
 
 /**
+ * គណនាកាលបរិច្ឆេទរដ្ឋបាលផ្លូវការ (មានចន្ទគតិលើ សុរិយគតិក្រោម)
+ * ស្របតាមស្តង់ដារលិខិតរដ្ឋបាលនៃក្រសួងអប់រំ យុវជន និងកីឡា
+ */
+export function getKhmerOfficialDateHeader(d: Date | string = new Date(), province: string = 'ខេត្តកំពង់ឆ្នាំង'): {
+  lunarDateStr: string;
+  solarDateStr: string;
+} {
+  let dateObj: Date;
+  if (typeof d === 'string') {
+    const clean = d.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) {
+      dateObj = new Date(clean + 'T12:00:00');
+    } else {
+      dateObj = new Date(clean);
+    }
+  } else {
+    dateObj = d;
+  }
+  const validDate = isNaN(dateObj.getTime()) ? new Date() : dateObj;
+
+  const lunar = getKhmerLunarDate(validDate);
+  const solar = getKhmerSolarDate(validDate);
+
+  const cleanProvince = (province || '').trim() || 'ខេត្តកំពង់ឆ្នាំង';
+  const provinceWithPrefix = cleanProvince.startsWith('ខេត្ត') || cleanProvince.startsWith('រាជធានី')
+    ? cleanProvince
+    : `ខេត្ត${cleanProvince}`;
+
+  return {
+    lunarDateStr: lunar.fullLunarStr,
+    solarDateStr: `${provinceWithPrefix}, ${solar.shortSolarStr}`,
+  };
+}
+
+/**
  * ទម្រង់ម៉ោងសកល (Universal / International Standard Time)
  * ប្រើប្រាស់លេខសកល (0-9) សម្រាប់ម៉ោង នាទី វិនាទី
  */

@@ -189,6 +189,19 @@
   .page-break {
     page-break-before: always;
   }
+
+  /* Official Administrative Letter Styles (A4 Portrait Standard) */
+  .official-letter-doc {
+    font-size: 10pt !important;
+    line-height: 1.7 !important;
+    padding: 6mm 10mm !important;
+    margin: 0 !important;
+    color: #000 !important;
+    box-sizing: border-box !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    max-width: 100% !important;
+  }
 }
 
 /* Custom scrollbars */
