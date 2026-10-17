@@ -24,6 +24,88 @@ export const TABLE_3_MONTHS: MonthColDef[] = [
   { key: 'jul', monthName: 'ខែកក្កដា', actualName: 'ចុងឆ្នាំ' },
 ];
 
+export const KHMER_MONTH_LIST = [
+  'ខែមករា',
+  'ខែកុម្ភៈ',
+  'ខែមីនា',
+  'ខែមេសា',
+  'ខែឧសភា',
+  'ខែមិថុនា',
+  'ខែកក្កដា',
+  'ខែសីហា',
+  'ខែកញ្ញា',
+  'ខែតុលា',
+  'ខែវិច្ឆិកា',
+  'ខែធ្នូ',
+];
+
+export function getNextKhmerMonth(monthName: string): string {
+  const idx = KHMER_MONTH_LIST.indexOf(monthName);
+  if (idx === -1) return monthName;
+  return KHMER_MONTH_LIST[(idx + 1) % KHMER_MONTH_LIST.length];
+}
+
+export function generateMonthSequence(startMonthName: string): {
+  table1: MonthColDef[];
+  table2: MonthColDef[];
+  table3: MonthColDef[];
+} {
+  const startIdx = KHMER_MONTH_LIST.indexOf(startMonthName);
+  const safeIdx = startIdx >= 0 ? startIdx : 11; // default 'ខែធ្នូ' (index 11)
+  const keys = ['dec', 'jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul'];
+
+  const getCol = (offset: number, key: string, isLast: boolean = false): MonthColDef => {
+    const curMonth = KHMER_MONTH_LIST[(safeIdx + offset) % 12];
+    const nxtMonth = KHMER_MONTH_LIST[(safeIdx + offset + 1) % 12];
+    return {
+      key,
+      monthName: curMonth,
+      actualName: isLast ? 'ចុងឆ្នាំ' : `ចុង${nxtMonth}`,
+    };
+  };
+
+  return {
+    table1: [getCol(0, keys[0]), getCol(1, keys[1]), getCol(2, keys[2])],
+    table2: [getCol(3, keys[3]), getCol(4, keys[4]), getCol(5, keys[5])],
+    table3: [getCol(6, keys[6]), getCol(7, keys[7], true)],
+  };
+}
+
+export function clearPlanAndActualData(plan: TeachingPlan): TeachingPlan {
+  const clearedRows = plan.rows.map((row) => {
+    const newMonthly: Record<
+      string,
+      { planCount: number; planPct: number; actualCount: number; actualPct: number }
+    > = {};
+    Object.keys(row.monthly || {}).forEach((k) => {
+      newMonthly[k] = { planCount: 0, planPct: 0, actualCount: 0, actualPct: 0 };
+    });
+    // Ensure all 8 standard keys exist
+    ['dec', 'jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul'].forEach((k) => {
+      newMonthly[k] = { planCount: 0, planPct: 0, actualCount: 0, actualPct: 0 };
+    });
+    return {
+      ...row,
+      monthly: newMonthly,
+      yearEndActualCount: 0,
+      yearEndActualPct: 0,
+    };
+  });
+
+  return {
+    ...plan,
+    rows: clearedRows,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+export function isOldDummyPlan(plan: TeachingPlan): boolean {
+  const rowA = plan.rows.find((r) => r.grade === 'A');
+  if (!rowA || !rowA.monthly) return false;
+  // If dec or jan actualCount has the initial sample numbers 4 or 26
+  return rowA.monthly.dec?.actualCount === 4 || rowA.monthly.jan?.actualCount === 26;
+}
+
 export const ALL_MONTH_KEYS = [
   ...TABLE_1_MONTHS,
   ...TABLE_2_MONTHS,
@@ -166,102 +248,59 @@ export function createDefaultTeachingPlan(
   const academicYear = selectedClass?.academicYear || settings?.academicYear || '២០២៦-២០២៧';
   const subject = settings?.specialtySubject || 'គណិតវិទ្យា';
 
-  // Balanced default rows: all columns sum to exactly 100%
+  // Clean default rows: all monthly plan and actual data initialized to 0
+  const emptyMonthly = {
+    dec: { planCount: 0, planPct: 0, actualCount: 0, actualPct: 0 },
+    jan: { planCount: 0, planPct: 0, actualCount: 0, actualPct: 0 },
+    feb: { planCount: 0, planPct: 0, actualCount: 0, actualPct: 0 },
+    mar: { planCount: 0, planPct: 0, actualCount: 0, actualPct: 0 },
+    apr: { planCount: 0, planPct: 0, actualCount: 0, actualPct: 0 },
+    may: { planCount: 0, planPct: 0, actualCount: 0, actualPct: 0 },
+    jun: { planCount: 0, planPct: 0, actualCount: 0, actualPct: 0 },
+    jul: { planCount: 0, planPct: 0, actualCount: 0, actualPct: 0 },
+  };
+
   const defaultRows: TeachingPlanGradeRow[] = [
     {
       grade: 'A',
       baselineCount: 3,
       baselinePct: 5,
-      monthly: {
-        dec: { planCount: 1, planPct: 2, actualCount: 4, actualPct: 7 },
-        jan: { planCount: 2, planPct: 3, actualCount: 26, actualPct: 43 },
-        feb: { planCount: 5, planPct: 8, actualCount: 11, actualPct: 18 },
-        mar: { planCount: 1, planPct: 2, actualCount: 0, actualPct: 0 },
-        apr: { planCount: 2, planPct: 3, actualCount: 0, actualPct: 0 },
-        may: { planCount: 5, planPct: 8, actualCount: 0, actualPct: 0 },
-        jun: { planCount: 3, planPct: 5, actualCount: 0, actualPct: 0 },
-        jul: { planCount: 5, planPct: 8, actualCount: 0, actualPct: 0 },
-      },
+      monthly: { ...emptyMonthly },
       yearEndTargetPct: 8,
     },
     {
       grade: 'B',
       baselineCount: 4,
       baselinePct: 7,
-      monthly: {
-        dec: { planCount: 2, planPct: 3, actualCount: 12, actualPct: 20 },
-        jan: { planCount: 4, planPct: 7, actualCount: 8, actualPct: 13 },
-        feb: { planCount: 9, planPct: 15, actualCount: 12, actualPct: 20 },
-        mar: { planCount: 2, planPct: 3, actualCount: 0, actualPct: 0 },
-        apr: { planCount: 4, planPct: 7, actualCount: 0, actualPct: 0 },
-        may: { planCount: 9, planPct: 15, actualCount: 0, actualPct: 0 },
-        jun: { planCount: 6, planPct: 10, actualCount: 0, actualPct: 0 },
-        jul: { planCount: 9, planPct: 15, actualCount: 0, actualPct: 0 },
-      },
+      monthly: { ...emptyMonthly },
       yearEndTargetPct: 15,
     },
     {
       grade: 'C',
       baselineCount: 4,
       baselinePct: 7,
-      monthly: {
-        dec: { planCount: 3, planPct: 5, actualCount: 16, actualPct: 26 },
-        jan: { planCount: 5, planPct: 8, actualCount: 9, actualPct: 15 },
-        feb: { planCount: 11, planPct: 18, actualCount: 5, actualPct: 8 },
-        mar: { planCount: 3, planPct: 5, actualCount: 0, actualPct: 0 },
-        apr: { planCount: 5, planPct: 8, actualCount: 0, actualPct: 0 },
-        may: { planCount: 11, planPct: 18, actualCount: 0, actualPct: 0 },
-        jun: { planCount: 8, planPct: 13, actualCount: 0, actualPct: 0 },
-        jul: { planCount: 10, planPct: 16, actualCount: 0, actualPct: 0 },
-      },
+      monthly: { ...emptyMonthly },
       yearEndTargetPct: 17,
     },
     {
       grade: 'D',
       baselineCount: 8,
       baselinePct: 13,
-      monthly: {
-        dec: { planCount: 5, planPct: 8, actualCount: 7, actualPct: 11 },
-        jan: { planCount: 15, planPct: 25, actualCount: 5, actualPct: 8 },
-        feb: { planCount: 18, planPct: 29, actualCount: 14, actualPct: 23 },
-        mar: { planCount: 5, planPct: 8, actualCount: 0, actualPct: 0 },
-        apr: { planCount: 15, planPct: 25, actualCount: 0, actualPct: 0 },
-        may: { planCount: 18, planPct: 29, actualCount: 0, actualPct: 0 },
-        jun: { planCount: 18, planPct: 30, actualCount: 0, actualPct: 0 },
-        jul: { planCount: 18, planPct: 30, actualCount: 0, actualPct: 0 },
-      },
+      monthly: { ...emptyMonthly },
       yearEndTargetPct: 30,
     },
     {
       grade: 'E',
       baselineCount: 16,
       baselinePct: 26,
-      monthly: {
-        dec: { planCount: 39, planPct: 64, actualCount: 12, actualPct: 20 },
-        jan: { planCount: 26, planPct: 42, actualCount: 4, actualPct: 7 },
-        feb: { planCount: 12, planPct: 20, actualCount: 9, actualPct: 15 },
-        mar: { planCount: 39, planPct: 64, actualCount: 0, actualPct: 0 },
-        apr: { planCount: 26, planPct: 42, actualCount: 0, actualPct: 0 },
-        may: { planCount: 12, planPct: 20, actualCount: 0, actualPct: 0 },
-        jun: { planCount: 15, planPct: 25, actualCount: 0, actualPct: 0 },
-        jul: { planCount: 13, planPct: 21, actualCount: 0, actualPct: 0 },
-      },
+      monthly: { ...emptyMonthly },
       yearEndTargetPct: 20,
     },
     {
       grade: 'F',
       baselineCount: 26,
       baselinePct: 42,
-      monthly: {
-        dec: { planCount: 11, planPct: 18, actualCount: 8, actualPct: 14 },
-        jan: { planCount: 9, planPct: 15, actualCount: 8, actualPct: 14 },
-        feb: { planCount: 6, planPct: 10, actualCount: 8, actualPct: 14 },
-        mar: { planCount: 11, planPct: 18, actualCount: 0, actualPct: 0 },
-        apr: { planCount: 9, planPct: 15, actualCount: 0, actualPct: 0 },
-        may: { planCount: 6, planPct: 10, actualCount: 0, actualPct: 0 },
-        jun: { planCount: 11, planPct: 17, actualCount: 0, actualPct: 0 },
-        jul: { planCount: 6, planPct: 10, actualCount: 0, actualPct: 0 },
-      },
+      monthly: { ...emptyMonthly },
       yearEndTargetPct: 10,
     },
   ];
@@ -282,6 +321,11 @@ export function createDefaultTeachingPlan(
     femaleStudents,
     scoreScale: 'scale100',
     rows: defaultRows,
+    monthCols: {
+      table1: [...TABLE_1_MONTHS],
+      table2: [...TABLE_2_MONTHS],
+      table3: [...TABLE_3_MONTHS],
+    },
     updatedAt: new Date().toISOString(),
   };
 }
@@ -499,11 +543,11 @@ export function exportTeachingPlanToExcel(plan: TeachingPlan) {
   };
 
   // Table 1
-  appendTable('តារាងទី ១', TABLE_1_MONTHS);
+  appendTable('តារាងទី ១', plan.monthCols?.table1 || TABLE_1_MONTHS);
   // Table 2
-  appendTable('តារាងទី ២', TABLE_2_MONTHS);
+  appendTable('តារាងទី ២', plan.monthCols?.table2 || TABLE_2_MONTHS);
   // Table 3
-  appendTable('តារាងទី ៣', TABLE_3_MONTHS);
+  appendTable('តារាងទី ៣', plan.monthCols?.table3 || TABLE_3_MONTHS);
 
   // Bottom signatures
   aoa.push([]);

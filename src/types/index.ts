@@ -199,6 +199,12 @@ export interface TeachingPlanGradeRow {
   yearEndActualPct?: number;
 }
 
+export interface TeachingPlanMonthDef {
+  key: string;
+  monthName: string;
+  actualName: string;
+}
+
 export interface TeachingPlan {
   id: string;
   classId: string;
@@ -215,6 +221,12 @@ export interface TeachingPlan {
   femaleStudents: number;
   scoreScale: 'scale100' | 'scale50';
   rows: TeachingPlanGradeRow[];
+  monthCols?: {
+    table1: TeachingPlanMonthDef[];
+    table2: TeachingPlanMonthDef[];
+    table3: TeachingPlanMonthDef[];
+  };
   updatedAt: string;
 }
+
 

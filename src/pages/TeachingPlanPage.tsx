@@ -37,6 +37,11 @@ import {
   calculateTotals,
   exportTeachingPlanToExcel,
   type MonthColDef,
+  KHMER_MONTH_LIST,
+  getNextKhmerMonth,
+  generateMonthSequence,
+  clearPlanAndActualData,
+  isOldDummyPlan,
 } from '../utils/teachingPlanUtils';
 import { triggerPrint, type PrintOrientation } from '../utils/printUtils';
 import { toKhmerNum } from '../utils/dateUtils';
@@ -84,7 +89,11 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
     const saved = localStorage.getItem(`teaching_plan_${activeClass?.id || 'default'}_${settings?.specialtySubject || 'គណិតវិទ្យា'}`);
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (isOldDummyPlan(parsed)) {
+          return clearPlanAndActualData(parsed);
+        }
+        return parsed;
       } catch (e) {
         // fallback
       }
@@ -111,13 +120,26 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
           .first();
 
         if (fromDb) {
+          if (isOldDummyPlan(fromDb)) {
+            const cleaned = clearPlanAndActualData(fromDb);
+            await db.teachingPlans.put(cleaned);
+            setPlan(cleaned);
+            return;
+          }
           setPlan(fromDb);
           return;
         }
 
         const savedLocal = localStorage.getItem(planKey);
         if (savedLocal) {
-          setPlan(JSON.parse(savedLocal));
+          const parsed = JSON.parse(savedLocal);
+          if (isOldDummyPlan(parsed)) {
+            const cleaned = clearPlanAndActualData(parsed);
+            localStorage.setItem(planKey, JSON.stringify(cleaned));
+            setPlan(cleaned);
+            return;
+          }
+          setPlan(parsed);
           return;
         }
 
@@ -246,14 +268,120 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
     });
   };
 
-  // Reset to default template from screenshot
+  // Reset to default template
   const handleResetToDefault = () => {
-    if (window.confirm('តើលោកគ្រូ-អ្នកគ្រូចង់ផ្ទុកគំរូដើមផ្លូវការ (ដូចក្នុងរូបភាព Excel) ឡើងវិញឬទេ?')) {
+    if (window.confirm('តើលោកគ្រូ-អ្នកគ្រូចង់ផ្ទុកគំរូដើមឡើងវិញឬទេ?')) {
       const def = createDefaultTeachingPlan(activeClass, classTotal, classFemales, settings);
       def.subject = selectedSubject;
       setPlan(def);
       handleSave(def);
       showToast('បានផ្ទុកទម្រង់គំរូដើមរួចរាល់!');
+    }
+  };
+
+  // Handler for changing month name in column header
+  const handleMonthNameChange = (
+    tableKey: 'table1' | 'table2' | 'table3',
+    colKey: string,
+    newMonthName: string
+  ) => {
+    setPlan((prev) => {
+      const curCols = {
+        table1: prev.monthCols?.table1 || TABLE_1_MONTHS,
+        table2: prev.monthCols?.table2 || TABLE_2_MONTHS,
+        table3: prev.monthCols?.table3 || TABLE_3_MONTHS,
+      };
+
+      const targetList = [...curCols[tableKey]];
+      const colIdx = targetList.findIndex((m) => m.key === colKey);
+      if (colIdx !== -1) {
+        const isVeryLast = tableKey === 'table3' && colIdx === targetList.length - 1;
+        const nxt = getNextKhmerMonth(newMonthName);
+        const newActual = isVeryLast ? 'ចុងឆ្នាំ' : `ចុង${nxt}`;
+
+        targetList[colIdx] = {
+          ...targetList[colIdx],
+          monthName: newMonthName,
+          actualName: newActual,
+        };
+      }
+
+      const updatedMonthCols = {
+        ...curCols,
+        [tableKey]: targetList,
+      };
+
+      const updated = {
+        ...prev,
+        monthCols: updatedMonthCols,
+      };
+      handleSave(updated);
+      return updated;
+    });
+    showToast(`បានប្តូរទៅ «${newMonthName}» ដោយជោគជ័យ`);
+  };
+
+  // Handler for customizing month-end actual title
+  const handleActualNameChange = (
+    tableKey: 'table1' | 'table2' | 'table3',
+    colKey: string,
+    newActualName: string
+  ) => {
+    setPlan((prev) => {
+      const curCols = {
+        table1: prev.monthCols?.table1 || TABLE_1_MONTHS,
+        table2: prev.monthCols?.table2 || TABLE_2_MONTHS,
+        table3: prev.monthCols?.table3 || TABLE_3_MONTHS,
+      };
+
+      const targetList = [...curCols[tableKey]];
+      const colIdx = targetList.findIndex((m) => m.key === colKey);
+      if (colIdx !== -1) {
+        targetList[colIdx] = {
+          ...targetList[colIdx],
+          actualName: newActualName,
+        };
+      }
+
+      const updatedMonthCols = {
+        ...curCols,
+        [tableKey]: targetList,
+      };
+
+      const updated = {
+        ...prev,
+        monthCols: updatedMonthCols,
+      };
+      handleSave(updated);
+      return updated;
+    });
+  };
+
+  // Preset for entire academic year month sequence
+  const handleApplyMonthSequencePreset = (startMonth: string) => {
+    const seq = generateMonthSequence(startMonth);
+    setPlan((prev) => {
+      const updated = {
+        ...prev,
+        monthCols: seq,
+      };
+      handleSave(updated);
+      return updated;
+    });
+    showToast(`បានកំណត់លំដាប់ខែចាប់ពី ${startMonth} ដោយជោគជ័យ!`);
+  };
+
+  // Clear all plan and month-end counts to 0
+  const handleClearPlanAndActual = () => {
+    if (
+      window.confirm(
+        'តើលោកគ្រូ-អ្នកគ្រូពិតជាចង់សម្អាតទិន្នន័យចំនួន និងភាគរយនៃ «ផែនការ» និង «ចុងខែ» ទាំងអស់ឱ្យទៅជា ០ ឬទេ?'
+      )
+    ) {
+      const cleared = clearPlanAndActualData(plan);
+      setPlan(cleared);
+      handleSave(cleared);
+      showToast('បានសម្អាតទិន្នន័យផែនការ និងចុងខែទាំងអស់រួចរាល់ (០)!');
     }
   };
 
@@ -421,7 +549,11 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
       list.push({ name: 'ទិន្នន័យមូលដ្ឋាន', sum: basePctSum });
     }
 
-    const monthList = [...TABLE_1_MONTHS, ...TABLE_2_MONTHS, ...TABLE_3_MONTHS];
+    const monthList = [
+      ...(plan.monthCols?.table1 || TABLE_1_MONTHS),
+      ...(plan.monthCols?.table2 || TABLE_2_MONTHS),
+      ...(plan.monthCols?.table3 || TABLE_3_MONTHS),
+    ];
     monthList.forEach((m) => {
       const ppSum = plan.rows.reduce((sum, r) => sum + (r.monthly[m.key]?.planPct || 0), 0);
       if (ppSum > 100) {
@@ -439,7 +571,7 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
     }
 
     return list;
-  }, [plan.rows]);
+  }, [plan.rows, plan.monthCols]);
 
   // Centered Warning Notification Modal State
   const [showWarningModal, setShowWarningModal] = useState<boolean>(false);
@@ -645,7 +777,11 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
   };
 
   // Helper to render an Excel-identical 3-tier table block
-  const renderTableBlock = (title: string, months: MonthColDef[]) => {
+  const renderTableBlock = (
+    title: string,
+    months: MonthColDef[],
+    tableKey: 'table1' | 'table2' | 'table3'
+  ) => {
     const baselineTotals = calculateTotals(
       plan.rows,
       (r) => r.baselineCount,
@@ -702,7 +838,23 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
               </th>
               {months.map((m) => (
                 <th key={m.key} colSpan={4} className="border border-black px-1 py-0.5 align-middle text-center print:px-0.5 print:py-0.5">
-                  {m.monthName}
+                  <div className="flex items-center justify-center print:hidden">
+                    <select
+                      value={m.monthName}
+                      onChange={(e) => handleMonthNameChange(tableKey, m.key, e.target.value)}
+                      className="bg-amber-50 hover:bg-amber-100 font-bold text-slate-900 text-center text-xs cursor-pointer rounded px-1.5 py-0.5 border border-amber-300 shadow-2xs focus:outline-none focus:ring-2 focus:ring-blue-500 max-w-full"
+                      title="ចុចដើម្បីជ្រើសរើសខែ"
+                    >
+                      {KHMER_MONTH_LIST.map((km) => (
+                        <option key={km} value={km}>
+                          {km}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <span className="hidden print:inline-block font-bold">
+                    {m.monthName}
+                  </span>
                 </th>
               ))}
               <th rowSpan={3} className="border border-black px-1 py-0.5 align-middle text-center leading-tight print:px-0.5 print:py-0.5">
@@ -719,7 +871,18 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
                     ផែនការ
                   </th>
                   <th colSpan={2} className="border border-black px-1 py-0.5 text-center print:px-0.5 print:py-0.5">
-                    {m.actualName}
+                    <div className="flex items-center justify-center print:hidden">
+                      <input
+                        type="text"
+                        value={m.actualName}
+                        onChange={(e) => handleActualNameChange(tableKey, m.key, e.target.value)}
+                        className="bg-transparent hover:bg-amber-50 focus:bg-white font-bold text-slate-900 text-center text-xs w-full rounded px-1 py-0.5 outline-none border-b border-transparent focus:border-blue-500"
+                        title="ចំណងជើងចុងខែ (អាចកែសម្រួលបាន)"
+                      />
+                    </div>
+                    <span className="hidden print:inline-block font-bold">
+                      {m.actualName}
+                    </span>
                   </th>
                 </React.Fragment>
               ))}
@@ -991,6 +1154,16 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
 
             <button
               type="button"
+              onClick={handleClearPlanAndActual}
+              className="px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+              title="លុបចំនួនទិន្នន័យផែនការ និងចុងខែទាំងអស់ឱ្យទៅជា ០"
+            >
+              <span>🧹</span>
+              <span>សម្អាតទិន្នន័យ (០)</span>
+            </button>
+
+            <button
+              type="button"
               onClick={handleExportExcel}
               className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
             >
@@ -1057,7 +1230,7 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
               type="button"
               onClick={handleResetToDefault}
               className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer border border-slate-200"
-              title="ផ្ទុកគំរូដើមឡើងវិញ (ដូច Excel Screenshot)"
+              title="ផ្ទុកគំរូដើមឡើងវិញ"
             >
               <RotateCcw className="w-4 h-4" />
             </button>
@@ -1074,7 +1247,7 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
         </div>
 
         {/* Filter Controls Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-3 border-t border-slate-100">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-3 border-t border-slate-100">
           {/* Class Select */}
           <div>
             <label className="block text-xs font-bold text-slate-600 mb-1">ជ្រើសរើសថ្នាក់រៀន</label>
@@ -1121,6 +1294,27 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
               }}
               className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 text-xs focus:bg-white focus:ring-2 focus:ring-blue-500"
             />
+          </div>
+
+          {/* Month Sequence Preset */}
+          <div>
+            <label className="block text-xs font-bold text-slate-600 mb-1">លំដាប់ខែសិក្សា</label>
+            <select
+              onChange={(e) => {
+                if (e.target.value) {
+                  handleApplyMonthSequencePreset(e.target.value);
+                }
+              }}
+              defaultValue=""
+              className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 text-xs focus:bg-white focus:ring-2 focus:ring-blue-500 cursor-pointer"
+              title="កំណត់លំដាប់ខែស្វ័យប្រវត្តសម្រាប់តារាងទាំងមូល"
+            >
+              <option value="" disabled>🗓️ កំណត់ខែស្វ័យប្រវត្ត...</option>
+              <option value="ខែតុលា">ចាប់ពី ខែតុលា (ស្តង់ដារក្រសួង)</option>
+              <option value="ខែវិច្ឆិកា">ចាប់ពី ខែវិច្ឆិកា</option>
+              <option value="ខែធ្នូ">ចាប់ពី ខែធ្នូ (គំរូដើម)</option>
+              <option value="ខែមករា">ចាប់ពី ខែមករា</option>
+            </select>
           </div>
 
           {/* Quick Stats Banner */}
@@ -1639,14 +1833,14 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
           </table>
         </div>
 
-        {/* Table 1: ត្រីមាសទី ១ (ខែធ្នូ, ខែមករា, ខែកុម្ភៈ) */}
-        {renderTableBlock('តារាងទី ១', TABLE_1_MONTHS)}
+        {/* Table 1: ត្រីមាសទី ១ */}
+        {renderTableBlock('តារាងទី ១', plan.monthCols?.table1 || TABLE_1_MONTHS, 'table1')}
 
-        {/* Table 2: ត្រីមាសទី ២ (ខែមីនា, ខែមេសា, ខែឧសភា) */}
-        {renderTableBlock('តារាងទី ២', TABLE_2_MONTHS)}
+        {/* Table 2: ត្រីមាសទី ២ */}
+        {renderTableBlock('តារាងទី ២', plan.monthCols?.table2 || TABLE_2_MONTHS, 'table2')}
 
-        {/* Table 3: បញ្ចប់ឆ្នាំសិក្សា (ខែមិថុនា, ខែកក្កដា) */}
-        {renderTableBlock('តារាងទី ៣', TABLE_3_MONTHS)}
+        {/* Table 3: បញ្ចប់ឆ្នាំសិក្សា */}
+        {renderTableBlock('តារាងទី ៣', plan.monthCols?.table3 || TABLE_3_MONTHS, 'table3')}
 
         {/* Official Signatures (Kingdom of Cambodia Format) */}
         <div className="pt-5 pb-1 print:pt-4 print:pb-0 grid grid-cols-2 text-center text-xs text-black break-inside-avoid">
