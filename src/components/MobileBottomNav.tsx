@@ -4,6 +4,7 @@ import {
   FileSpreadsheet,
   GraduationCap,
   Calendar,
+  BookOpenCheck,
   Menu,
 } from 'lucide-react';
 import type { NavTab } from './Sidebar';
@@ -29,6 +30,11 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       id: 'students' as NavTab,
       label: 'សិស្ស',
       icon: FileSpreadsheet,
+    },
+    {
+      id: 'continuous-assessment' as NavTab,
+      label: 'ពិន្ទុ ៣០%',
+      icon: BookOpenCheck,
     },
     {
       id: 'grades' as NavTab,

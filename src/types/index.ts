@@ -137,6 +137,14 @@ export interface StudentGrade {
   academicYear: string;
   scores: Record<string, number>; // e.g. { "khmer": 80, "math": 90 }
   conduct: 'ល្អណាស់' | 'ល្អ' | 'មធ្យម' | 'ខ្សោយ';
+  // Continuous assessment fields (ការវាយតម្លៃបន្ត ៣០%)
+  absentCount?: number;     // ចំនួនអវត្តមាន
+  attendanceScore?: number; // ពិន្ទុវត្តមាន (១០ - អវត្តមាន x ២)
+  quiz15mScore?: number;    // ពិន្ទុតេស្ត ១៥នាទី (ពិន្ទុអតិបរមា ១០)
+  appScore?: number;        // ពិន្ទុ App (ពិន្ទុអតិបរមា ១០)
+  assessmentTotal?: number; // សរុបពិន្ទុវាយតម្លៃ (វត្តមាន + ១៥នាទី + App) (៣០%)
+  examScore70?: number;     // ពិន្ទុប្រឡងមុខវិជ្ជា ៧០%
+  finalTotal100?: number;   // ពិន្ទុសរុបប្រចាំខែ ១០០% (៣០% វាយតម្លៃបន្ត + ៧០% ប្រឡង)
 }
 
 export interface TimetableSlot {

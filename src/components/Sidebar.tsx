@@ -20,6 +20,7 @@ export type NavTab =
   | 'monthly-attendance'
   | 'students'
   | 'grades'
+  | 'continuous-assessment'
   | 'grade-config'
   | 'timetable-class'
   | 'timetable-teacher'
@@ -93,6 +94,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
           id: 'grades',
           label: 'ពិន្ទុសិស្សប្រចាំខែ',
           icon: GraduationCap,
+        },
+        {
+          id: 'continuous-assessment',
+          label: 'ពិន្ទុវត្តមាន & វាយតម្លៃ (៣០%)',
+          icon: BookOpenCheck,
         },
         {
           id: 'grade-config',

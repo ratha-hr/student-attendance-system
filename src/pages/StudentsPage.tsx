@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   FileSpreadsheet,
   Download,
@@ -20,8 +20,11 @@ import {
   ChevronRight,
   CheckCircle2,
   Clipboard,
+  Sparkles,
+  BookOpenCheck,
 } from 'lucide-react';
 import type { Student, ClassRoom, AttendanceRecord, Gender, TeacherSettings } from '../types';
+import type { NavTab } from '../components/Sidebar';
 import { db } from '../db/db';
 import { Modal } from '../components/common/Modal';
 import { StudentIDCardsModal } from '../components/StudentIDCardsModal';
@@ -43,10 +46,11 @@ import { enrichStudentWithMoEYSFields } from '../utils/studentEnricher';
 interface StudentsPageProps {
   students: Student[];
   classes: ClassRoom[];
-  attendanceRecords: AttendanceRecord[];
+  attendanceRecords?: AttendanceRecord[];
   settings: TeacherSettings | null;
   selectedClassId: string;
   onRefresh: () => void;
+  onNavigateTab?: (tab: NavTab) => void;
 }
 
 export const StudentsPage: React.FC<StudentsPageProps> = ({
@@ -56,6 +60,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
   settings,
   selectedClassId,
   onRefresh,
+  onNavigateTab,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [genderFilter, setGenderFilter] = useState<'all' | 'ប្រុស' | 'ស្រី'>('all');
@@ -130,6 +135,49 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
   const classStudentsTotal = currentClassStudents.length;
   const classStudentsFemale = currentClassStudents.filter((s) => s.gender === 'ស្រី').length;
   const classStudentsMale = currentClassStudents.filter((s) => s.gender === 'ប្រុស').length;
+
+  // Duplicate detection in current class
+  const duplicateInfo = useMemo(() => {
+    const nameCountMap = new Map<string, number>();
+    const codeCountMap = new Map<string, number>();
+
+    currentClassStudents.forEach((s) => {
+      const n = (s.nameKh || '').trim().toLowerCase();
+      if (n) nameCountMap.set(n, (nameCountMap.get(n) || 0) + 1);
+      const c = (s.studentCode || '').trim().toLowerCase();
+      if (c) codeCountMap.set(c, (codeCountMap.get(c) || 0) + 1);
+    });
+
+    const duplicateNames = new Set<string>();
+    const duplicateCodes = new Set<string>();
+    const sampleNamesList: string[] = [];
+    let duplicateStudentCount = 0;
+
+    nameCountMap.forEach((count, name) => {
+      if (count > 1) {
+        duplicateNames.add(name);
+        duplicateStudentCount += (count - 1);
+        const originalStudent = currentClassStudents.find((s) => (s.nameKh || '').trim().toLowerCase() === name);
+        if (originalStudent && sampleNamesList.length < 5) {
+          sampleNamesList.push(originalStudent.nameKh);
+        }
+      }
+    });
+
+    codeCountMap.forEach((count, code) => {
+      if (count > 1) {
+        duplicateCodes.add(code);
+      }
+    });
+
+    return {
+      duplicateNames,
+      duplicateCodes,
+      duplicateStudentCount,
+      hasDuplicates: duplicateStudentCount > 0,
+      sampleNames: sampleNamesList.join(', '),
+    };
+  }, [currentClassStudents]);
 
   // Direct Inline Cell Edit Handler (Auto-Save on blur or change)
   const handleInlineChange = async (studentId: string, field: keyof Student, value: any) => {
@@ -206,6 +254,10 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
     let addedCount = 0;
     const newStudentsToAdd: Student[] = [];
 
+    const batchSeenNames = new Set(
+      filteredStudents.map((s) => (s.nameKh || '').trim().toLowerCase())
+    );
+
     for (let rIdx = 0; rIdx < parsedGrid.rows.length; rIdx++) {
       const rowData = parsedGrid.rows[rIdx];
       const targetIdx = startRowIdx + rIdx;
@@ -232,6 +284,25 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
           // Skip rows without genuine student names (never create fake dummy students)
           continue;
         }
+
+        // Check if student with this name already exists in target class or batch to prevent duplicates!
+        const nameKey = studentName.toLowerCase();
+        if (batchSeenNames.has(nameKey)) {
+          const existing =
+            filteredStudents.find((s) => (s.nameKh || '').trim().toLowerCase() === nameKey) ||
+            newStudentsToAdd.find((s) => (s.nameKh || '').trim().toLowerCase() === nameKey);
+          if (existing) {
+            const updates: Partial<Student> = { ...rowData };
+            if (updates.nameKh && /^\d+$/.test(updates.nameKh)) delete updates.nameKh;
+            if (updates.dob) updates.age = calculateAge(updates.dob);
+            if ('id' in existing && existing.id.startsWith('stu-')) {
+              await db.students.update(existing.id, updates);
+              updatedCount++;
+            }
+          }
+          continue;
+        }
+        batchSeenNames.add(nameKey);
 
         const targetRollNo = rowData.rollNo ? Number(rowData.rollNo) : (filteredStudents.length + addedCount + 1);
         const newStu: Student = {
@@ -296,6 +367,8 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
       return; // Regular single cell inline text paste, let browser handle it natively
     }
     e.preventDefault();
+    (e.nativeEvent as any).__tablePasteHandled = true;
+    e.stopPropagation();
     await executeTablePaste(text);
   };
 
@@ -318,6 +391,11 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
   // Global window paste listener: allow Ctrl+V anywhere on StudentsPage to paste directly into table
   useEffect(() => {
     const handleGlobalPaste = async (e: ClipboardEvent) => {
+      // Don't execute if handleTablePaste already handled this event
+      if ((e as any).__tablePasteHandled) {
+        return;
+      }
+
       // Don't intercept if any modal is open
       if (isAddModalOpen || isPasteModalOpen || isIDCardsOpen || viewingStudent) {
         return;
@@ -446,6 +524,90 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
     exportStudentsToExcel(filteredStudents, currentClassName);
   };
 
+  // Intelligent Deduplication: merge & remove duplicate students
+  const handleDeduplicateStudents = async () => {
+    if (!duplicateInfo.hasDuplicates) {
+      showToast('ℹ️ មិនមានឈ្មោះសិស្សជាន់គ្នាទេ ក្នុងថ្នាក់នេះ!');
+      return;
+    }
+
+    if (
+      !confirm(
+        `តើអ្នកពិតជាចង់សម្អាតឈ្មោះជាន់គ្នា (${toKhmerNum(duplicateInfo.duplicateStudentCount)} នាក់) ដែរឬទេ?\n\n` +
+        `ប្រព័ន្ធនឹងរក្សាទុកសិស្សដែលមានទិន្នន័យគ្រប់ជ្រុងជ្រោយជាងគេ និងលុបឈ្មោះស្ទួនចេញដោយសុវត្ថិភាព (អាចចុច Undo យកមកវិញបានគ្រប់ពេល)។`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      await pushSnapshot(`សម្អាតសិស្សជាន់គ្នា ${duplicateInfo.duplicateStudentCount} នាក់`);
+
+      // Group students by nameKh (trimmed lowercase)
+      const groups = new Map<string, Student[]>();
+      currentClassStudents.forEach((s) => {
+        const key = (s.nameKh || '').trim().toLowerCase();
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key)!.push(s);
+      });
+
+      const idsToDelete: string[] = [];
+      const studentsToUpdate: Student[] = [];
+
+      groups.forEach((group) => {
+        if (group.length > 1) {
+          // Sort group by data richness (count non-empty fields)
+          group.sort((a, b) => {
+            const scoreA = Object.values(a).filter((v) => v !== '' && v !== null && v !== undefined).length;
+            const scoreB = Object.values(b).filter((v) => v !== '' && v !== null && v !== undefined).length;
+            return scoreB - scoreA;
+          });
+
+          const keeper = { ...group[0] };
+          for (let i = 1; i < group.length; i++) {
+            const dup = group[i];
+            idsToDelete.push(dup.id);
+            // Merge any missing fields into keeper
+            (Object.keys(dup) as (keyof Student)[]).forEach((key) => {
+              if ((!keeper[key] || keeper[key] === '') && dup[key]) {
+                (keeper as any)[key] = dup[key];
+              }
+            });
+          }
+          studentsToUpdate.push(keeper);
+        }
+      });
+
+      if (idsToDelete.length > 0) {
+        await db.students.bulkDelete(idsToDelete);
+      }
+      if (studentsToUpdate.length > 0) {
+        await db.students.bulkPut(studentsToUpdate);
+      }
+
+      // Resequence rollNo from 1 to N
+      const remaining = await db.students
+        .filter((s) => selectedClassId === 'ALL' || s.classId === activeClassId)
+        .toArray();
+      remaining.sort((a, b) => a.rollNo - b.rollNo);
+
+      const reordered = remaining.map((s, idx) => ({
+        ...s,
+        rollNo: idx + 1,
+        studentCode: s.studentCode && s.studentCode.startsWith('STU-') ? `STU-${String(idx + 1).padStart(3, '0')}` : s.studentCode,
+      }));
+      await db.students.bulkPut(reordered);
+
+      onRefresh();
+      showToast(
+        `✨ បានសម្អាតឈ្មោះជាន់គ្នាជោគជ័យ! (លុបសិស្សស្ទួន ${toKhmerNum(idsToDelete.length)} នាក់ នៅសល់ ${toKhmerNum(reordered.length)} នាក់ពិតប្រាកដ)`
+      );
+    } catch (err) {
+      console.error('Error deduplicating students:', err);
+      alert('មានបញ្ហាក្នុងការសម្អាតឈ្មោះជាន់គ្នា!');
+    }
+  };
+
   // Import from Excel file
   const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -463,9 +625,65 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
         alert('មិនមានទិន្នន័យសិស្សនៅក្នុងឯកសារទេ!');
         return;
       }
-      await db.students.bulkAdd(parsed as Student[]);
-      alert(`បាននាំចូលទិន្នន័យសិស្សចំនួន ${toKhmerNum(parsed.length)} នាក់ដោយជោគជ័យ!`);
+
+      await pushSnapshot(`នាំចូលទិន្នន័យសិស្ស ${parsed.length} នាក់ពី Excel`);
+
+      // Intelligent Upsert: Merge with existing students to prevent duplicates
+      const existingInClass = await db.students.where('classId').equals(targetClassId).toArray();
+      const existingMapByName = new Map<string, Student>();
+      const existingMapByCode = new Map<string, Student>();
+      existingInClass.forEach((s) => {
+        existingMapByName.set((s.nameKh || '').trim().toLowerCase(), s);
+        if (s.studentCode) existingMapByCode.set(s.studentCode.trim().toLowerCase(), s);
+      });
+
+      const toUpdate: Student[] = [];
+      const toAdd: Student[] = [];
+
+      parsed.forEach((p, idx) => {
+        const keyName = (p.nameKh || '').trim().toLowerCase();
+        const keyCode = (p.studentCode || '').trim().toLowerCase();
+        const existing = existingMapByName.get(keyName) || (keyCode ? existingMapByCode.get(keyCode) : undefined);
+
+        if (existing) {
+          toUpdate.push({
+            ...existing,
+            ...p,
+            id: existing.id,
+            classId: targetClassId,
+            nameKh: p.nameKh || existing.nameKh,
+            gender: p.gender || existing.gender,
+          } as Student);
+        } else {
+          const targetRollNo = p.rollNo || (existingInClass.length + toAdd.length + 1);
+          toAdd.push({
+            id: `stu_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 6)}`,
+            classId: targetClassId,
+            rollNo: targetRollNo,
+            studentCode: p.studentCode || `STU-${String(targetRollNo).padStart(3, '0')}`,
+            nameKh: p.nameKh || `សិស្ស ${targetRollNo}`,
+            nameEn: p.nameEn || '',
+            gender: p.gender || 'ប្រុស',
+            dob: p.dob || '',
+            age: p.dob ? calculateAge(p.dob) : (p.age || 0),
+            status: 'active',
+            createdAt: new Date().toISOString(),
+            ...p,
+          } as Student);
+        }
+      });
+
+      if (toUpdate.length > 0) {
+        await db.students.bulkPut(toUpdate);
+      }
+      if (toAdd.length > 0) {
+        await db.students.bulkAdd(toAdd);
+      }
+
       onRefresh();
+      alert(
+        `បាននាំចូលជោគជ័យ! (កែប្រែសិស្សចាស់ ${toKhmerNum(toUpdate.length)} នាក់, បន្ថែមសិស្សថ្មី ${toKhmerNum(toAdd.length)} នាក់ - គ្មានឈ្មោះជាន់គ្នាទេ)`
+      );
     } catch (err) {
       console.error(err);
       alert('មានបញ្ហាក្នុងការអានឯកសារ Excel! សូមពិនិត្យទម្រង់ឯកសារឡើងវិញ។');
@@ -989,6 +1207,37 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
               លុបសិស្សទាំងអស់
             </button>
 
+            {/* Deduplicate Students Button */}
+            <button
+              type="button"
+              onClick={handleDeduplicateStudents}
+              className={`inline-flex items-center px-2.5 py-1.5 text-xs font-bold rounded-xl border transition-all cursor-pointer shrink-0 ${
+                duplicateInfo.hasDuplicates
+                  ? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-600 shadow-sm animate-pulse'
+                  : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-200'
+              }`}
+              title="ស្វែងរក និងសម្អាតឈ្មោះសិស្សដែលស្ទួន/ជាន់គ្នាក្នុងថ្នាក់"
+            >
+              <Sparkles className={`w-3.5 h-3.5 mr-1 ${duplicateInfo.hasDuplicates ? 'text-white' : 'text-amber-600'}`} />
+              <span>សម្អាតឈ្មោះជាន់គ្នា</span>
+              {duplicateInfo.hasDuplicates && (
+                <span className="ml-1.5 px-1.5 py-0.2 bg-white text-amber-800 rounded-full text-[10px] font-black">
+                  {toKhmerNum(duplicateInfo.duplicateStudentCount)}
+                </span>
+              )}
+            </button>
+
+            {/* Direct Link to Continuous Assessment (30%) Grade Sheet */}
+            <button
+              type="button"
+              onClick={() => onNavigateTab ? onNavigateTab('continuous-assessment') : null}
+              className="inline-flex items-center px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl border border-indigo-200 transition-colors cursor-pointer shrink-0"
+              title="បើកបញ្ជីពិន្ទុវត្តមាន (អវត្តមានម្តងដក ២ពិន្ទុ) + ១៥នាទី + ពិន្ទុ App (៣០%)"
+            >
+              <BookOpenCheck className="w-3.5 h-3.5 mr-1 text-indigo-600" />
+              <span>ពិន្ទុវត្តមាន (៣០%)</span>
+            </button>
+
             {/* ID Cards */}
             <button
               type="button"
@@ -1099,6 +1348,30 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
           សិស្សសរុប៖ {totalFiltered} នាក់ | ស្រី៖ {femaleFiltered} នាក់ | ប្រុស៖ {maleFiltered} នាក់
         </p>
       </div>
+
+      {/* Duplicate Warning Banner */}
+      {duplicateInfo.hasDuplicates && (
+        <div className="bg-amber-50 border-2 border-amber-400 p-3.5 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-amber-950 no-print shadow-xs animate-fade-in">
+          <div className="flex items-center space-x-3">
+            <span className="text-2xl">⚠️</span>
+            <div>
+              <p className="font-bold text-xs sm:text-sm text-amber-900">
+                រកឃើញឈ្មោះសិស្សជាន់គ្នា/ស្ទួនចំនួន {toKhmerNum(duplicateInfo.duplicateStudentCount)} នាក់ ក្នុងថ្នាក់នេះ!
+              </p>
+              <p className="text-[11px] text-amber-800 mt-0.5">
+                ឈ្មោះស្ទួនរួមមាន៖ <strong>{duplicateInfo.sampleNames}</strong>...។ ចុចប៊ូតុងខាងស្តាំដើម្បីសម្អាតស្វ័យប្រវត្តិតែ ១ ឃ្លីក (Merge ទិន្នន័យ និងលុបឈ្មោះស្ទួនចេញដោយសុវត្ថិភាព)។
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleDeduplicateStudents}
+            className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer transition-all whitespace-nowrap flex items-center space-x-1.5 shrink-0"
+          >
+            <span>🧹 សម្អាតឈ្មោះស្ទួនភ្លាមៗ</span>
+          </button>
+        </div>
+      )}
 
       {/* Excel/XLSM Interactive Editable Spreadsheet Grid - EXACT REPLICA OF IMAGE 2 */}
       <div className="bg-white rounded-2xl border-2 border-blue-900/40 shadow-lg overflow-hidden print:border-none print:shadow-none print:rounded-none print:overflow-visible">
@@ -1322,6 +1595,14 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                               onChange={(e) => handleInlineChange(stu.id, 'nameKh', e.target.value)}
                               className={`flex-1 font-bold text-xs sm:text-[13px] text-slate-900 bg-transparent px-2 py-1 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-400 transition-all print:hidden outline-none ${cellRing('nameKh')}`}
                             />
+                            {duplicateInfo.duplicateNames.has((stu.nameKh || '').trim().toLowerCase()) && (
+                              <span
+                                className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 print:hidden select-none animate-pulse"
+                                title="ឈ្មោះនេះមានជាន់គ្នាក្នុងថ្នាក់ (ចុចប៊ូតុងសម្អាតឈ្មោះជាន់គ្នាខាងលើ)"
+                              >
+                                ⚠️ ឈ្មោះស្ទួន
+                              </span>
+                            )}
                             {selectedClassId === 'ALL' && (
                               <span
                                 className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-black bg-indigo-50 text-indigo-700 border border-indigo-200 print:hidden select-none"

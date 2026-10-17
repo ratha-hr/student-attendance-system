@@ -234,6 +234,7 @@ export function App() {
               settings={settings}
               selectedClassId={selectedClassId}
               onRefresh={handleRefresh}
+              onNavigateTab={setCurrentTab}
             />
           )}
 
@@ -241,11 +242,27 @@ export function App() {
             <GradesPage
               students={students}
               classes={classes}
+              attendanceRecords={attendanceRecords}
               settings={settings}
               selectedClassId={selectedClassId}
               onSelectClass={setSelectedClassId}
               onRefresh={handleRefresh}
               onOpenGradeConfig={() => setCurrentTab('grade-config')}
+              initialViewMode="subjects"
+            />
+          )}
+
+          {currentTab === 'continuous-assessment' && (
+            <GradesPage
+              students={students}
+              classes={classes}
+              attendanceRecords={attendanceRecords}
+              settings={settings}
+              selectedClassId={selectedClassId}
+              onSelectClass={setSelectedClassId}
+              onRefresh={handleRefresh}
+              onOpenGradeConfig={() => setCurrentTab('grade-config')}
+              initialViewMode="continuous"
             />
           )}
 

@@ -63,8 +63,55 @@ export const StudentPasteModal: React.FC<StudentPasteModalProps> = ({
     if (parsedStudents.length === 0) return;
     setIsSaving(true);
     try {
-      await db.students.bulkAdd(parsedStudents as Student[]);
-      onSuccess(parsedStudents.length);
+      const existingInClass = await db.students.where('classId').equals(classId).toArray();
+      const existingMapByName = new Map<string, Student>();
+      const existingMapByCode = new Map<string, Student>();
+      existingInClass.forEach((s) => {
+        existingMapByName.set((s.nameKh || '').trim().toLowerCase(), s);
+        if (s.studentCode) existingMapByCode.set(s.studentCode.trim().toLowerCase(), s);
+      });
+
+      const toUpdate: Student[] = [];
+      const toAdd: Student[] = [];
+
+      parsedStudents.forEach((p, idx) => {
+        const keyName = (p.nameKh || '').trim().toLowerCase();
+        const keyCode = (p.studentCode || '').trim().toLowerCase();
+        const existing = existingMapByName.get(keyName) || (keyCode ? existingMapByCode.get(keyCode) : undefined);
+
+        if (existing) {
+          toUpdate.push({
+            ...existing,
+            ...p,
+            id: existing.id,
+            classId,
+          } as Student);
+        } else {
+          const targetRoll = p.rollNo || (existingInClass.length + toAdd.length + 1);
+          toAdd.push({
+            id: `stu-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 6)}`,
+            classId,
+            rollNo: targetRoll,
+            studentCode: p.studentCode || `STU-${String(targetRoll).padStart(3, '0')}`,
+            nameKh: p.nameKh || `សិស្ស ${targetRoll}`,
+            nameEn: p.nameEn || '',
+            gender: p.gender || 'ប្រុស',
+            dob: p.dob || '',
+            status: 'active',
+            createdAt: new Date().toISOString(),
+            ...p,
+          } as Student);
+        }
+      });
+
+      if (toUpdate.length > 0) {
+        await db.students.bulkPut(toUpdate);
+      }
+      if (toAdd.length > 0) {
+        await db.students.bulkAdd(toAdd);
+      }
+
+      onSuccess(toUpdate.length + toAdd.length);
       setPastedText('');
       setParsedStudents([]);
       onClose();
