@@ -11,7 +11,7 @@
     <meta http-equiv="Expires" content="0" />
     <script>
       (function() {
-        var APP_VER = 'v6.42_20261017_2355';
+        var APP_VER = 'v6.43_20261017_2415';
         var lastVer = localStorage.getItem('app_installed_ver');
         if (lastVer !== APP_VER) {
           localStorage.setItem('app_installed_ver', APP_VER);
@@ -33,11 +33,16 @@
           var savedScale = localStorage.getItem('app_font_scale_pct');
           if (savedScale) {
             var pct = parseInt(savedScale, 10);
-            if (!isNaN(pct) && pct >= 75 && pct <= 150) {
+            if (!isNaN(pct) && pct >= 60 && pct <= 200) {
               document.documentElement.style.fontSize = (16 * pct / 100) + 'px';
             }
           } else {
             document.documentElement.style.fontSize = '16px';
+          }
+          var savedFont = localStorage.getItem('app_font_family');
+          if (savedFont && document.body) {
+            document.body.classList.remove('font-kantumruy', 'font-battambang', 'font-siemreap');
+            document.body.classList.add(savedFont);
           }
         } catch(e) {}
       })();
@@ -51,8 +56,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:ital,wght@0,100..700;1,100..700&family=Moul&family=Battambang:wght@400;700&family=Siemreap&display=swap" rel="stylesheet">
-    <script type="module" crossorigin src="./assets/index-D1XTldCo.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-DUoWZxm1.css">
+    <script type="module" crossorigin src="./assets/index-nnnpbXKN.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-BT5UBVXv.css">
   </head>
   <body class="bg-slate-50 text-slate-800 antialiased font-kantumruy">
     <div id="root"></div>
