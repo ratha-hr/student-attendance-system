@@ -22,7 +22,7 @@ import { Modal } from './common/Modal';
 import type { Student, ClassRoom, AttendanceRecord, TeacherSettings } from '../types';
 import { formatKhmerDate, fromKhmerNum, toKhmerNum } from '../utils/dateUtils';
 import { generateStudentQRCodeSVG } from '../utils/qrCode';
-import { encodeAttendanceForUrl } from '../utils/attendanceShare';
+import { encodeAttendanceForUrl, encodeRosterForUrl } from '../utils/attendanceShare';
 import { getPinForDate, hashPin } from '../utils/pinUtils';
 
 interface StudentAttendanceShareModalProps {
@@ -108,15 +108,18 @@ export const StudentAttendanceShareModal: React.FC<StudentAttendanceShareModalPr
     return encodeAttendanceForUrl(classStudents, todayRecords, selectedDate, selectedSession);
   }, [classStudents, todayRecords, selectedDate, selectedSession]);
 
-  // Read-only link for students & parents (Default & Safe):
+  // Read-only link for students & parents (Encodes class name, roster & attendance so it opens on ANY device without missing data):
   const studentReadOnlyUrl = useMemo(() => {
     const origin = window.location.origin;
     const path = window.location.pathname;
     const classParam = currentClass ? encodeURIComponent(currentClass.id) : 'ALL';
+    const classNameParam = currentClass ? `&className=${encodeURIComponent(currentClass.name)}` : '';
     const payloadParam = attPayload ? `&att=${encodeURIComponent(attPayload)}` : '';
     const pinTokenParam = `&pinToken=${encodeURIComponent(hashPin(activePinForSelectedDate))}`;
-    return `${origin}${path}?mode=student&class=${classParam}&date=${selectedDate}&session=${selectedSession}&view=readonly${pinTokenParam}${payloadParam}`;
-  }, [currentClass, selectedDate, selectedSession, attPayload, activePinForSelectedDate]);
+    const rosterEncoded = encodeRosterForUrl(classStudents);
+    const rosterParam = rosterEncoded ? `&roster=${encodeURIComponent(rosterEncoded)}` : '';
+    return `${origin}${path}?mode=student&class=${classParam}${classNameParam}&date=${selectedDate}&session=${selectedSession}&view=readonly${pinTokenParam}${payloadParam}${rosterParam}`;
+  }, [currentClass, selectedDate, selectedSession, attPayload, activePinForSelectedDate, classStudents]);
 
   // Generate clean daily attendance text specifically formatted for students/monitor (without cluttering student names)
   const studentAttendanceText = useMemo(() => {

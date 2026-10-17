@@ -22,6 +22,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { ManageClassesModal } from './components/ManageClassesModal';
 import { StudentDailyAttendanceView } from './components/StudentDailyAttendanceView';
 import type { TeacherSettings } from './types';
+import { decodeRosterFromUrl } from './utils/attendanceShare';
 
 export function App() {
   // Check if link was shared for student daily attendance
@@ -87,7 +88,33 @@ export function App() {
         handleRefresh();
       })
       .catch(console.error);
-      db.getSettings().then(setSettings).catch(console.error);
+    db.getSettings().then(setSettings).catch(console.error);
+
+    // Auto-detect & import student roster from URL query on any device/browser
+    if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search);
+      const encodedRoster = p.get('roster') || p.get('students') || p.get('importStudents');
+      const classId = p.get('class') || p.get('importClass');
+      const className = p.get('className');
+      if (encodedRoster && classId) {
+        const decoded = decodeRosterFromUrl(encodedRoster, classId);
+        if (decoded.length > 0) {
+          db.students.bulkPut(decoded).then(() => {
+            if (className) {
+              db.classes.put({
+                id: classId,
+                name: className,
+                grade: className.replace(/\D/g, '') || '7',
+                academicYear: '២០២៤-២០២៥',
+                homeroomTeacher: '',
+                createdAt: new Date().toISOString(),
+              }).catch(console.error);
+            }
+            handleRefresh();
+          }).catch(console.error);
+        }
+      }
+    }
   }, []);
 
   useEffect(() => {

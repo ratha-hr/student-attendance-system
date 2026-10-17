@@ -27,7 +27,7 @@ import type { Student, ClassRoom, AttendanceRecord, AttendanceStatus, TeacherSet
 import { db } from '../db/db';
 import { fromKhmerNum, formatKhmerDate, getTodayDateString } from '../utils/dateUtils';
 import { soundEffects } from '../utils/soundEffects';
-import { decodeAttendanceFromUrl, encodeAttendanceForUrl } from '../utils/attendanceShare';
+import { decodeAttendanceFromUrl, encodeAttendanceForUrl, decodeRosterFromUrl } from '../utils/attendanceShare';
 import { verifyPin } from '../utils/pinUtils';
 import { Modal } from './common/Modal';
 
@@ -125,18 +125,79 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
     return () => clearTimeout(timeout);
   }, [isEditUnlocked]);
 
-  // Active class
-  const currentClass = useMemo(() => {
-    return classes.find((c) => c.id === selectedClassId) || classes[0] || null;
-  }, [classes, selectedClassId]);
+  // 1. Decoded student roster from URL parameter (enables 100% data availability on ANY mobile device)
+  const urlRoster = useMemo(() => {
+    if (typeof window === 'undefined') return [];
+    const p = new URLSearchParams(window.location.search);
+    const encodedRoster = p.get('roster') || p.get('students') || p.get('rosterData');
+    const classIdFromUrl = p.get('class') || selectedClassId || 'class-7';
+    return decodeRosterFromUrl(encodedRoster, classIdFromUrl);
+  }, [selectedClassId]);
 
-  // Students in this class sorted by rollNo
+  // 2. URL class name fallback
+  const urlClassName = useMemo(() => {
+    if (typeof window === 'undefined') return '';
+    const p = new URLSearchParams(window.location.search);
+    return p.get('className') || p.get('classname') || '';
+  }, []);
+
+  // 3. Active class resolution (falls back to URL className if device DB is empty)
+  const currentClass = useMemo(() => {
+    const found = classes.find((c) => c.id === selectedClassId);
+    if (found) {
+      if (urlClassName && (!found.name || found.name === 'ថ្នាក់រៀន')) {
+        return { ...found, name: urlClassName };
+      }
+      return found;
+    }
+    if (urlClassName) {
+      return {
+        id: selectedClassId || 'class-7',
+        name: urlClassName,
+        grade: urlClassName.replace(/\D/g, '') || '7',
+        academicYear: settings?.academicYear || '២០២៤-២០២៥',
+        homeroomTeacher: settings?.teacherName || '',
+      } as ClassRoom;
+    }
+    return classes[0] || null;
+  }, [classes, selectedClassId, urlClassName, settings]);
+
+  // 4. Students in this class sorted by rollNo:
+  // If local DB has students, use them. If local DB is empty (e.g. on phone), use the decoded URL roster!
   const classStudents = useMemo(() => {
-    if (!currentClass) return [];
-    return students
-      .filter((s) => s.classId === currentClass.id)
-      .sort((a, b) => a.rollNo - b.rollNo);
-  }, [students, currentClass]);
+    const fromDb = currentClass
+      ? students.filter((s) => s.classId === currentClass.id)
+      : [];
+    if (fromDb.length > 0) {
+      return [...fromDb].sort((a, b) => a.rollNo - b.rollNo);
+    }
+    if (urlRoster.length > 0) {
+      return [...urlRoster].sort((a, b) => a.rollNo - b.rollNo);
+    }
+    return [];
+  }, [students, currentClass, urlRoster]);
+
+  // 5. Automatically persist URL roster & class into device's IndexedDB so it's permanently stored locally
+  useEffect(() => {
+    if (urlRoster.length > 0) {
+      db.students.bulkPut(urlRoster).catch(console.error);
+      const targetClassId = selectedClassId || urlRoster[0]?.classId;
+      if (targetClassId) {
+        db.classes.get(targetClassId).then((existing) => {
+          if (!existing) {
+            db.classes.put({
+              id: targetClassId,
+              name: urlClassName || 'ថ្នាក់ទី 7A',
+              grade: (urlClassName || '').replace(/\D/g, '') || '7',
+              academicYear: settings?.academicYear || '២០២៤-២០២៥',
+              homeroomTeacher: settings?.teacherName || '',
+              createdAt: new Date().toISOString(),
+            }).catch(console.error);
+          }
+        });
+      }
+    }
+  }, [urlRoster, urlClassName, selectedClassId, settings]);
 
   // Sequential roll number starting from 1 (ដើម្បីឱ្យដូចផ្ទាំងគ្រូ ចាប់ផ្តើមពីលេខរៀងទី ១)
   const classRollNoMap = useMemo(() => {

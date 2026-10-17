@@ -11,6 +11,7 @@ import {
   type KhmerSolarInfo,
 } from '../utils/dateUtils';
 import { groupClassesByGrade } from '../utils/classUtils';
+import { ModernFontZoom } from './common/ModernFontZoom';
 
 interface NavbarProps {
   onToggleSidebar: () => void;
@@ -203,6 +204,9 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           </div>
 
+          {/* Modern Typography / Font Scaler (ពង្រីក-បង្រួមអក្សរទំនើប) */}
+          <ModernFontZoom />
+
           {/* Cache-Clear & Force Reload Button (Keep only arrow icon as requested) */}
           <button
             type="button"
@@ -219,7 +223,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               window.location.href = window.location.pathname + '?v=' + Date.now();
             }}
             className="p-2 bg-slate-100 hover:bg-blue-50 text-blue-600 hover:text-blue-700 rounded-xl border border-slate-200 transition-all cursor-pointer shadow-2xs flex items-center justify-center hover:rotate-180 active:scale-95"
-            title="ចុចដើម្បី Refresh & Update កំណែថ្មីបំផុត (v6.26)"
+            title="ចុចដើម្បី Refresh & Update កំណែថ្មីបំផុត (v6.27)"
           >
             <RotateCw className="w-4 h-4 text-blue-600" />
           </button>

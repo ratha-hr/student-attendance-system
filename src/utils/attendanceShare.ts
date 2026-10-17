@@ -98,3 +98,84 @@ export function decodeAttendanceFromUrl(
   }
   return map;
 }
+
+/**
+ * Compact Base64URL-encoding of student roster for multi-device link sharing.
+ * Ensures student names, roll numbers, genders, and codes are never lost when
+ * opened on mobile phones or other devices that lack local IndexedDB data.
+ */
+export function encodeRosterForUrl(students: Student[]): string {
+  if (!students || students.length === 0) return '';
+  try {
+    const rows = students.map((s, idx) => {
+      const roll = s.rollNo || idx + 1;
+      const g = s.gender === 'ស្រី' ? 'F' : 'M';
+      const name = (s.nameKh || '').replace(/[,|~]/g, ' ').trim();
+      const code = (s.studentCode || '').replace(/[,|~]/g, ' ').trim();
+      return `${roll},${g},${name},${code}`;
+    });
+    const text = rows.join('|');
+    const bytes = new TextEncoder().encode(text);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  } catch (err) {
+    console.error('Failed to encode roster for URL', err);
+    return '';
+  }
+}
+
+/**
+ * Decodes compressed student roster from URL parameter back to full Student objects.
+ */
+export function decodeRosterFromUrl(
+  encoded: string | null | undefined,
+  targetClassId: string
+): Student[] {
+  if (!encoded || !encoded.trim()) return [];
+  try {
+    let base64 = encoded.trim().replace(/-/g, '+').replace(/_/g, '/');
+    while (base64.length % 4) {
+      base64 += '=';
+    }
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    const text = new TextDecoder().decode(bytes);
+    if (!text) return [];
+
+    const rows = text.split('|');
+    const students: Student[] = [];
+
+    rows.forEach((row, idx) => {
+      if (!row || !row.trim()) return;
+      const parts = row.split(',');
+      const rollNo = parseInt(parts[0], 10) || idx + 1;
+      const g: 'ប្រុស' | 'ស្រី' = parts[1] === 'F' ? 'ស្រី' : 'ប្រុស';
+      const nameKh = (parts[2] || '').trim();
+      const studentCode = (parts[3] || '').trim();
+
+      if (nameKh) {
+        students.push({
+          id: `stu-${targetClassId}-${rollNo}`,
+          classId: targetClassId,
+          rollNo,
+          studentCode: studentCode || `STU-${String(rollNo).padStart(3, '0')}`,
+          nameKh,
+          gender: g,
+          status: 'active',
+          createdAt: new Date().toISOString(),
+        } as Student);
+      }
+    });
+
+    return students;
+  } catch (err) {
+    console.error('Failed to decode roster from URL', err);
+    return [];
+  }
+}

@@ -495,6 +495,21 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ settings, onRefresh 
             🗑️ សម្អាតទិន្នន័យទាំងអស់ (Reset)
           </button>
         </div>
+
+        {/* Cross-Device Sync Guide for Phone & Tablet */}
+        <div className="mt-4 p-4 rounded-2xl bg-linear-to-r from-blue-50/80 to-indigo-50/80 border border-blue-200/80 text-xs text-slate-700 space-y-2">
+          <p className="font-bold text-blue-900 flex items-center text-sm">
+            📱 វិធីសមកាលកម្មទិន្នន័យឆ្លងឧបករណ៍ (PC ↔ ទូរស័ព្ទដៃ) ៖
+          </p>
+          <ul className="list-disc list-inside space-y-1 text-slate-600 text-[11px] sm:text-xs leading-relaxed">
+            <li>
+              <strong>តំណភ្ជាប់ស្រង់វត្តមានប្រចាំថ្ងៃ (Share Link) ៖</strong> រាល់ពេលចុច «ចែករំលែកទៅសិស្ស (ស្រង់វត្តមាន)» ឬផ្ញើតំណទៅ Telegram ឈ្មោះសិស្សទាំងអស់ត្រូវបានបង្កប់ក្នុងតំណដោយស្វ័យប្រវត្តិ។ នៅពេលបើកលើទូរស័ព្ទដៃណាក៏ដោយ (ទូរស័ព្ទសិស្ស ឬទូរស័ព្ទគ្រូ) ឈ្មោះសិស្ស និងវត្តមាននឹងបង្ហាញឡើងភ្លាមៗ ១០០%!
+            </li>
+            <li>
+              <strong>ផ្ទេរទិន្នន័យគ្រប់ថ្នាក់ទាំងអស់ទៅទូរស័ព្ទ ៖</strong> ចុចប៊ូតុង «ទាញយក Backup (.json)» នៅខាងលើ ផ្ញើឯកសារនោះចូល Telegram រួចបើកកម្មវិធីនេះលើទូរស័ព្ទ ហើយចុច «ស្តារ Backup ឡើងវិញ» ជាការស្រេច។
+            </li>
+          </ul>
+        </div>
       </div>
     </div>
   );
