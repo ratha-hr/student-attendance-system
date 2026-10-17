@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   Calendar,
   Clock,
@@ -250,9 +250,17 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
   });
 
   // Active class for class view
-  const activeClassId = selectedClassId === 'ALL' ? (classes[0]?.id || '') : selectedClassId;
+  const isAllClasses = selectedClassId === 'ALL';
+  const activeClassId = isAllClasses ? (classes[0]?.id || '') : selectedClassId;
   const currentClass = classes.find((c) => c.id === activeClassId);
   const currentClassName = currentClass?.name || '10A';
+
+  // Helper to remove duplicate "ថ្នាក់ទី" or "ថ្នាក់" prefix
+  const cleanGradeNumber = (name: string) => (name || '').replace(/^(ថ្នាក់ទី|ថ្នាក់)\s*/i, '').trim();
+  const formatClassLabel = (name: string) => {
+    const clean = cleanGradeNumber(name);
+    return clean ? `ថ្នាក់ទី ${clean}` : (name || 'ថ្នាក់រៀន');
+  };
 
   // Editing class context (used to retrieve subjects and coefficients according to MoEYS standards)
   const editingClass = useMemo(() => {
@@ -311,17 +319,20 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
     showToast('✨ បានកំណត់កាលបរិច្ឆេទចន្ទគតិ-សុរិយគតិ ស្វ័យប្រវត្តិតាមប្រតិទិន');
   };
 
-  // Filter slots for active class
-  const classSlotsMap = useMemo(() => {
-    const map = new Map<string, TimetableSlot>();
-    timetableSlots
-      .filter((s) => s.classId === activeClassId)
-      .forEach((s) => {
-        const sess = s.session || 'morning';
-        map.set(`${sess}-${s.dayOfWeek}-${s.periodNumber || 1}`, s);
-      });
-    return map;
-  }, [timetableSlots, activeClassId]);
+  // Filter slots for any specific class
+  const getSlotsForClass = useCallback(
+    (classId: string) => {
+      const map = new Map<string, TimetableSlot>();
+      timetableSlots
+        .filter((s) => s.classId === classId)
+        .forEach((s) => {
+          const sess = s.session || 'morning';
+          map.set(`${sess}-${s.dayOfWeek}-${s.periodNumber || 1}`, s);
+        });
+      return map;
+    },
+    [timetableSlots]
+  );
 
   // Slots taught by this teacher
   const teacherSlots = useMemo(() => {
@@ -362,14 +373,21 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
   };
 
   // Open editor for empty cell to create a slot
-  const handleOpenEmptyCell = (sess: 'morning' | 'afternoon', day: number, period: number, timeStr: string) => {
+  const handleOpenEmptyCell = (
+    sess: 'morning' | 'afternoon',
+    day: number,
+    period: number,
+    timeStr: string,
+    targetClassId?: string
+  ) => {
+    const cId = targetClassId || activeClassId;
     const newSlot: TimetableSlot = {
-      id: `tt-${activeClassId}-${sess}-d${day}-p${period}-${Date.now()}`,
+      id: `tt-${cId}-${sess}-d${day}-p${period}-${Date.now()}`,
       dayOfWeek: day,
       timeSlot: timeStr,
       periodNumber: period,
       session: sess,
-      classId: activeClassId,
+      classId: cId,
       subject: '',
       teacherName: teacherName,
       teacherPhone: teacherPhone,
@@ -426,15 +444,15 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
   const handleDeleteClassTimetable = async () => {
     const slotsToDelete = timetableSlots.filter((s) => s.classId === activeClassId);
     if (slotsToDelete.length === 0) {
-      showToast(`ℹ️ មិនមានកាលវិភាគក្នុងថ្នាក់ ${currentClassName} ត្រូវលុបទេ`);
+      showToast(`ℹ️ មិនមានកាលវិភាគក្នុង${formatClassLabel(currentClassName)} ត្រូវលុបទេ`);
       setIsDeleteModalOpen(false);
       return;
     }
-    await pushSnapshot(`លុបកាលវិភាគថ្នាក់ ${currentClassName}`);
+    await pushSnapshot(`លុបកាលវិភាគ${formatClassLabel(currentClassName)}`);
     await db.timetable.bulkDelete(slotsToDelete.map((s) => s.id));
     setIsDeleteModalOpen(false);
     onRefresh();
-    showToast(`🗑️ បានលុបកាលវិភាគថ្នាក់ ${currentClassName} ទាំងអស់រួចរាល់! (អាចចុច ↶ Undo បាន)`);
+    showToast(`🗑️ បានលុបកាលវិភាគ${formatClassLabel(currentClassName)} ទាំងអស់រួចរាល់! (អាចចុច ↶ Undo បាន)`);
   };
 
   // Bulk delete timetable for this teacher
@@ -466,6 +484,351 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
     showToast('🗑️ បានលុបកាលវិភាគទាំងអស់គ្រប់ថ្នាក់រួចរាល់! (អាចចុច ↶ Undo បាន)');
   };
 
+  // Render an official timetable sheet (for single class, all classes, or teacher view)
+  const renderTimetableSheet = (targetClass: ClassRoom | null, isTeacherMode: boolean) => {
+    const sheetClassName = targetClass ? formatClassLabel(targetClass.name) : formatClassLabel(currentClassName);
+    const slotsMap = isTeacherMode ? teacherSlotsMap : getSlotsForClass(targetClass?.id || activeClassId);
+    const targetClassId = targetClass?.id || activeClassId;
+
+    return (
+      <div
+        key={isTeacherMode ? 'teacher-timetable' : targetClass?.id || 'class-timetable'}
+        id={!isTeacherMode && targetClass ? `timetable-class-${targetClass.id}` : undefined}
+        className="bg-white p-5 sm:p-8 rounded-3xl border border-slate-200 shadow-sm print:shadow-none print:border-none print:p-0 print:break-after-page mb-6 last:mb-0"
+      >
+        {/* 🌟 ផ្នែកក្បាលលើកាលវិភាគ (Official MoEYS Document Header from Image 4) */}
+        <div className="mb-4 text-slate-900">
+          {/* Row 1: Left School & Right Kingdom Header */}
+          <div className="flex justify-between items-start text-xs sm:text-sm">
+            {/* Left: Ministry & School */}
+            <div className="text-left space-y-0.5">
+              <p className="font-bold text-slate-800">ការិ.អយក. ស្រុកកំពង់ត្រឡាច</p>
+              <p className="font-black text-slate-900 text-sm sm:text-base font-moul">
+                {settings?.schoolName || 'វិទ្យាល័យ ហ៊ុនសែន កំពង់ត្រឡាច'}
+              </p>
+            </div>
+
+            {/* Right: Kingdom Header & Flourish */}
+            <div className="text-center space-y-0.5">
+              <p className="font-moul text-xs sm:text-sm">ព្រះរាជាណាចក្រកម្ពុជា</p>
+              <p className="font-moul text-xs sm:text-sm">ជាតិ សាសនា ព្រះមហាក្សត្រ</p>
+              <div className="text-xs tracking-widest text-slate-700 font-serif select-none">
+                ៚ ៚ ៚
+              </div>
+            </div>
+          </div>
+
+          {/* Row 2: Central Title & Sub-heading */}
+          <div className="text-center mt-3 sm:mt-4 space-y-1">
+            <h2 className="font-moul text-base sm:text-xl text-slate-950 tracking-wider">
+              {isTeacherMode ? 'កាលវិភាគបង្រៀនប្រចាំសប្តាហ៍' : 'កាលវិភាគប្រចាំសប្តាហ៍'}
+            </h2>
+            <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 text-xs sm:text-sm font-bold text-slate-800">
+              <span className="bg-slate-100 px-3 py-0.5 rounded-lg border border-slate-200 print:bg-transparent print:border-none">
+                {isTeacherMode ? `លោកគ្រូ/អ្នកគ្រូ៖ ${teacherName}` : sheetClassName}
+              </span>
+              <span>
+                ឆ្នាំសិក្សា {settings?.academicYear || '២០២៥ - ២០២៦'}
+              </span>
+              <span className="bg-blue-50 px-3 py-0.5 rounded-lg border border-blue-200 text-blue-900 print:bg-transparent print:border-none print:text-black">
+                {isTeacherMode
+                  ? `ឯកទេស៖ ${settings?.specialtySubject || 'គណិតវិទ្យា'}`
+                  : `បន្ទុកថ្នាក់៖ ${teacherName}`}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* 🌟 តារាងកាលវិភាគផ្លូវការ (Official Ministry Timetable Table Grid) */}
+        <div className="overflow-x-auto border-2 border-slate-900 rounded-xl overflow-hidden print:border-black">
+          <table className="w-full border-collapse text-center text-xs sm:text-sm">
+            {/* Columns Header: ម៉ោង | ចន្ទ | អង្គារ | ពុធ | ព្រហស្បតិ៍ | សុក្រ | សៅរ៍ */}
+            <thead>
+              <tr className="bg-slate-100 text-slate-900 font-black border-b-2 border-slate-900 print:bg-white print:border-black">
+                <th className="py-2.5 px-2 w-28 sm:w-32 border-r-2 border-slate-900 font-moul text-xs print:border-black">
+                  ម៉ោង
+                </th>
+                {DAYS.map((d) => (
+                  <th
+                    key={d.day}
+                    className="py-2.5 px-2 border-r-2 border-slate-900 last:border-r-0 font-moul text-xs print:border-black min-w-[110px]"
+                  >
+                    {d.nameKh}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800 text-slate-900 font-bold print:divide-black">
+              {/* 🌅 វេនព្រឹក (Morning Periods: 7h-8h, 8h-9h, 9h-10h, 10h-11h, 11h-12h) */}
+              {(selectedSession === 'all' || selectedSession === 'morning') &&
+                MORNING_PERIODS.map((period) => (
+                  <tr key={`morning-${period.period}`} className="hover:bg-slate-50/70 transition-colors">
+                    {/* Time Column (e.g. 7h-8h) */}
+                    <td className="py-2.5 px-2 border-r-2 border-slate-900 bg-slate-50/80 font-mono font-black text-xs sm:text-sm text-slate-900 print:bg-white print:border-black whitespace-nowrap">
+                      {period.label}
+                    </td>
+
+                    {/* Day Columns */}
+                    {DAYS.map((d) => {
+                      const key = `morning-${d.day}-${period.period}`;
+                      const slot = slotsMap.get(key);
+                      const isMySubject = slot ? isTeacherSlot(slot) : false;
+                      const theme = slot && slot.subject ? getSubjectTheme(slot.subject) : null;
+                      const slotClass = slot && isTeacherMode ? classes.find((c) => c.id === slot.classId) : null;
+
+                      return (
+                        <td
+                          key={d.day}
+                          onClick={() => !slot && handleOpenEmptyCell('morning', d.day, period.period, period.time, targetClassId)}
+                          className={`py-2 px-2 border-r-2 border-slate-900 last:border-r-0 relative group transition-colors print:border-black ${
+                            slot && theme
+                              ? `${theme.bg} ${
+                                  isMySubject
+                                    ? 'ring-2 ring-inset ring-blue-600 shadow-xs print:ring-0'
+                                    : ''
+                                } cursor-pointer`
+                              : 'bg-white/50 hover:bg-slate-100/60 cursor-pointer'
+                          }`}
+                        >
+                          {slot && slot.subject && theme ? (
+                            <div className="space-y-0.5">
+                              {/* មុខវិជ្ជា */}
+                              <div
+                                className={`leading-tight transition-all ${
+                                  isMySubject
+                                    ? 'font-black text-xs sm:text-[13px] text-slate-950 flex items-center justify-center gap-1 drop-shadow-2xs'
+                                    : `font-medium text-xs sm:text-[12.5px] ${theme.textColor}`
+                                }`}
+                                title={isMySubject ? 'មុខវិជ្ជាដែលខ្ញុំបង្រៀន (ដិត)' : slot.subject}
+                              >
+                                {isMySubject && <span className="text-amber-500 text-xs no-print">⭐</span>}
+                                <span>{slot.subject}</span>
+                              </div>
+
+                              {/* ឈ្មោះគ្រូបង្រៀន ឬ ថ្នាក់រៀន (បើក្នុងផ្ទាំងគ្រូ) */}
+                              {isTeacherMode ? (
+                                <div className="text-[11px] font-black text-blue-800 leading-tight">
+                                  {slotClass ? formatClassLabel(slotClass.name) : 'ថ្នាក់រៀន'}
+                                </div>
+                              ) : (
+                                <div className="text-[11px] font-bold text-slate-700 leading-tight">
+                                  {slot.teacherName || teacherName}
+                                </div>
+                              )}
+
+                              {/* My Subject Tag Indicator */}
+                              {isMySubject && !isTeacherMode && (
+                                <div className="text-[9px] font-black text-blue-700 bg-blue-100/90 px-1.5 py-0.2 rounded-md inline-block border border-blue-300 no-print">
+                                  ★ ម៉ោងបង្រៀន
+                                </div>
+                              )}
+
+                              {/* Action Buttons on Hover (Edit & Delete) */}
+                              <div className="absolute top-1 right-1 flex items-center space-x-0.5 opacity-0 group-hover:opacity-100 transition-opacity no-print bg-white/95 rounded-md shadow-2xs p-0.5 border border-slate-200">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenEdit(slot);
+                                  }}
+                                  className="p-1 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                  title="កែប្រែម៉ោងនេះ"
+                                >
+                                  <Edit2 className="w-3 h-3" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDirectDeleteSlot(slot);
+                                  }}
+                                  className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
+                                  title="លុបម៉ោងនេះចេញ (↶ Undo បាន)"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="py-2 text-slate-300 hover:text-blue-500 transition-colors text-xs select-none">
+                              <span className="group-hover:hidden">-</span>
+                              <span className="hidden group-hover:inline text-[10px] font-bold text-blue-600 no-print">
+                                + បន្ថែម
+                              </span>
+                            </div>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+
+              {/* 🌇 របារខណ្ឌវេន «រសៀល» (Full-Width Afternoon Divider Bar matching Image 4) */}
+              {selectedSession === 'all' && (
+                <tr className="bg-slate-200 border-y-2 border-slate-900 print:bg-slate-100 print:border-black">
+                  <td
+                    colSpan={7}
+                    className="py-1 text-center font-moul text-xs sm:text-sm text-slate-900 tracking-widest select-none"
+                  >
+                    រសៀល
+                  </td>
+                </tr>
+              )}
+
+              {/* 🌇 វេនរសៀល (Afternoon Periods: 1h-2h, 2h-3h, 3h-4h, 4h-5h) */}
+              {(selectedSession === 'all' || selectedSession === 'afternoon') &&
+                AFTERNOON_PERIODS.map((period) => (
+                  <tr key={`afternoon-${period.period}`} className="hover:bg-slate-50/70 transition-colors">
+                    {/* Time Column (e.g. 1h-2h) */}
+                    <td className="py-2.5 px-2 border-r-2 border-slate-900 bg-slate-50/80 font-mono font-black text-xs sm:text-sm text-slate-900 print:bg-white print:border-black whitespace-nowrap">
+                      {period.label}
+                    </td>
+
+                    {/* Day Columns */}
+                    {DAYS.map((d) => {
+                      const key = `afternoon-${d.day}-${period.period}`;
+                      const slot = slotsMap.get(key);
+                      const isMySubject = slot ? isTeacherSlot(slot) : false;
+                      const theme = slot && slot.subject ? getSubjectTheme(slot.subject) : null;
+                      const slotClass = slot && isTeacherMode ? classes.find((c) => c.id === slot.classId) : null;
+
+                      return (
+                        <td
+                          key={d.day}
+                          onClick={() => !slot && handleOpenEmptyCell('afternoon', d.day, period.period, period.time, targetClassId)}
+                          className={`py-2 px-2 border-r-2 border-slate-900 last:border-r-0 relative group transition-colors print:border-black ${
+                            slot && theme
+                              ? `${theme.bg} ${
+                                  isMySubject
+                                    ? 'ring-2 ring-inset ring-blue-600 shadow-xs print:ring-0'
+                                    : ''
+                                } cursor-pointer`
+                              : 'bg-white/50 hover:bg-slate-100/60 cursor-pointer'
+                          }`}
+                        >
+                          {slot && slot.subject && theme ? (
+                            <div className="space-y-0.5">
+                              {/* មុខវិជ្ជា */}
+                              <div
+                                className={`leading-tight transition-all ${
+                                  isMySubject
+                                    ? 'font-black text-xs sm:text-[13px] text-slate-950 flex items-center justify-center gap-1 drop-shadow-2xs'
+                                    : `font-medium text-xs sm:text-[12.5px] ${theme.textColor}`
+                                }`}
+                                title={isMySubject ? 'មុខវិជ្ជាដែលខ្ញុំបង្រៀន (ដិត)' : slot.subject}
+                              >
+                                {isMySubject && <span className="text-amber-500 text-xs no-print">⭐</span>}
+                                <span>{slot.subject}</span>
+                              </div>
+
+                              {/* ឈ្មោះគ្រូបង្រៀន ឬ ថ្នាក់រៀន (បើក្នុងផ្ទាំងគ្រូ) */}
+                              {isTeacherMode ? (
+                                <div className="text-[11px] font-black text-blue-800 leading-tight">
+                                  {slotClass ? formatClassLabel(slotClass.name) : 'ថ្នាក់រៀន'}
+                                </div>
+                              ) : (
+                                <div className="text-[11px] font-bold text-slate-700 leading-tight">
+                                  {slot.teacherName || teacherName}
+                                </div>
+                              )}
+
+                              {/* My Subject Tag Indicator */}
+                              {isMySubject && !isTeacherMode && (
+                                <div className="text-[9px] font-black text-blue-700 bg-blue-100/90 px-1.5 py-0.2 rounded-md inline-block border border-blue-300 no-print">
+                                  ★ ម៉ោងបង្រៀន
+                                </div>
+                              )}
+
+                              {/* Action Buttons on Hover (Edit & Delete) */}
+                              <div className="absolute top-1 right-1 flex items-center space-x-0.5 opacity-0 group-hover:opacity-100 transition-opacity no-print bg-white/95 rounded-md shadow-2xs p-0.5 border border-slate-200">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenEdit(slot);
+                                  }}
+                                  className="p-1 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                  title="កែប្រែម៉ោងនេះ"
+                                >
+                                  <Edit2 className="w-3 h-3" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDirectDeleteSlot(slot);
+                                  }}
+                                  className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
+                                  title="លុបម៉ោងនេះចេញ (↶ Undo បាន)"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="py-2 text-slate-300 hover:text-blue-500 transition-colors text-xs select-none">
+                              <span className="group-hover:hidden">-</span>
+                              <span className="hidden group-hover:inline text-[10px] font-bold text-blue-600 no-print">
+                                + បន្ថែម
+                              </span>
+                            </div>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* 🌟 ហត្ថលេខា និងកាលបរិច្ឆេទផ្លូវការខាងក្រោម (Official Document Footer matching Image 4) */}
+        <div className="mt-8 pt-4 flex flex-col sm:flex-row justify-between items-start text-xs sm:text-sm text-slate-900 gap-6">
+          {/* Left Signature: គ្រូបន្ទុកថ្នាក់ */}
+          <div className="text-center w-60 sm:w-64 space-y-1">
+            <p className="font-bold">បានឃើញ និងឯកភាព</p>
+            <p className="font-bold text-slate-700">
+              {isTeacherMode ? 'គ្រូបង្រៀន' : 'គ្រូបន្ទុកថ្នាក់'}
+            </p>
+            <div className="h-16 sm:h-20 flex items-center justify-center">
+              <span className="text-[11px] text-slate-300 italic no-print">(ហត្ថលេខា)</span>
+            </div>
+            <p className="font-black text-slate-900 font-moul text-xs">{teacherName}</p>
+            <p className="text-[11px] text-slate-600 font-mono font-bold">ទូរស័ព្ទ៖ {teacherPhone}</p>
+          </div>
+
+          {/* Right Signature: កាលបរិច្ឆេទចន្ទគតិ-សុរិយគតិ និង នាយកសាលា */}
+          <div className="text-center w-72 sm:w-80 space-y-1 self-end sm:self-auto">
+            <div
+              onClick={() => setIsDateModalOpen(true)}
+              className="cursor-pointer hover:bg-blue-50/70 p-1.5 rounded-xl border border-transparent hover:border-blue-200 transition-all group relative"
+              title="ចុចដើម្បីកំណត់/កែប្រែកាលបរិច្ឆេទកាលវិភាគ (ថ្នាក់ & គ្រូ ប្រើដូចគ្នា)"
+            >
+              <p className="text-xs sm:text-[12.5px] font-bold text-slate-800">
+                ធ្វើនៅ{customLunarDate.trim() || lunarInfo.fullLunarStr}
+              </p>
+              <p className="text-xs sm:text-[12.5px] font-bold text-slate-800">
+                {customSolarDate.trim() || `${settings?.provinceCity || 'កំពង់ត្រឡាច'}, ${solarInfo.shortSolarStr}`}
+              </p>
+              <span className="text-[10px] text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity block no-print font-bold">
+                ✏️ កែប្រែកាលបរិច្ឆេទ
+              </span>
+            </div>
+            <p className="font-black text-slate-900 font-moul text-xs sm:text-sm pt-1">
+              នាយកសាលា
+            </p>
+            <div className="h-14 sm:h-16 flex items-center justify-center">
+              <span className="text-[11px] text-slate-300 italic no-print">(ហត្ថលេខា និងត្រា)</span>
+            </div>
+            <p className="font-black text-slate-900 font-moul text-xs">
+              {settings?.principalName || 'នាយកសាលា'}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-5 animate-fade-in">
       {/* Top Banner and Controls (no-print) */}
@@ -475,11 +838,15 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
             <h2 className="text-xl font-black text-slate-800 flex items-center">
               <Calendar className="w-6 h-6 text-blue-600 mr-2" />
               {activeTab === 'class'
-                ? `កាលវិភាគប្រចាំសប្តាហ៍ (${currentClassName})`
+                ? (isAllClasses
+                    ? `កាលវិភាគប្រចាំសប្តាហ៍ (គ្រប់ថ្នាក់ទាំងអស់ - ${classes.length} ថ្នាក់)`
+                    : `កាលវិភាគប្រចាំសប្តាហ៍ (${formatClassLabel(currentClassName)})`)
                 : `កាលវិភាគបង្រៀនរបស់លោកគ្រូ (${teacherName})`}
             </h2>
-            <span className="inline-flex items-center px-2.5 py-0.5 bg-blue-50 text-blue-700 text-xs font-bold rounded-full border border-blue-200">
-              {activeTab === 'class' ? `ថ្នាក់ ${currentClassName}` : `ឯកទេស៖ ${settings?.specialtySubject || 'គណិតវិទ្យា'}`}
+            <span className="inline-flex items-center px-2.5 py-0.5 bg-blue-50 text-blue-700 text-xs font-bold rounded-full border border-blue-200 whitespace-nowrap">
+              {activeTab === 'class'
+                ? (isAllClasses ? `🌟 គ្រប់ថ្នាក់ទាំងអស់ (${classes.length} ថ្នាក់)` : formatClassLabel(currentClassName))
+                : `ឯកទេស៖ ${settings?.specialtySubject || 'គណិតវិទ្យា'}`}
             </span>
           </div>
           <p className="text-xs sm:text-sm text-slate-500">
@@ -585,322 +952,43 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
         </div>
       </div>
 
-      {/* Official Timetable Sheet Container (Matching Image 4) */}
-      <div className="bg-white p-5 sm:p-8 rounded-3xl border border-slate-200 shadow-sm print:shadow-none print:border-none print:p-0">
-        {/* 🌟 ផ្នែកក្បាលលើកាលវិភាគ (Official MoEYS Document Header from Image 4) */}
-        <div className="mb-4 text-slate-900">
-          {/* Row 1: Left School & Right Kingdom Header */}
-          <div className="flex justify-between items-start text-xs sm:text-sm">
-            {/* Left: Ministry & School */}
-            <div className="text-left space-y-0.5">
-              <p className="font-bold text-slate-800">ការិ.អយក. ស្រុកកំពង់ត្រឡាច</p>
-              <p className="font-black text-slate-900 text-sm sm:text-base font-moul">
-                {settings?.schoolName || 'វិទ្យាល័យ ហ៊ុនសែន កំពង់ត្រឡាច'}
-              </p>
-            </div>
-
-            {/* Right: Kingdom Header & Flourish */}
-            <div className="text-center space-y-0.5">
-              <p className="font-moul text-xs sm:text-sm">ព្រះរាជាណាចក្រកម្ពុជា</p>
-              <p className="font-moul text-xs sm:text-sm">ជាតិ សាសនា ព្រះមហាក្សត្រ</p>
-              <div className="text-xs tracking-widest text-slate-700 font-serif select-none">
-                ៚ ៚ ៚
-              </div>
-            </div>
-          </div>
-
-          {/* Row 2: Central Title & Sub-heading */}
-          <div className="text-center mt-3 sm:mt-4 space-y-1">
-            <h2 className="font-moul text-base sm:text-xl text-slate-950 tracking-wider">
-              កាលវិភាគប្រចាំសប្តាហ៍
-            </h2>
-            <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 text-xs sm:text-sm font-bold text-slate-800">
-              <span className="bg-slate-100 px-3 py-0.5 rounded-lg border border-slate-200 print:bg-transparent print:border-none">
-                ថ្នាក់ទី "{currentClassName}"
-              </span>
-              <span>
-                ឆ្នាំសិក្សា {settings?.academicYear || '២០២៥ - ២០២៦'}
-              </span>
-              <span className="bg-blue-50 px-3 py-0.5 rounded-lg border border-blue-200 text-blue-900 print:bg-transparent print:border-none print:text-black">
-                បន្ទុកថ្នាក់ {teacherName}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* 🌟 តារាងកាលវិភាគផ្លូវការ (Official Ministry Timetable Table Grid) */}
-        <div className="overflow-x-auto border-2 border-slate-900 rounded-xl overflow-hidden print:border-black">
-          <table className="w-full border-collapse text-center text-xs sm:text-sm">
-            {/* Columns Header: ម៉ោង | ចន្ទ | អង្គារ | ពុធ | ព្រហស្បតិ៍ | សុក្រ | សៅរ៍ */}
-            <thead>
-              <tr className="bg-slate-100 text-slate-900 font-black border-b-2 border-slate-900 print:bg-white print:border-black">
-                <th className="py-2.5 px-2 w-28 sm:w-32 border-r-2 border-slate-900 font-moul text-xs print:border-black">
-                  ម៉ោង
-                </th>
-                {DAYS.map((d) => (
-                  <th
-                    key={d.day}
-                    className="py-2.5 px-2 border-r-2 border-slate-900 last:border-r-0 font-moul text-xs print:border-black min-w-[110px]"
-                  >
-                    {d.nameKh}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800 text-slate-900 font-bold print:divide-black">
-              {/* 🌅 វេនព្រឹក (Morning Periods: 7h-8h, 8h-9h, 9h-10h, 10h-11h, 11h-12h) */}
-              {(selectedSession === 'all' || selectedSession === 'morning') &&
-                MORNING_PERIODS.map((period) => (
-                  <tr key={`morning-${period.period}`} className="hover:bg-slate-50/70 transition-colors">
-                    {/* Time Column (e.g. 7h-8h) */}
-                    <td className="py-2.5 px-2 border-r-2 border-slate-900 bg-slate-50/80 font-mono font-black text-xs sm:text-sm text-slate-900 print:bg-white print:border-black whitespace-nowrap">
-                      {period.label}
-                    </td>
-
-                    {/* Day Columns */}
-                    {DAYS.map((d) => {
-                      const key = `morning-${d.day}-${period.period}`;
-                      const slot = activeTab === 'class' ? classSlotsMap.get(key) : teacherSlotsMap.get(key);
-                      const isMySubject = slot ? isTeacherSlot(slot) : false;
-                      const theme = slot && slot.subject ? getSubjectTheme(slot.subject) : null;
-
-                      return (
-                        <td
-                          key={d.day}
-                          onClick={() => !slot && handleOpenEmptyCell('morning', d.day, period.period, period.time)}
-                          className={`py-2 px-2 border-r-2 border-slate-900 last:border-r-0 relative group transition-colors print:border-black ${
-                            slot && theme
-                              ? `${theme.bg} ${
-                                  isMySubject
-                                    ? 'ring-2 ring-inset ring-blue-600 shadow-xs print:ring-0'
-                                    : ''
-                                } cursor-pointer`
-                              : 'bg-white/50 hover:bg-slate-100/60 cursor-pointer'
-                          }`}
-                        >
-                          {slot && slot.subject && theme ? (
-                            <div className="space-y-0.5">
-                              {/* មុខវិជ្ជា (អក្សរធម្មតាមិនបាច់ដិត ចែកពណ៌តាមមុខវិជ្ជា ដោយឡែកមុខវិជ្ជាខ្ញុំបង្រៀនសូមដាក់ដិត) */}
-                              <div
-                                className={`leading-tight transition-all ${
-                                  isMySubject
-                                    ? 'font-black text-xs sm:text-[13px] text-slate-950 flex items-center justify-center gap-1 drop-shadow-2xs'
-                                    : `font-medium text-xs sm:text-[12.5px] ${theme.textColor}`
-                                }`}
-                                title={isMySubject ? 'មុខវិជ្ជាដែលខ្ញុំបង្រៀន (ដិត)' : slot.subject}
-                              >
-                                {isMySubject && <span className="text-amber-500 text-xs no-print">⭐</span>}
-                                <span>{slot.subject}</span>
-                              </div>
-
-                              {/* ឈ្មោះគ្រូបង្រៀន */}
-                              <div className="text-[11px] font-bold text-slate-700 leading-tight">
-                                {slot.teacherName || teacherName}
-                              </div>
-
-                              {/* My Subject Tag Indicator */}
-                              {isMySubject && (
-                                <div className="text-[9px] font-black text-blue-700 bg-blue-100/90 px-1.5 py-0.2 rounded-md inline-block border border-blue-300 no-print">
-                                  ★ ម៉ោងបង្រៀន
-                                </div>
-                              )}
-
-                              {/* Action Buttons on Hover (Edit & Delete) */}
-                              <div className="absolute top-1 right-1 flex items-center space-x-0.5 opacity-0 group-hover:opacity-100 transition-opacity no-print bg-white/95 rounded-md shadow-2xs p-0.5 border border-slate-200">
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleOpenEdit(slot);
-                                  }}
-                                  className="p-1 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                                  title="កែប្រែម៉ោងនេះ"
-                                >
-                                  <Edit2 className="w-3 h-3" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDirectDeleteSlot(slot);
-                                  }}
-                                  className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
-                                  title="លុបម៉ោងនេះចេញ (↶ Undo បាន)"
-                                >
-                                  <Trash2 className="w-3 h-3" />
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="py-2 text-slate-300 hover:text-blue-500 transition-colors text-xs select-none">
-                              <span className="group-hover:hidden">-</span>
-                              <span className="hidden group-hover:inline text-[10px] font-bold text-blue-600 no-print">
-                                + បន្ថែម
-                              </span>
-                            </div>
-                          )}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-
-              {/* 🌇 របារខណ្ឌវេន «រសៀល» (Full-Width Afternoon Divider Bar matching Image 4) */}
-              {selectedSession === 'all' && (
-                <tr className="bg-slate-200 border-y-2 border-slate-900 print:bg-slate-100 print:border-black">
-                  <td
-                    colSpan={7}
-                    className="py-1 text-center font-moul text-xs sm:text-sm text-slate-900 tracking-widest select-none"
-                  >
-                    រសៀល
-                  </td>
-                </tr>
-              )}
-
-              {/* 🌇 វេនរសៀល (Afternoon Periods: 1h-2h, 2h-3h, 3h-4h, 4h-5h) */}
-              {(selectedSession === 'all' || selectedSession === 'afternoon') &&
-                AFTERNOON_PERIODS.map((period) => (
-                  <tr key={`afternoon-${period.period}`} className="hover:bg-slate-50/70 transition-colors">
-                    {/* Time Column (e.g. 1h-2h) */}
-                    <td className="py-2.5 px-2 border-r-2 border-slate-900 bg-slate-50/80 font-mono font-black text-xs sm:text-sm text-slate-900 print:bg-white print:border-black whitespace-nowrap">
-                      {period.label}
-                    </td>
-
-                    {/* Day Columns */}
-                    {DAYS.map((d) => {
-                      const key = `afternoon-${d.day}-${period.period}`;
-                      const slot = activeTab === 'class' ? classSlotsMap.get(key) : teacherSlotsMap.get(key);
-                      const isMySubject = slot ? isTeacherSlot(slot) : false;
-                      const theme = slot && slot.subject ? getSubjectTheme(slot.subject) : null;
-
-                      return (
-                        <td
-                          key={d.day}
-                          onClick={() => !slot && handleOpenEmptyCell('afternoon', d.day, period.period, period.time)}
-                          className={`py-2 px-2 border-r-2 border-slate-900 last:border-r-0 relative group transition-colors print:border-black ${
-                            slot && theme
-                              ? `${theme.bg} ${
-                                  isMySubject
-                                    ? 'ring-2 ring-inset ring-blue-600 shadow-xs print:ring-0'
-                                    : ''
-                                } cursor-pointer`
-                              : 'bg-white/50 hover:bg-slate-100/60 cursor-pointer'
-                          }`}
-                        >
-                          {slot && slot.subject && theme ? (
-                            <div className="space-y-0.5">
-                              {/* មុខវិជ្ជា (អក្សរធម្មតាមិនបាច់ដិត ចែកពណ៌តាមមុខវិជ្ជា ដោយឡែកមុខវិជ្ជាខ្ញុំបង្រៀនសូមដាក់ដិត) */}
-                              <div
-                                className={`leading-tight transition-all ${
-                                  isMySubject
-                                    ? 'font-black text-xs sm:text-[13px] text-slate-950 flex items-center justify-center gap-1 drop-shadow-2xs'
-                                    : `font-medium text-xs sm:text-[12.5px] ${theme.textColor}`
-                                }`}
-                                title={isMySubject ? 'មុខវិជ្ជាដែលខ្ញុំបង្រៀន (ដិត)' : slot.subject}
-                              >
-                                {isMySubject && <span className="text-amber-500 text-xs no-print">⭐</span>}
-                                <span>{slot.subject}</span>
-                              </div>
-
-                              {/* ឈ្មោះគ្រូបង្រៀន */}
-                              <div className="text-[11px] font-bold text-slate-700 leading-tight">
-                                {slot.teacherName || teacherName}
-                              </div>
-
-                              {/* My Subject Tag Indicator */}
-                              {isMySubject && (
-                                <div className="text-[9px] font-black text-blue-700 bg-blue-100/90 px-1.5 py-0.2 rounded-md inline-block border border-blue-300 no-print">
-                                  ★ ម៉ោងបង្រៀន
-                                </div>
-                              )}
-
-                              {/* Action Buttons on Hover (Edit & Delete) */}
-                              <div className="absolute top-1 right-1 flex items-center space-x-0.5 opacity-0 group-hover:opacity-100 transition-opacity no-print bg-white/95 rounded-md shadow-2xs p-0.5 border border-slate-200">
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleOpenEdit(slot);
-                                  }}
-                                  className="p-1 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                                  title="កែប្រែម៉ោងនេះ"
-                                >
-                                  <Edit2 className="w-3 h-3" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDirectDeleteSlot(slot);
-                                  }}
-                                  className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
-                                  title="លុបម៉ោងនេះចេញ (↶ Undo បាន)"
-                                >
-                                  <Trash2 className="w-3 h-3" />
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="py-2 text-slate-300 hover:text-blue-500 transition-colors text-xs select-none">
-                              <span className="group-hover:hidden">-</span>
-                              <span className="hidden group-hover:inline text-[10px] font-bold text-blue-600 no-print">
-                                + បន្ថែម
-                              </span>
-                            </div>
-                          )}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* 🌟 ហត្ថលេខា និងកាលបរិច្ឆេទផ្លូវការខាងក្រោម (Official Document Footer matching Image 4) */}
-        <div className="mt-8 pt-4 flex flex-col sm:flex-row justify-between items-start text-xs sm:text-sm text-slate-900 gap-6">
-          {/* Left Signature: គ្រូបន្ទុកថ្នាក់ */}
-          <div className="text-center w-60 sm:w-64 space-y-1">
-            <p className="font-bold">បានឃើញ និងឯកភាព</p>
-            <p className="font-bold text-slate-700">
-              {activeTab === 'class' ? 'គ្រូបន្ទុកថ្នាក់' : 'គ្រូបង្រៀន'}
-            </p>
-            <div className="h-16 sm:h-20 flex items-center justify-center">
-              <span className="text-[11px] text-slate-300 italic no-print">(ហត្ថលេខា)</span>
-            </div>
-            <p className="font-black text-slate-900 font-moul text-xs">{teacherName}</p>
-            <p className="text-[11px] text-slate-600 font-mono font-bold">ទូរស័ព្ទ៖ {teacherPhone}</p>
-          </div>
-
-          {/* Right Signature: កាលបរិច្ឆេទចន្ទគតិ-សុរិយគតិ និង នាយកសាលា */}
-          <div className="text-center w-72 sm:w-80 space-y-1 self-end sm:self-auto">
-            <div
-              onClick={() => setIsDateModalOpen(true)}
-              className="cursor-pointer hover:bg-blue-50/70 p-1.5 rounded-xl border border-transparent hover:border-blue-200 transition-all group relative"
-              title="ចុចដើម្បីកំណត់/កែប្រែកាលបរិច្ឆេទកាលវិភាគ (ថ្នាក់ & គ្រូ ប្រើដូចគ្នា)"
+      {/* Quick Jump Bar when All Classes is selected (no-print) */}
+      {isAllClasses && activeTab === 'class' && classes.length > 1 && (
+        <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-blue-200/80 shadow-xs flex flex-wrap items-center gap-2 no-print">
+          <span className="text-xs font-black text-blue-900 flex items-center mr-1">
+            <span className="w-2.5 h-2.5 rounded-full bg-blue-600 mr-2 inline-block animate-pulse"></span>
+            រំលងទៅកាលវិភាគថ្នាក់៖
+          </span>
+          {classes.map((cls) => (
+            <a
+              key={cls.id}
+              href={`#timetable-class-${cls.id}`}
+              className="px-3 py-1.5 text-xs font-bold bg-slate-50 hover:bg-blue-600 hover:text-white text-slate-700 rounded-xl border border-slate-200 transition-colors shadow-2xs"
             >
-              <p className="text-xs sm:text-[12.5px] font-bold text-slate-800">
-                ធ្វើនៅ{customLunarDate.trim() || lunarInfo.fullLunarStr}
-              </p>
-              <p className="text-xs sm:text-[12.5px] font-bold text-slate-800">
-                {customSolarDate.trim() || `${settings?.provinceCity || 'កំពង់ត្រឡាច'}, ${solarInfo.shortSolarStr}`}
-              </p>
-              <span className="text-[10px] text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity block no-print font-bold">
-                ✏️ កែប្រែកាលបរិច្ឆេទ
-              </span>
-            </div>
-            <p className="font-black text-slate-900 font-moul text-xs sm:text-sm pt-1">
-              នាយកសាលា
-            </p>
-            <div className="h-14 sm:h-16 flex items-center justify-center">
-              <span className="text-[11px] text-slate-300 italic no-print">(ហត្ថលេខា និងត្រា)</span>
-            </div>
-            <p className="font-black text-slate-900 font-moul text-xs">
-              {settings?.principalName || 'នាយកសាលា'}
-            </p>
-          </div>
+              {formatClassLabel(cls.name)}
+            </a>
+          ))}
         </div>
-      </div>
+      )}
+
+      {/* Render Timetable Sheet(s) */}
+      {activeTab === 'teacher' ? (
+        renderTimetableSheet(null, true)
+      ) : isAllClasses ? (
+        classes.length === 0 ? (
+          <div className="bg-white p-12 text-center rounded-3xl border border-slate-200 text-slate-500">
+            <BookOpen className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+            <p className="font-bold text-sm">មិនទាន់មានថ្នាក់រៀននៅឡើយទេ</p>
+            <p className="text-xs text-slate-400 mt-1">សូមបង្កើតថ្នាក់រៀនជាមុនសិនដើម្បីរៀបចំកាលវិភាគ</p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {classes.map((cls) => renderTimetableSheet(cls, false))}
+          </div>
+        )
+      ) : (
+        renderTimetableSheet(currentClass || classes[0] || null, false)
+      )}
 
       {/* Edit Slot Modal */}
       <Modal
@@ -1227,10 +1315,10 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
             >
               <div>
                 <p className="font-bold text-slate-800 group-hover:text-rose-700">
-                  ១. លុបកាលវិភាគថ្នាក់នេះ ({currentClassName})
+                  ១. លុបកាលវិភាគ{formatClassLabel(currentClassName)}
                 </p>
                 <p className="text-[11px] text-slate-500 mt-0.5">
-                  លុបម៉ោងបង្រៀនទាំងអស់សម្រាប់តែថ្នាក់ {currentClassName} (ថ្នាក់ដទៃនៅដដែល)
+                  លុបម៉ោងបង្រៀនទាំងអស់សម្រាប់តែ{formatClassLabel(currentClassName)} (ថ្នាក់ដទៃនៅដដែល)
                 </p>
               </div>
               <Trash2 className="w-4 h-4 text-slate-400 group-hover:text-rose-600 shrink-0 ml-2" />
