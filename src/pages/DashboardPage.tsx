@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Users,
   CalendarCheck2,
@@ -33,6 +33,8 @@ interface DashboardPageProps {
   onSelectStudentForLetter?: (studentId: string) => void;
 }
 
+export type DashboardSession = 'morning' | 'afternoon' | 'all';
+
 export const DashboardPage: React.FC<DashboardPageProps> = ({
   students,
   classes,
@@ -44,6 +46,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   onSelectStudentForLetter,
 }) => {
   const today = getTodayDateString();
+  const [selectedDate, setSelectedDate] = useState<string>(today);
+  const [selectedSession, setSelectedSession] = useState<DashboardSession>('morning');
 
   // Active class filter scope (ALL or specific class)
   const activeClass = selectedClassId !== 'ALL' ? classes.find((c) => c.id === selectedClassId) : null;
@@ -66,21 +70,40 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     const femaleStudents = activeStudents.filter((s) => s.gender === 'ស្រី').length;
     const maleStudents = totalStudents - femaleStudents;
 
-    // Filter today attendance records strictly belonging to active students and classes
-    const todayRecords = attendanceRecords.filter(
-      (r) => r.date === today && activeStudentIds.has(r.studentId) && activeClassIds.has(r.classId)
+    // Filter attendance records strictly belonging to active students and classes on selectedDate
+    const dateRecords = attendanceRecords.filter(
+      (r) => r.date === selectedDate && activeStudentIds.has(r.studentId) && activeClassIds.has(r.classId)
     );
 
-    // Deduplicate by studentId so each student is counted exactly ONCE per day (regardless of morning/afternoon sessions)
+    // Map each student to their resolved status for selectedDate and selectedSession
     const studentStatusMap = new Map<string, AttendanceStatus>();
-    todayRecords.forEach((r) => {
-      const prev = studentStatusMap.get(r.studentId);
-      if (!prev) {
+
+    if (selectedSession !== 'all') {
+      const sessionRecords = dateRecords.filter((r) => r.session === selectedSession);
+      sessionRecords.forEach((r) => {
         studentStatusMap.set(r.studentId, r.status);
-      } else if (r.status === 'absent' || (r.status === 'permission' && prev !== 'absent')) {
-        studentStatusMap.set(r.studentId, r.status);
-      }
-    });
+      });
+    } else {
+      // Priority hierarchy when merging sessions:
+      // absent (4) > permission (3) > late (2) > present (1)
+      const priorityWeight: Record<AttendanceStatus, number> = {
+        absent: 4,
+        permission: 3,
+        late: 2,
+        present: 1,
+      };
+
+      dateRecords.forEach((r) => {
+        const prev = studentStatusMap.get(r.studentId);
+        if (!prev) {
+          studentStatusMap.set(r.studentId, r.status);
+        } else {
+          if ((priorityWeight[r.status] || 0) > (priorityWeight[prev] || 0)) {
+            studentStatusMap.set(r.studentId, r.status);
+          }
+        }
+      });
+    }
 
     let presentToday = 0;
     let permissionToday = 0;
@@ -120,15 +143,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     // Class performance overview for currently active classes
     const classStats = activeClasses.map((c) => {
       const classStudents = students.filter((s) => s.classId === c.id);
-      const classTodayRecords = todayRecords.filter((r) => r.classId === c.id);
-
-      const cStatusMap = new Map<string, AttendanceStatus>();
-      classTodayRecords.forEach((r) => cStatusMap.set(r.studentId, r.status));
 
       let present = 0;
+      let late = 0;
+      let permission = 0;
       let absent = 0;
-      cStatusMap.forEach((st) => {
-        if (st === 'present' || st === 'late') present++;
+
+      classStudents.forEach((s) => {
+        const st = studentStatusMap.get(s.id);
+        if (st === 'present') present++;
+        else if (st === 'late') late++;
+        else if (st === 'permission') permission++;
         else if (st === 'absent') absent++;
       });
 
@@ -139,6 +164,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         count: classStudents.length,
         femaleCount: classStudents.filter((s) => s.gender === 'ស្រី').length,
         present,
+        late,
+        permission,
         absent,
       };
     });
@@ -156,7 +183,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       atRiskList,
       classStats,
     };
-  }, [activeStudents, activeClasses, activeStudentIds, activeClassIds, attendanceRecords, today, classes, students]);
+  }, [activeStudents, activeClasses, activeStudentIds, activeClassIds, attendanceRecords, selectedDate, selectedSession, classes, students]);
 
   // Grade Distribution Calculation (Grades 7, 8, 9, 10, 11, 12)
   const gradeDistribution = useMemo(() => {
@@ -303,7 +330,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               </div>
               <div className="min-w-0">
                 <div className="flex items-baseline space-x-1">
-                  <span className="text-[11px] font-bold text-emerald-200 whitespace-nowrap">វត្តមានថ្ងៃនេះ៖</span>
+                  <span className="text-[11px] font-bold text-emerald-200 whitespace-nowrap">
+                    {selectedDate === today ? 'វត្តមានថ្ងៃនេះ៖' : 'វត្តមានសរុប៖'}
+                  </span>
                   <span className="text-base sm:text-lg font-black text-emerald-300">
                     {toKhmerNum(stats.presentToday + stats.lateToday)}
                   </span>
@@ -333,7 +362,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   <span className="text-[10px] text-rose-200/80">នាក់</span>
                 </div>
                 <p className="text-[10px] text-rose-300/80 truncate">
-                  ទាមទារតាមដានមូលហេតុ
+                  {stats.absentToday > 0 ? 'ទាមទារតាមដានមូលហេតុ' : 'គ្មានសិស្សអវត្តមាន'}
                 </p>
               </div>
             </div>
@@ -341,9 +370,80 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </div>
       </div>
 
+      {/* 🧭 Dashboard Date & Session Controller Bar */}
+      <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
+        {/* Left: Date Picker + Quick Today Button */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex items-center space-x-2">
+            <span className="text-xs font-bold text-slate-700 flex items-center">
+              <Calendar className="w-4 h-4 text-blue-600 mr-1.5" />
+              កាលបរិច្ឆេទ៖
+            </span>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none"
+            />
+          </div>
+          {selectedDate !== today && (
+            <button
+              type="button"
+              onClick={() => setSelectedDate(today)}
+              className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+            >
+              📅 ត្រឡប់មកថ្ងៃនេះ
+            </button>
+          )}
+          <span className="text-xs text-slate-500 font-semibold hidden md:inline">
+            ({formatKhmerDate(selectedDate, true)})
+          </span>
+        </div>
+
+        {/* Right: Session Switcher (Morning, Afternoon, All Day) */}
+        <div className="flex items-center space-x-2">
+          <span className="text-xs font-bold text-slate-600 hidden sm:inline">វេនសិក្សា៖</span>
+          <div className="inline-flex p-1 bg-slate-100 rounded-xl border border-slate-200">
+            <button
+              type="button"
+              onClick={() => setSelectedSession('morning')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                selectedSession === 'morning'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              ☀️ ពេលព្រឹក
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedSession('afternoon')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                selectedSession === 'afternoon'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              🌤️ ពេលរសៀល
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedSession('all')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                selectedSession === 'all'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              📅 ពេញមួយថ្ងៃ
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* 🌟 ផ្ទាំងដ្យាក្រាមវិភាគទិន្នន័យ (Visual Diagrams Section - Redesigned for Clarity) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        {/* Diagram 1: Today Attendance (5 cols) - Crystal Clear Ring & Metric Bars */}
+        {/* Diagram 1: Attendance Breakdown Ring & Metric Bars */}
         <div className="lg:col-span-5 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
           <div className="flex items-center justify-between pb-2 border-b border-slate-100">
             <div className="flex items-center space-x-2">
@@ -352,7 +452,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               </div>
               <div>
                 <h3 className="font-bold text-sm text-slate-800">
-                  ដ្យាក្រាមវត្តមានថ្ងៃនេះ
+                  ដ្យាក្រាមវត្តមាន{selectedDate === today ? 'ថ្ងៃនេះ' : ''}{selectedSession === 'morning' ? ' (ពេលព្រឹក)' : selectedSession === 'afternoon' ? ' (ពេលរសៀល)' : ' (ពេញមួយថ្ងៃ)'}
                 </h3>
                 <p className="text-[11px] text-slate-400">
                   សរុបបានកត់ {toKhmerNum(totalRecordedToday)} នាក់
@@ -543,7 +643,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 <TrendingUp className="w-4 h-4" />
               </div>
               <h3 className="font-bold text-sm text-slate-800">
-                ស្ថានភាពវត្តមានតាមថ្នាក់នីមួយៗ (Class Performance)
+                ស្ថានភាពវត្តមានតាមថ្នាក់នីមួយៗ (Class Performance) {selectedSession === 'morning' ? '• វេនព្រឹក' : selectedSession === 'afternoon' ? '• វេនរសៀល' : '• ពេញមួយថ្ងៃ'}
               </h3>
             </div>
             <button
@@ -557,19 +657,21 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead>
-                <tr className="border-b border-slate-100 text-slate-400 font-bold">
-                  <th className="py-2 px-3">ថ្នាក់រៀន</th>
-                  <th className="py-2 px-3 text-center">សិស្សសរុប</th>
-                  <th className="py-2 px-3 text-center">ស្រី</th>
-                  <th className="py-2 px-3 text-center">មក (ថ្ងៃនេះ)</th>
-                  <th className="py-2 px-3 text-center">អវត្តមាន</th>
-                  <th className="py-2 px-3 text-center">សកម្មភាព</th>
+                <tr className="border-b border-slate-100 text-slate-500 font-bold">
+                  <th className="py-2.5 px-3">ថ្នាក់រៀន</th>
+                  <th className="py-2.5 px-3 text-center">សិស្សសរុប</th>
+                  <th className="py-2.5 px-3 text-center">ស្រី</th>
+                  <th className="py-2.5 px-3 text-center text-emerald-700">មក</th>
+                  <th className="py-2.5 px-3 text-center text-blue-700">យឺត</th>
+                  <th className="py-2.5 px-3 text-center text-amber-700">ច្បាប់</th>
+                  <th className="py-2.5 px-3 text-center text-rose-700">ឥតច្បាប់</th>
+                  <th className="py-2.5 px-3 text-center">សកម្មភាព</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {stats.classStats.map((c) => (
                   <tr key={c.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="py-2.5 px-3 font-bold text-slate-800">
+                    <td className="py-2.5 px-3 font-bold text-slate-800 whitespace-nowrap">
                       📚 {c.name}
                     </td>
                     <td className="py-2.5 px-3 text-center font-semibold text-slate-700">
@@ -581,8 +683,32 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     <td className="py-2.5 px-3 text-center font-bold text-emerald-600">
                       {toKhmerNum(c.present)}
                     </td>
+                    <td className="py-2.5 px-3 text-center font-bold text-blue-600">
+                      {c.late > 0 ? (
+                        <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-md font-bold text-[11px] border border-blue-200">
+                          {toKhmerNum(c.late)}
+                        </span>
+                      ) : (
+                        <span className="text-slate-300">-</span>
+                      )}
+                    </td>
+                    <td className="py-2.5 px-3 text-center font-bold text-amber-600">
+                      {c.permission > 0 ? (
+                        <span className="px-2 py-0.5 bg-amber-50 text-amber-700 rounded-md font-bold text-[11px] border border-amber-200">
+                          {toKhmerNum(c.permission)}
+                        </span>
+                      ) : (
+                        <span className="text-slate-300">-</span>
+                      )}
+                    </td>
                     <td className="py-2.5 px-3 text-center font-bold text-rose-600">
-                      {toKhmerNum(c.absent)}
+                      {c.absent > 0 ? (
+                        <span className="px-2 py-0.5 bg-rose-50 text-rose-700 rounded-md font-bold text-[11px] border border-rose-200">
+                          {toKhmerNum(c.absent)}
+                        </span>
+                      ) : (
+                        <span className="text-slate-300">-</span>
+                      )}
                     </td>
                     <td className="py-2.5 px-3 text-center">
                       <button
@@ -590,7 +716,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                           onSelectClass(c.id);
                           onNavigateTab('attendance');
                         }}
-                        className="px-2.5 py-1 bg-blue-50 text-blue-700 font-bold rounded-lg hover:bg-blue-100 transition-colors cursor-pointer text-[11px]"
+                        className="px-2.5 py-1 bg-blue-50 text-blue-700 font-bold rounded-lg hover:bg-blue-100 transition-colors cursor-pointer text-[11px] whitespace-nowrap"
                       >
                         កត់វត្តមាន
                       </button>
