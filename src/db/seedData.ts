@@ -15,10 +15,54 @@ export const initialSettings: TeacherSettings = {
   pinMode: 'daily',
 };
 
-import { generateStandardClasses } from '../utils/classUtils';
-
-// ៤៩ ថ្នាក់ស្តង់ដារ៖ 7A-E, 8A-E, 9A-D, 10A-L, 11A-J, 12A-M (ដកបន្ទប់ និងអគារចេញ)
-export const initialClasses: ClassRoom[] = generateStandardClasses();
+// ៥ ថ្នាក់ចាស់របស់លោកគ្រូ (ថ្នាក់ទី ៧, ៨, ៩, ១០, ១២)
+export const initialClasses: ClassRoom[] = [
+  {
+    id: 'class-7',
+    name: 'ថ្នាក់ទី 7A',
+    grade: '7',
+    academicYear: '២០២៦-២០២៧',
+    homeroomTeacher: 'ហ៊ុន រដ្ឋា',
+    stream: 'general',
+    createdAt: '2024-10-01T08:00:00Z',
+  },
+  {
+    id: 'class-8',
+    name: 'ថ្នាក់ទី 8A',
+    grade: '8',
+    academicYear: '២០២៦-២០២៧',
+    homeroomTeacher: 'គ្រូទទួលបន្ទុក',
+    stream: 'general',
+    createdAt: '2024-10-01T08:00:00Z',
+  },
+  {
+    id: 'class-9',
+    name: 'ថ្នាក់ទី 9A',
+    grade: '9',
+    academicYear: '២០២៦-២០២៧',
+    homeroomTeacher: 'គ្រូទទួលបន្ទុក',
+    stream: 'general',
+    createdAt: '2024-10-01T08:00:00Z',
+  },
+  {
+    id: 'class-10',
+    name: 'ថ្នាក់ទី 10A',
+    grade: '10',
+    academicYear: '២០២៦-២០២៧',
+    homeroomTeacher: 'គ្រូទទួលបន្ទុក',
+    stream: 'science',
+    createdAt: '2024-10-01T08:00:00Z',
+  },
+  {
+    id: 'class-12',
+    name: 'ថ្នាក់ទី 12A',
+    grade: '12',
+    academicYear: '២០២៦-២០២៧',
+    homeroomTeacher: 'គ្រូទទួលបន្ទុក',
+    stream: 'science',
+    createdAt: '2024-10-01T08:00:00Z',
+  },
+];
 
 
 // សិស្សសរុប ២០០ នាក់ (ចែកតាមថ្នាក់ទី ៧ ដល់ ទី ១២)
