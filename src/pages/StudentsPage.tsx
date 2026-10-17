@@ -256,7 +256,10 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
 
   // Core Excel/Clipboard Paste Engine
   const executeTablePaste = async (text: string) => {
-    if (!text || (!text.includes('\t') && !text.includes('\n'))) {
+    if (text === undefined || text === null) {
+      return false;
+    }
+    if (!selectedCell && !text.includes('\t') && !text.includes('\n')) {
       return false;
     }
     const targetClassId = selectedClassId === 'ALL' ? (classes[0]?.id || '') : selectedClassId;
@@ -314,9 +317,22 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
           delete updates.nameKh;
         }
 
+        // Safeguard 4: If existing student already has a name, and updates.nameKh is empty, DO NOT wipe student name!
+        if (existingStudent.nameKh && updates.nameKh !== undefined && updates.nameKh.trim() === '') {
+          delete updates.nameKh;
+        }
+
+        // Safeguard 5: For gender, if empty in updates, preserve existing valid gender
+        if (updates.gender !== undefined && !updates.gender) {
+          delete updates.gender;
+        }
+
         if (updates.dob) {
           updates.age = calculateAge(updates.dob);
+        } else if (updates.dob === '') {
+          updates.age = 0;
         }
+
         await db.students.update(existingStudent.id, updates);
         updatedCount++;
       } else {
@@ -405,7 +421,15 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
   // Direct Ctrl+V on the spreadsheet table (Intelligent Excel-like grid paste)
   const handleTablePaste = async (e: React.ClipboardEvent) => {
     const text = e.clipboardData.getData('text/plain');
-    if (!text || (!text.includes('\t') && !text.includes('\n'))) {
+    if (text === undefined || text === null) return;
+    if (selectedCell) {
+      e.preventDefault();
+      (e.nativeEvent as any).__tablePasteHandled = true;
+      e.stopPropagation();
+      await executeTablePaste(text);
+      return;
+    }
+    if (!text.includes('\t') && !text.includes('\n')) {
       return; // Regular single cell inline text paste, let browser handle it natively
     }
     e.preventDefault();
@@ -419,7 +443,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
     try {
       if (navigator.clipboard && navigator.clipboard.readText) {
         const text = await navigator.clipboard.readText();
-        if (text && (text.includes('\t') || text.includes('\n'))) {
+        if (text !== undefined && (text.includes('\t') || text.includes('\n') || selectedCell)) {
           const success = await executeTablePaste(text);
           if (success) return;
         }
@@ -454,7 +478,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
       }
 
       const clipboardText = e.clipboardData?.getData('text/plain');
-      if (clipboardText && (clipboardText.includes('\t') || clipboardText.includes('\n'))) {
+      if (clipboardText !== undefined && (clipboardText.includes('\t') || clipboardText.includes('\n') || selectedCell)) {
         e.preventDefault();
         await executeTablePaste(clipboardText);
       }

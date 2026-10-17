@@ -430,12 +430,13 @@ export function matchHeaderToColumnKey(header: string): keyof Student | 'day' | 
   if (/^ខែ$/i.test(clean) || clean === 'month') return 'month';
   if (/^ឆ្នាំ$/i.test(clean) || clean === 'year') return 'year';
 
-  // Specific compound addresses first before general ones
-  if (/ទីកន្លែងកំណើត.*ភូមិ|ភូមិ.*កំណើត|pobvillage/i.test(clean)) return 'pobVillage';
-  if (/ទីកន្លែងកំណើត.*(ឃុំ|សង្កាត់)|(ឃុំ|សង្កាត់).*កំណើត|pobcommune/i.test(clean)) return 'pobCommune';
-  if (/ទីកន្លែងកំណើត.*(ស្រុក|ខណ្ឌ)|(ស្រុក|ខណ្ឌ).*កំណើត|pobdistrict/i.test(clean)) return 'pobDistrict';
-  if (/ទីកន្លែងកំណើត.*(ខេត្ត|រាជធានី)|(ខេត្ត|រាជធានី).*កំណើត|ទីកន្លែងកំណើត|pobprovince/i.test(clean)) return 'pobProvince';
+  // Specific compound addresses first before general ones (POB - Place of Birth)
+  if (/ទីកន្លែងកំណើត.*ភូមិ|ភូមិ.*កំណើត|ឈ្មោះភូមិ|pobvillage/i.test(clean)) return 'pobVillage';
+  if (/ទីកន្លែងកំណើត.*(ឃុំ|សង្កាត់)|(ឃុំ|សង្កាត់).*កំណើត|ឈ្មោះ(ឃុំ|សង្កាត់)|pobcommune/i.test(clean)) return 'pobCommune';
+  if (/ទីកន្លែងកំណើត.*(ស្រុក|ខណ្ឌ)|(ស្រុក|ខណ្ឌ).*កំណើត|ឈ្មោះ(ស្រុក|ខណ្ឌ)|pobdistrict/i.test(clean)) return 'pobDistrict';
+  if (/ទីកន្លែងកំណើត.*(ខេត្ត|រាជធានី)|(ខេត្ត|រាជធានី).*កំណើត|ទីកន្លែងកំណើត|ឈ្មោះ(ខេត្ត|រាជធានី)|pobprovince/i.test(clean)) return 'pobProvince';
 
+  // Current Address
   if (/អាសយដ្ឋាន.*ភូមិ|ភូមិ.*(បច្ចុប្បន្ន|អាសយដ្ឋាន)|addrvillage/i.test(clean)) return 'addrVillage';
   if (/អាសយដ្ឋាន.*(ឃុំ|សង្កាត់)|(ឃុំ|សង្កាត់).*(បច្ចុប្បន្ន|អាសយដ្ឋាន)|addrcommune/i.test(clean)) return 'addrCommune';
   if (/អាសយដ្ឋាន.*(ស្រុក|ខណ្ឌ)|(ស្រុក|ខណ្ឌ).*(បច្ចុប្បន្ន|អាសយដ្ឋាន)|addrdistrict/i.test(clean)) return 'addrDistrict';
@@ -447,23 +448,36 @@ export function matchHeaderToColumnKey(header: string): keyof Student | 'day' | 
   if (/^(ស្រុក|ខណ្ឌ|ស្រុកខណ្ឌ)$/i.test(clean) || clean === 'district') return 'pobDistrict';
   if (/^(ខេត្ត|រាជធានី|ខេត្តរាជធានី)$/i.test(clean) || clean === 'province') return 'pobProvince';
 
+  // Parents
+  if (/ឪពុក.*ឈ្មោះ|ឈ្មោះឪពុក|fathername/i.test(clean)) return 'fatherName';
+  if (/ឪពុក.*មុខរបរ|មុខរបរឪពុក|fatheroccupation/i.test(clean)) return 'fatherOccupation';
+  if (/ឪពុក.*ទូរស័ព្ទ|fatherphone/i.test(clean)) return 'fatherPhone';
+  if (/^ឪពុក$/i.test(clean) || clean === 'father') return 'fatherName';
+
+  if (/ម្តាយ.*ឈ្មោះ|ឈ្មោះម្តាយ|mothername/i.test(clean)) return 'motherName';
+  if (/ម្តាយ.*មុខរបរ|មុខរបរម្តាយ|motheroccupation/i.test(clean)) return 'motherOccupation';
+  if (/ម្តាយ.*ទូរស័ព្ទ|motherphone/i.test(clean)) return 'motherPhone';
+  if (/^ម្តាយ$/i.test(clean) || clean === 'mother') return 'motherName';
+
+  if (/អាណាព្យាបាល.*ឈ្មោះ|guardianname/i.test(clean)) return 'fatherName';
+  if (/អាណាព្យាបាល.*មុខរបរ|guardianoccupation/i.test(clean)) return 'fatherOccupation';
+  if (/អាណាព្យាបាល.*ទូរស័ព្ទ|guardianphone/i.test(clean)) return 'fatherPhone';
+  if (/^អាណាព្យាបាល$/i.test(clean) || clean === 'guardian') return 'fatherName';
+
   // Standard student fields
   if (/^(លរ|លេខរៀង|no|roll|#)$/i.test(clean)) return 'rollNo';
   if (/^(អត្តលេខ|អត្តលេខសិស្ស|កូដ|code|id|studentid|studentcode)$/i.test(clean)) return 'studentCode';
-  if (/គោត្តនាម.*នាម|គោត្តនាម|ឈ្មោះសិស្ស|ឈ្មោះ|fullname|studentname|namekh|name/i.test(clean)) return 'nameKh';
+  // ONLY match student name if explicitly intended, never match address or parent headers containing ឈ្មោះ!
+  if (/^(គោត្តនាម.*នាម|គោត្តនាម|ឈ្មោះសិស្ស|fullname|studentname|namekh)$/i.test(clean)) return 'nameKh';
+  if (/^ឈ្មោះ$/i.test(clean)) return 'nameKh';
   if (/^(ភេទ|gender|sex|fm)$/i.test(clean)) return 'gender';
   if (/ថ្ងៃ.*កំណើត|កំណើត|dob|birthdate|birth/i.test(clean)) return 'dob';
   if (/^អាយុ|age$/i.test(clean)) return 'age';
   if (/សាលា|school|originschool/i.test(clean)) return 'originSchool';
 
-  // Contacts & Parents
-  if (/ទូរស័ព្ទ.*(ផ្ទាល់ខ្លួន|សិស្ស)|លេខទូរស័ព្ទផ្ទាល់ខ្លួន|ទូរស័ព្ទ|phone|studentphone/i.test(clean)) return 'studentPhone';
-  if (/ឪពុក.*ឈ្មោះ|ឈ្មោះឪពុក|ឪពុក|fathername|father/i.test(clean)) return 'fatherName';
-  if (/ឪពុក.*មុខរបរ|មុខរបរឪពុក|fatheroccupation/i.test(clean)) return 'fatherOccupation';
-  if (/ឪពុក.*ទូរស័ព្ទ|fatherphone/i.test(clean)) return 'fatherPhone';
-  if (/ម្តាយ.*ឈ្មោះ|ឈ្មោះម្តាយ|ម្តាយ|mothername|mother/i.test(clean)) return 'motherName';
-  if (/ម្តាយ.*មុខរបរ|មុខរបរម្តាយ|motheroccupation/i.test(clean)) return 'motherOccupation';
-  if (/ម្តាយ.*ទូរស័ព្ទ|motherphone/i.test(clean)) return 'motherPhone';
+  // Contacts
+  if (/ទូរស័ព្ទ.*(ផ្ទាល់ខ្លួន|សិស្ស)|លេខទូរស័ព្ទផ្ទាល់ខ្លួន|studentphone/i.test(clean)) return 'studentPhone';
+  if (/^(ទូរស័ព្ទ|លេខទូរស័ព្ទ|phone)$/i.test(clean)) return 'studentPhone';
   if (/ផ្សេងៗ|កំណត់ចំណាំ|ចំណាំ|remark|notes|othernotes/i.test(clean)) return 'otherNotes';
 
   return null;
@@ -472,20 +486,31 @@ export function matchHeaderToColumnKey(header: string): keyof Student | 'day' | 
 /**
  * Intelligent Content-Aware Grid Parser for clipboard text (Excel, Sheets, CSV, TSV)
  * Respects active focused cell. Never overwrites student names with addresses or numbers.
+ * Accurately preserves empty cells as empty string "" and retains 1-to-1 row alignment.
  */
 export function parseClipboardGrid(
   pastedText: string,
   targetStartColKey?: keyof Student
 ): ParsedGridResult {
-  if (!pastedText || !pastedText.trim()) {
+  if (pastedText === undefined || pastedText === null) {
     return { isHeaderRow: false, columnKeys: [], rows: [] };
   }
 
-  const rawLines = pastedText
-    .trim()
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter((l) => l.length > 0);
+  // Strip trailing carriage returns / newlines that Excel appends at the end
+  const normalizedText = pastedText.replace(/[\r\n]+$/, '');
+  if (normalizedText === '') {
+    if (targetStartColKey) {
+      return {
+        isHeaderRow: false,
+        columnKeys: [targetStartColKey],
+        rows: [{ [targetStartColKey]: '' }],
+      };
+    }
+    return { isHeaderRow: false, columnKeys: [], rows: [] };
+  }
+
+  // Split lines WITHOUT trimming leading/trailing tabs, so column positions are preserved!
+  const rawLines = normalizedText.split(/\r?\n/).map((l) => l.replace(/\r$/, ''));
 
   if (rawLines.length === 0) {
     return { isHeaderRow: false, columnKeys: [], rows: [] };
@@ -493,13 +518,24 @@ export function parseClipboardGrid(
 
   const rawGrid = rawLines.map((line) => {
     if (line.includes('\t')) {
-      return line.split('\t').map((c) => c.trim().replace(/^["']|["']$/g, ''));
+      return line.split('\t').map((c) => c.trim().replace(/^["']|["']$/g, '').trim());
     }
-    return line.split(',').map((c) => c.trim().replace(/^["']|["']$/g, ''));
+    return line.split(',').map((c) => c.trim().replace(/^["']|["']$/g, '').trim());
   });
 
-  const firstRow = rawGrid[0];
-  const colCount = firstRow.length;
+  // Calculate maximum column count across all lines
+  const maxColCount = Math.max(...rawGrid.map((r) => r.length), 1);
+
+  // Normalize all rows to have exact maxColCount cells, padding missing trailing cells with ''
+  const normalizedGrid = rawGrid.map((row) => {
+    if (row.length < maxColCount) {
+      return [...row, ...new Array(maxColCount - row.length).fill('')];
+    }
+    return row;
+  });
+
+  const firstRow = normalizedGrid[0];
+  const colCount = maxColCount;
 
   // 1. Check if first row is an explicit table header
   let matchedHeaderCount = 0;
@@ -519,13 +555,45 @@ export function parseClipboardGrid(
   let dayColIdx = -1;
   let monthColIdx = -1;
   let yearColIdx = -1;
-  let columnKeys: (keyof Student | null)[] = [];
+  let columnKeys: (keyof Student | null)[] = new Array(colCount).fill(null);
 
   if (isHeader) {
     startIndex = 1;
-    // Map from header row using matchHeaderToColumnKey
+    let lastParent: 'father' | 'mother' | null = null;
+    let seenAddrVillage = false;
+
+    // Map from header row using matchHeaderToColumnKey with contextual awareness
     firstRow.forEach((c, idx) => {
-      const match = matchHeaderToColumnKey(c);
+      const clean = c.toLowerCase().replace(/[\s_\-#.():\/]/g, '').trim();
+      let match = matchHeaderToColumnKey(c);
+
+      // Contextual tracking for parents (father/mother -> occupation, phone)
+      if (clean === 'ឪពុក' || clean === 'father') {
+        lastParent = 'father';
+        match = 'fatherName';
+      } else if (clean === 'ម្តាយ' || clean === 'mother') {
+        lastParent = 'mother';
+        match = 'motherName';
+      } else if (/^មុខរបរ$/i.test(clean) || clean === 'occupation') {
+        if (lastParent === 'father') match = 'fatherOccupation';
+        else if (lastParent === 'mother') match = 'motherOccupation';
+      } else if (/^(លេខទូរស័ព្ទ|ទូរស័ព្ទ|phone)$/i.test(clean)) {
+        if (lastParent === 'father') match = 'fatherPhone';
+        else if (lastParent === 'mother') match = 'motherPhone';
+        else match = 'studentPhone';
+      } else if (clean.includes('អាសយដ្ឋាន') || clean.includes('កំណើត') || clean.includes('ឈ្មោះសិស្ស') || clean.includes('គោត្តនាម')) {
+        lastParent = null;
+      }
+
+      // Contextual tracking for current address (village -> commune, district, province)
+      if (match === 'addrVillage') {
+        seenAddrVillage = true;
+      } else if (seenAddrVillage) {
+        if (/^(ឃុំ|សង្កាត់|ឃុំសង្កាត់)$/i.test(clean)) match = 'addrCommune';
+        else if (/^(ស្រុក|ខណ្ឌ|ស្រុកខណ្ឌ)$/i.test(clean)) match = 'addrDistrict';
+        else if (/^(ខេត្ត|រាជធានី|ខេត្តរាជធានី)$/i.test(clean)) match = 'addrProvince';
+      }
+
       if (match === 'day') dayColIdx = idx;
       else if (match === 'month') monthColIdx = idx;
       else if (match === 'year') yearColIdx = idx;
@@ -534,7 +602,10 @@ export function parseClipboardGrid(
     });
   } else {
     // Intelligent Column Type Inference on raw student data rows
-    const sampleRows = rawGrid.slice(0, 10);
+    const sampleRows = normalizedGrid.slice(0, 10);
+
+    // Helper: is column completely empty in all rows
+    const isColAllEmpty = (c: number) => normalizedGrid.every((r) => !String(r[c] || '').trim());
 
     // 1. Detect gender column: >50% of cells are 'ប្រុស' or 'ស្រី' or 'F'/'M'
     let detectedGenderCol = -1;
@@ -609,7 +680,7 @@ export function parseClipboardGrid(
 
     columnKeys = new Array(colCount).fill(null);
 
-    // PATH 1: User explicitly selected a target cell (e.g. pobVillage, addrVillage, studentPhone, etc.)
+    // PATH 1: User explicitly selected a target cell (e.g. pobVillage, addrVillage, studentPhone, motherPhone, etc.)
     // When no gender column is found, this is NOT a student roster! Align columns sequentially from target cell!
     if (targetStartColKey && detectedGenderCol === -1) {
       const startColIdx = SPREADSHEET_COLUMNS.findIndex((col) => col.key === targetStartColKey);
@@ -619,17 +690,27 @@ export function parseClipboardGrid(
           let offset = 0;
           for (let c = 0; c < colCount; c++) {
             if (c === dayColIdx || c === monthColIdx || c === yearColIdx) continue;
+            if (colCount > 2 && isColAllEmpty(c)) {
+              columnKeys[c] = null;
+              continue;
+            }
             const targetDef = SPREADSHEET_COLUMNS[startColIdx + 1 + offset];
             if (targetDef) columnKeys[c] = targetDef.key;
             offset++;
           }
         } else {
           // Direct positional mapping from targetStartColKey along SPREADSHEET_COLUMNS
+          let offset = 0;
           for (let c = 0; c < colCount; c++) {
-            const targetDef = SPREADSHEET_COLUMNS[startColIdx + c];
+            if (colCount > 2 && isColAllEmpty(c)) {
+              columnKeys[c] = null; // empty spacer column (like col S in Excel), do not consume table column
+              continue;
+            }
+            const targetDef = SPREADSHEET_COLUMNS[startColIdx + offset];
             if (targetDef) {
               columnKeys[c] = targetDef.key;
             }
+            offset++;
           }
         }
       }
@@ -678,7 +759,9 @@ export function parseClipboardGrid(
           columnKeys = ['pobProvince'];
         }
       } else if (colCount === 1) {
-        if (detectedSingleDobCol === 0) {
+        if (targetStartColKey) {
+          columnKeys[0] = targetStartColKey;
+        } else if (detectedSingleDobCol === 0) {
           columnKeys[0] = 'dob';
         } else if (detectedRollCol === 0) {
           columnKeys[0] = 'rollNo';
@@ -711,10 +794,8 @@ export function parseClipboardGrid(
 
   const rows: Record<string, any>[] = [];
 
-  for (let i = startIndex; i < rawGrid.length; i++) {
-    const cells = rawGrid[i];
-    if (cells.length === 0 || cells.every((c) => !c)) continue;
-
+  for (let i = startIndex; i < normalizedGrid.length; i++) {
+    const cells = normalizedGrid[i];
     const rowObj: Record<string, any> = {};
 
     for (let c = 0; c < cells.length; c++) {
@@ -722,22 +803,29 @@ export function parseClipboardGrid(
       const colKey = columnKeys[c];
       if (!colKey) continue;
       const cellVal = cells[c];
-      if (cellVal === undefined || cellVal === null || cellVal === '') continue;
+
+      // Explicitly preserve empty cells as empty string ""
+      if (cellVal === '' || cellVal === undefined || cellVal === null) {
+        rowObj[colKey] = '';
+        continue;
+      }
 
       if (colKey === 'gender') {
         rowObj.gender = cellVal === 'ស្រី' || /^(F|Female)$/i.test(cellVal) ? 'ស្រី' : 'ប្រុស';
       } else if (colKey === 'dob') {
         const cleanDob = normalizeDate(cellVal);
-        rowObj.dob = cleanDob;
+        rowObj.dob = cleanDob || cellVal;
         if (cleanDob) {
           rowObj.age = calculateAge(cleanDob);
         }
       } else if (colKey === 'rollNo') {
         const num = Number(khmerToArabic(cellVal));
         if (!isNaN(num) && num > 0) rowObj.rollNo = num;
+        else rowObj.rollNo = cellVal;
       } else if (colKey === 'age') {
         const num = Number(khmerToArabic(cellVal));
         if (!isNaN(num)) rowObj.age = num;
+        else rowObj.age = cellVal;
       } else {
         rowObj[colKey] = cellVal;
       }
@@ -756,14 +844,17 @@ export function parseClipboardGrid(
           rowObj.dob = `${yearStr}-${monthStr}-${dayStr}`;
           rowObj.age = calculateAge(rowObj.dob);
         }
+      } else if (!d && !m && !y) {
+        rowObj.dob = '';
+        rowObj.age = 0;
       }
     }
 
-    // Only accept row if it has at least one meaningful piece of data
-    if (Object.keys(rowObj).length > 0) {
-      rows.push(rowObj);
-    }
+    // Always push rowObj so row index matches 1-to-1 with table rows
+    rows.push(rowObj);
   }
+
+  return { isHeaderRow: isHeader, columnKeys, rows };
 
   return { isHeaderRow: isHeader, columnKeys, rows };
 }
