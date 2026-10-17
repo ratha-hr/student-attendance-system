@@ -391,19 +391,7 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
 
           {/* Right: Primary Actions */}
           <div className="flex flex-wrap items-center gap-2.5">
-            {/* 1. Explicit Save Attendance Button */}
-            <button
-              type="button"
-              onClick={handleSaveAttendance}
-              disabled={isSaving}
-              className="inline-flex items-center px-4 py-2 bg-linear-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 active:scale-95 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md hover:shadow-lg transition-all cursor-pointer border border-blue-400/30 shrink-0"
-              title="ចុចដើម្បីរក្សាទុកវត្តមាន (Ctrl+S)"
-            >
-              <Save className="w-4 h-4 mr-1.5 text-amber-300" />
-              <span>{isSaving ? 'កំពុងរក្សាទុក...' : 'រក្សាទុកវត្តមាន'}</span>
-            </button>
-
-            {/* 2. Mark All Present Button */}
+            {/* 1. Mark All Present Button */}
             <button
               onClick={handleMarkAllPresent}
               className="inline-flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-xs transition-colors cursor-pointer"
