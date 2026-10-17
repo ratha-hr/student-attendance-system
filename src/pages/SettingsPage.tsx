@@ -220,8 +220,16 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ settings, onRefresh 
           <div className="space-y-4 animate-in fade-in duration-200">
             {/* Visual Profile Hero Card */}
             <div className="bg-linear-to-r from-blue-600 via-indigo-600 to-blue-700 p-5 rounded-2xl text-white shadow-md flex items-center space-x-4">
-              <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md border border-white/40 text-white flex items-center justify-center font-black text-2xl shadow-inner shrink-0">
-                {teacherName ? teacherName.charAt(0) : 'ហ'}
+              <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md border border-white/40 text-white flex items-center justify-center font-black text-3xl shadow-inner shrink-0 overflow-hidden">
+                {settings?.teacherAvatar ? (
+                  settings.teacherAvatar.startsWith('data:image') || settings.teacherAvatar.startsWith('http') ? (
+                    <img src={settings.teacherAvatar} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    <span>{settings.teacherAvatar}</span>
+                  )
+                ) : (
+                  <span>👨‍🏫</span>
+                )}
               </div>
               <div className="overflow-hidden min-w-0">
                 <h3 className="text-base sm:text-lg font-black truncate">{teacherName || 'ហ៊ុន រដ្ឋា'}</h3>

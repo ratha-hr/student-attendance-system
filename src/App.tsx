@@ -188,6 +188,7 @@ export function App() {
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        onRefreshSettings={handleRefresh}
         settings={settings}
       />
 
