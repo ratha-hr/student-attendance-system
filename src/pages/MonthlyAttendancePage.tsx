@@ -51,16 +51,22 @@ export const MonthlyAttendancePage: React.FC<MonthlyAttendancePageProps> = ({
   const [selectedMonth, setSelectedMonth] = useState<number>(now.getMonth()); // 0-11
   const [selectedYear, setSelectedYear] = useState<number>(now.getFullYear());
 
-  // Strictly filter by active class
-  const activeClassId = selectedClassId === 'ALL' ? (classes[0]?.id || '') : selectedClassId;
-  const currentClass = classes.find((c) => c.id === activeClassId);
+  // Active class or ALL classes
+  const isAllClasses = selectedClassId === 'ALL';
+  const activeClassId = isAllClasses ? (classes[0]?.id || '') : selectedClassId;
+  const currentClass = isAllClasses ? null : classes.find((c) => c.id === selectedClassId);
 
-  // Students for the active class only
+  // Students for the active class or ALL classes
   const classStudents = useMemo(() => {
     return students
-      .filter((s) => s.classId === activeClassId)
-      .sort((a, b) => a.rollNo - b.rollNo);
-  }, [students, activeClassId]);
+      .filter((s) => isAllClasses || s.classId === selectedClassId)
+      .sort((a, b) => {
+        if (isAllClasses && a.classId !== b.classId) {
+          return a.classId.localeCompare(b.classId);
+        }
+        return a.rollNo - b.rollNo;
+      });
+  }, [students, selectedClassId, isAllClasses]);
 
   const totalStudents = classStudents.length;
   const femaleStudents = classStudents.filter((s) => s.gender === 'ស្រី').length;
@@ -144,7 +150,7 @@ export const MonthlyAttendancePage: React.FC<MonthlyAttendancePageProps> = ({
         <div className="flex flex-wrap items-center gap-2.5">
           {/* Active Class Badge (Controlled by top Navbar) */}
           <span className="inline-flex items-center px-2.5 py-1.5 bg-blue-50 text-blue-700 text-xs font-bold rounded-xl border border-blue-200">
-            📚 {currentClass?.name || 'ថ្នាក់រៀន'}
+            📚 {isAllClasses ? `🌟 ថ្នាក់ទាំងអស់ (${toKhmerNum(classes.length)} ថ្នាក់)` : (currentClass?.name || 'ថ្នាក់រៀន')}
           </span>
 
           {/* Month Selector */}
@@ -242,7 +248,9 @@ export const MonthlyAttendancePage: React.FC<MonthlyAttendancePageProps> = ({
           </div>
           <div className="text-center font-moul text-base">
             តារាងស្រង់វត្តមានសិស្សប្រចាំខែ {KHMER_MONTHS[selectedMonth]} ឆ្នាំ {toKhmerNum(selectedYear)}
-            <p className="font-sans text-xs font-bold text-slate-700">{currentClass?.name}</p>
+            <p className="font-sans text-xs font-bold text-slate-700">
+              {isAllClasses ? `ថ្នាក់ទាំងអស់ (${toKhmerNum(classes.length)} ថ្នាក់)` : (currentClass?.name || '')}
+            </p>
           </div>
           <div className="text-right">
             <p>សិស្សសរុប៖ {toKhmerNum(totalStudents)} នាក់ (ស្រី {toKhmerNum(femaleStudents)})</p>
@@ -360,7 +368,12 @@ export const MonthlyAttendancePage: React.FC<MonthlyAttendancePageProps> = ({
                       {s.studentCode}
                     </td>
                     <td className="py-2 px-3 font-semibold text-slate-900 border-r border-slate-200 sticky left-34 bg-inherit z-10 whitespace-nowrap">
-                      {s.nameKh}
+                      <span>{s.nameKh}</span>
+                      {isAllClasses && (
+                        <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                          {classes.find((c) => c.id === s.classId)?.name || 'ថ្នាក់'}
+                        </span>
+                      )}
                       {isFrequentAbsent && (
                         <span
                           className="ml-1.5 inline-block px-1.5 py-0.2 text-[9px] bg-rose-100 text-rose-700 rounded-full font-bold cursor-pointer"

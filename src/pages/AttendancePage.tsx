@@ -122,9 +122,10 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
 
   const { pushSnapshot } = useUndoRedo();
 
-  // Active class from top navbar
-  const activeClassId = selectedClassId === 'ALL' ? (classes[0]?.id || '') : selectedClassId;
-  const currentClass = classes.find((c) => c.id === activeClassId);
+  // Active class from top navbar (Support 'ALL' for viewing all students across all classes)
+  const isAllClasses = selectedClassId === 'ALL';
+  const activeClassId = isAllClasses ? (classes[0]?.id || '') : selectedClassId;
+  const currentClass = isAllClasses ? null : classes.find((c) => c.id === selectedClassId);
 
   // When session switches, update default check-in/out times
   const handleSessionChange = (session: 'morning' | 'afternoon') => {
@@ -143,19 +144,24 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
     return selectedSession === 'morning' ? MORNING_HOURS : AFTERNOON_HOURS;
   }, [selectedSession]);
 
-  // Students for the active class
+  // Students for the active class or ALL classes
   const classStudents = useMemo(() => {
     return students
-      .filter((s) => s.classId === activeClassId)
-      .sort((a, b) => a.rollNo - b.rollNo);
-  }, [students, activeClassId]);
+      .filter((s) => isAllClasses || s.classId === selectedClassId)
+      .sort((a, b) => {
+        if (isAllClasses && a.classId !== b.classId) {
+          return a.classId.localeCompare(b.classId);
+        }
+        return a.rollNo - b.rollNo;
+      });
+  }, [students, selectedClassId, isAllClasses]);
 
   // Today's attendance records map: studentId -> AttendanceRecord (វត្តមានកត់តែម្តងគត់សម្រាប់ម៉ោងចេញចូល)
   const dailyRecordMap = useMemo(() => {
     const map = new Map<string, AttendanceRecord>();
     attendanceRecords.forEach((r) => {
       if (
-        r.classId === activeClassId &&
+        (isAllClasses || r.classId === selectedClassId) &&
         r.date === selectedDate &&
         r.session === selectedSession
       ) {
@@ -163,7 +169,7 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
       }
     });
     return map;
-  }, [attendanceRecords, activeClassId, selectedDate, selectedSession]);
+  }, [attendanceRecords, selectedClassId, isAllClasses, selectedDate, selectedSession]);
 
   // Filtered students for display based on quick status chip
   const displayedStudents = useMemo(() => {
@@ -181,6 +187,8 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
     if (soundOn) soundEffects.playClick();
     const existing = dailyRecordMap.get(studentId);
     const timeSlotStr = `${checkInTime} - ${checkOutTime}`;
+    const targetStudent = students.find((s) => s.id === studentId);
+    const targetClassId = existing?.classId || targetStudent?.classId || activeClassId;
     if (existing) {
       await db.attendance.update(existing.id, {
         status,
@@ -190,7 +198,7 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
     } else {
       const newRec: AttendanceRecord = {
         id: `att-${Date.now()}-${studentId}`,
-        classId: activeClassId,
+        classId: targetClassId,
         studentId,
         date: selectedDate,
         session: selectedSession,
@@ -216,14 +224,18 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
 
   // Mark all students present with 1 click
   const handleMarkAllPresent = async () => {
-    await pushSnapshot(`កត់វត្តមានទាំងអស់ ថ្នាក់ ${currentClass?.name || ''}`);
+    await pushSnapshot(
+      isAllClasses
+        ? 'កត់វត្តមានសិស្សគ្រប់ថ្នាក់ទាំងអស់'
+        : `កត់វត្តមានទាំងអស់ ថ្នាក់ ${currentClass?.name || ''}`
+    );
     if (soundOn) soundEffects.playSuccess();
     const timeSlotStr = `${checkInTime} - ${checkOutTime}`;
     const recordsToPut: AttendanceRecord[] = classStudents.map((s) => {
       const existing = dailyRecordMap.get(s.id);
       return {
         id: existing?.id || `att-${Date.now()}-${s.id}`,
-        classId: activeClassId,
+        classId: existing?.classId || s.classId || activeClassId,
         studentId: s.id,
         date: selectedDate,
         session: selectedSession,
@@ -299,9 +311,9 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
               <span className="whitespace-nowrap">វត្តមានសិស្សប្រចាំថ្ងៃ</span>
             </h2>
             <span className="inline-flex items-center px-2.5 sm:px-3 py-1 bg-blue-50 text-blue-700 text-xs sm:text-sm font-bold rounded-xl border border-blue-200 shrink-0">
-              📚 {currentClass?.name || 'ថ្នាក់រៀន'}
+              📚 {isAllClasses ? `🌟 ថ្នាក់ទាំងអស់ (${toKhmerNum(classes.length)} ថ្នាក់)` : (currentClass?.name || 'ថ្នាក់រៀន')}
             </span>
-            {currentClass?.homeroomTeacher && (
+            {!isAllClasses && currentClass?.homeroomTeacher && (
               <span className="inline-flex items-center px-3 py-1 bg-indigo-50 text-indigo-800 text-xs sm:text-sm font-bold rounded-xl border border-indigo-200">
                 👨‍🏫 គ្រូទទួលបន្ទុក៖ {currentClass.homeroomTeacher}
               </span>
@@ -640,7 +652,7 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
         <h4 className="font-moul text-sm">ជាតិ សាសនា ព្រះមហាក្សត្រ</h4>
         <div className="w-24 h-0.5 bg-black mx-auto my-2" />
         <h2 className="font-moul text-base mt-3">
-          បញ្ជីវត្តមានប្រចាំថ្ងៃ {currentClass?.name} - {formatKhmerDate(selectedDate, true)}
+          បញ្ជីវត្តមានប្រចាំថ្ងៃ {isAllClasses ? `ថ្នាក់ទាំងអស់ (${toKhmerNum(classes.length)} ថ្នាក់)` : (currentClass?.name || '')} - {formatKhmerDate(selectedDate, true)}
         </h2>
         <p className="text-xs mt-1">
           {selectedSession === 'morning' ? `វេនព្រឹក (${checkInTime} - ${checkOutTime})` : `វេនរសៀល (${checkInTime} - ${checkOutTime})`}
@@ -728,9 +740,16 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
 
                       {/* ឈ្មោះខ្មែរ */}
                       <td className="py-3 px-3">
-                        <span className="font-bold text-sm sm:text-base text-slate-900 group-hover:text-blue-700">
-                          {stu.nameKh}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-sm sm:text-base text-slate-900 group-hover:text-blue-700">
+                            {stu.nameKh}
+                          </span>
+                          {isAllClasses && (
+                            <span className="px-1.5 py-0.5 rounded text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 shrink-0">
+                              {classes.find((c) => c.id === stu.classId)?.name || 'ថ្នាក់'}
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* ភេទ */}
@@ -834,7 +853,19 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
       <TelegramShareModal
         isOpen={isTelegramOpen}
         onClose={() => setIsTelegramOpen(false)}
-        currentClass={currentClass || null}
+        currentClass={
+          currentClass ||
+          (isAllClasses
+            ? ({
+                id: 'ALL',
+                name: `ថ្នាក់ទាំងអស់ (${toKhmerNum(classes.length)} ថ្នាក់)`,
+                grade: '',
+                academicYear: '',
+                homeroomTeacher: '',
+                totalStudents: classStudents.length,
+              } as any)
+            : null)
+        }
         students={classStudents}
         attendanceRecords={attendanceRecords}
         settings={settings}
@@ -844,7 +875,19 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
       <StudentAttendanceShareModal
         isOpen={isStudentShareOpen}
         onClose={() => setIsStudentShareOpen(false)}
-        currentClass={currentClass || null}
+        currentClass={
+          currentClass ||
+          (isAllClasses
+            ? ({
+                id: 'ALL',
+                name: `ថ្នាក់ទាំងអស់ (${toKhmerNum(classes.length)} ថ្នាក់)`,
+                grade: '',
+                academicYear: '',
+                homeroomTeacher: '',
+                totalStudents: classStudents.length,
+              } as any)
+            : null)
+        }
         students={classStudents}
         attendanceRecords={attendanceRecords}
         selectedDate={selectedDate}
