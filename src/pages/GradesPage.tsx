@@ -505,11 +505,14 @@ export const GradesPage: React.FC<GradesPageProps> = ({
           {/* Top Banner and Controls */}
           <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col xl:flex-row xl:items-center justify-between gap-3 no-print">
             <div>
-              <div className="flex items-center space-x-3">
-                <h2 className="text-xl font-black text-slate-800 flex items-center">
-                  <GraduationCap className="w-6 h-6 text-blue-600 mr-2" />
-                  ពិន្ទុសិស្សប្រចាំខែ ({currentClass?.name || 'ថ្នាក់រៀន'})
+              <div className="flex items-center space-x-2 flex-wrap">
+                <h2 className="text-lg sm:text-xl font-black text-slate-800 flex items-center shrink-0">
+                  <GraduationCap className="w-6 h-6 text-blue-600 mr-2 shrink-0" />
+                  <span className="whitespace-nowrap">ពិន្ទុសិស្សប្រចាំខែ</span>
                 </h2>
+                <span className="px-2.5 py-0.5 bg-blue-50 text-blue-700 text-xs font-bold rounded-lg border border-blue-200 shrink-0">
+                  📚 {currentClass?.name || 'ថ្នាក់រៀន'}
+                </span>
               </div>
               <p className="text-xs text-slate-500 mt-1">
                 គិតមេគុណ និងពិន្ទុអតិបរមាតាមស្តង់ដារក្រសួងអប់រំ (រូបទី៣) គណនាមធ្យមភាគ និទ្ទេស (A-F) និងចំណាត់ថ្នាក់ស្វ័យប្រវត្តិ
@@ -800,9 +803,9 @@ export const GradesPage: React.FC<GradesPageProps> = ({
           <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col xl:flex-row xl:items-center justify-between gap-3 no-print">
             <div>
               <div className="flex items-center space-x-3">
-                <h2 className="text-xl font-black text-slate-800 flex items-center">
-                  <Award className="w-6 h-6 text-emerald-600 mr-2" />
-                  តារាងពិន្ទុរួម (៣០% វាយតម្លៃបន្ត + ៧០% ប្រឡងមុខវិជ្ជា)
+                <h2 className="text-lg sm:text-xl font-black text-slate-800 flex items-center shrink-0">
+                  <Award className="w-6 h-6 text-emerald-600 mr-2 shrink-0" />
+                  <span className="whitespace-nowrap sm:whitespace-normal">តារាងពិន្ទុរួម (៣០% វាយតម្លៃបន្ត + ៧០% ប្រឡងមុខវិជ្ជា)</span>
                 </h2>
               </div>
               <p className="text-xs text-slate-500 mt-1">

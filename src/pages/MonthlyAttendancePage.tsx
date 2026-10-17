@@ -131,9 +131,9 @@ export const MonthlyAttendancePage: React.FC<MonthlyAttendancePageProps> = ({
       {/* Top Controller Header (Hidden on Print) */}
       <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4 no-print">
         <div>
-          <h2 className="text-xl font-black text-slate-800 flex items-center">
-            <CalendarDays className="w-6 h-6 text-blue-600 mr-2" />
-            តារាងសរុបវត្តមានប្រចាំខែ ({currentClass?.name || 'ថ្នាក់រៀន'})
+          <h2 className="text-lg sm:text-xl font-black text-slate-800 flex items-center shrink-0">
+            <CalendarDays className="w-6 h-6 text-blue-600 mr-2 shrink-0" />
+            <span className="whitespace-nowrap">តារាងសរុបវត្តមានប្រចាំខែ</span>
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
             តាមដានវត្តមានប្រចាំខែ ផ្ទៀងផ្ទាត់ថ្ងៃឈប់បុណ្យជាតិ (អក្សរក្រហម) និងថ្ងៃអាទិត្យ (ពណ៌លឿង)

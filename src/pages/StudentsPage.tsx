@@ -1199,60 +1199,65 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
         </div>
       )}
 
-      {/* Clean, Modern, Elegant Header & Action Bar (Replacing messy cluttered panel) */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3 no-print">
-        {/* Row 1: Title + Live Save Indicator + Primary Action Buttons */}
-        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
-          {/* Left: Title & Live Save Indicator */}
-          <div className="flex flex-wrap items-center gap-2.5">
-            <h2 className="text-lg font-black text-slate-800 flex items-center">
-              <FileSpreadsheet className="w-5 h-5 text-emerald-600 mr-2" />
-              បញ្ជីស្ថិតិ និងប្រវត្តិរូបសង្ខេបសិស្ស ({currentClassName})
+      {/* Clean, Modern, Responsive Header & Toolbar (No squishing, beautiful on desktop, laptop & mobile) */}
+      <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3 no-print">
+        {/* Tier 1: Page Title & Classroom Meta Info Bar (Never competes horizontally with buttons) */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 border-b border-slate-100">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-base sm:text-lg font-black text-slate-800 flex items-center shrink-0">
+              <FileSpreadsheet className="w-5 h-5 text-emerald-600 mr-2 shrink-0" />
+              <span className="whitespace-nowrap">បញ្ជីស្ថិតិ និងប្រវត្តិរូបសង្ខេបសិស្ស</span>
             </h2>
+            <span className="inline-flex items-center px-2.5 py-0.5 bg-emerald-50 text-emerald-800 text-xs font-bold rounded-lg border border-emerald-200 shrink-0">
+              📚 {currentClassName}
+            </span>
             {currentClass?.homeroomTeacher && (
-              <span className="inline-flex items-center px-2.5 py-0.5 bg-indigo-50 text-indigo-800 text-xs font-bold rounded-lg border border-indigo-200">
+              <span className="inline-flex items-center px-2.5 py-0.5 bg-indigo-50 text-indigo-800 text-xs font-bold rounded-lg border border-indigo-200 shrink-0">
                 👨‍🏫 គ្រូទទួលបន្ទុក៖ {currentClass.homeroomTeacher}
               </span>
             )}
             {lastSavedId && (
-              <span className="px-2 py-0.5 text-emerald-600 font-bold text-xs bg-emerald-50 rounded-full border border-emerald-300 animate-pulse">
+              <span className="px-2 py-0.5 text-emerald-600 font-bold text-xs bg-emerald-50 rounded-full border border-emerald-300 animate-pulse shrink-0">
                 ✓ រក្សាទុក
               </span>
             )}
           </div>
+        </div>
 
-          {/* Right: Clean, Grouped Action Buttons (Guaranteed strictly SINGLE row - no wrapping) */}
-          <div className="flex items-center flex-nowrap overflow-x-auto no-scrollbar gap-1.5 shrink-0 py-0.5">
+        {/* Tier 2: Action Toolbar (Grouped, organized, responsive wrapping across all screen sizes) */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          {/* Left Group: Data Insertion & Excel Tools */}
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             {/* Primary Action: Add Student with Dedicated Form Modal */}
             <button
               type="button"
               onClick={() => setIsAddModalOpen(true)}
-              className="inline-flex items-center px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer shrink-0"
+              className="inline-flex items-center px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer shrink-0"
               title="បើកផ្ទាំង Form ដើម្បីបញ្ចូលសិស្សថ្មី"
             >
               <Plus className="w-3.5 h-3.5 mr-1" />
-              បន្ថែមសិស្សថ្មី
+              <span>បន្ថែមសិស្សថ្មី</span>
             </button>
 
             {/* Paste from Excel Button */}
             <button
               type="button"
               onClick={handleDirectClipboardPasteClick}
-              className="inline-flex items-center px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer shrink-0"
+              className="inline-flex items-center px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer shrink-0"
               title="បិទភ្ជាប់ទិន្នន័យដែលបាន Copy ពី Excel / XLSM (Ctrl+V)"
             >
               <Clipboard className="w-3.5 h-3.5 mr-1" />
-              បិទភ្ជាប់ពី Excel
+              <span>បិទភ្ជាប់ពី Excel</span>
             </button>
 
             {/* Excel Group */}
             <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs font-bold shrink-0">
               <label
-                className="inline-flex items-center px-2 py-1 rounded-lg text-slate-700 hover:bg-white hover:text-emerald-700 transition-colors cursor-pointer"
+                className="inline-flex items-center px-2.5 py-1 rounded-lg text-slate-700 hover:bg-white hover:text-emerald-700 transition-colors cursor-pointer"
                 title="នាំចូលទិន្នន័យពី Excel"
               >
                 <Upload className="w-3.5 h-3.5 mr-1 text-emerald-600" />
-                នាំចូល
+                <span>នាំចូល</span>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -1265,20 +1270,20 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
               <button
                 type="button"
                 onClick={handleExportExcel}
-                className="inline-flex items-center px-2 py-1 rounded-lg text-slate-700 hover:bg-white hover:text-blue-700 transition-colors cursor-pointer"
+                className="inline-flex items-center px-2.5 py-1 rounded-lg text-slate-700 hover:bg-white hover:text-blue-700 transition-colors cursor-pointer"
                 title="ទាញយកជា Excel .xlsm"
               >
                 <Download className="w-3.5 h-3.5 mr-1 text-blue-600" />
-                នាំចេញ
+                <span>នាំចេញ</span>
               </button>
 
               <button
                 type="button"
                 onClick={downloadStudentTemplate}
-                className="inline-flex items-center px-1.5 py-1 rounded-lg text-slate-500 hover:bg-white hover:text-slate-800 transition-colors cursor-pointer"
+                className="inline-flex items-center px-2 py-1 rounded-lg text-slate-500 hover:bg-white hover:text-slate-800 transition-colors cursor-pointer"
                 title="ទាញយកគំរូ Excel"
               >
-                គំរូ
+                <span>គំរូ</span>
               </button>
             </div>
 
@@ -1288,35 +1293,27 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                 type="button"
                 onClick={undo}
                 disabled={!canUndo}
-                className="inline-flex items-center px-2 py-1 rounded-lg text-slate-700 hover:bg-white hover:text-indigo-600 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-700 transition-colors cursor-pointer"
+                className="inline-flex items-center px-2.5 py-1 rounded-lg text-slate-700 hover:bg-white hover:text-indigo-600 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-700 transition-colors cursor-pointer"
                 title="ត្រឡប់ក្រោយ (Ctrl+Z)"
               >
                 <Undo2 className="w-3.5 h-3.5 mr-0.5" />
-                Undo
+                <span>Undo</span>
               </button>
               <button
                 type="button"
                 onClick={redo}
                 disabled={!canRedo}
-                className="inline-flex items-center px-2 py-1 rounded-lg text-slate-700 hover:bg-white hover:text-indigo-600 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-700 transition-colors cursor-pointer"
+                className="inline-flex items-center px-2.5 py-1 rounded-lg text-slate-700 hover:bg-white hover:text-indigo-600 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-700 transition-colors cursor-pointer"
                 title="ធ្វើឡើងវិញ (Ctrl+Y)"
               >
                 <Redo2 className="w-3.5 h-3.5 mr-0.5" />
-                Redo
+                <span>Redo</span>
               </button>
             </div>
+          </div>
 
-            {/* Delete All Students Button */}
-            <button
-              type="button"
-              onClick={handleDeleteAllStudents}
-              className="inline-flex items-center px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold rounded-xl border border-rose-200 transition-colors cursor-pointer shrink-0"
-              title="លុបសិស្សទាំងអស់ (អាចចុច Undo ដើម្បីយកមកវិញបាន)"
-            >
-              <Trash2 className="w-3.5 h-3.5 mr-1 text-rose-600" />
-              លុបសិស្សទាំងអស់
-            </button>
-
+          {/* Right Group: Management & Utility Actions */}
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             {/* Deduplicate Students Button */}
             <button
               type="button"
@@ -1356,11 +1353,22 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
               title="បោះពុម្ពកាតសិស្សភ្ជាប់ QR"
             >
               <QrCode className="w-3.5 h-3.5 mr-1 text-purple-600" />
-              កាតសិស្ស
+              <span>កាតសិស្ស</span>
             </button>
 
             {/* Print with Orientation Selector */}
             <PrintButton defaultOrientation="landscape" label="បោះពុម្ព" className="shrink-0" />
+
+            {/* Delete All Students Button */}
+            <button
+              type="button"
+              onClick={handleDeleteAllStudents}
+              className="inline-flex items-center px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold rounded-xl border border-rose-200 transition-colors cursor-pointer shrink-0"
+              title="លុបសិស្សទាំងអស់ (អាចចុច Undo ដើម្បីយកមកវិញបាន)"
+            >
+              <Trash2 className="w-3.5 h-3.5 mr-1 text-rose-600" />
+              <span>លុបទាំងអស់</span>
+            </button>
           </div>
         </div>
 

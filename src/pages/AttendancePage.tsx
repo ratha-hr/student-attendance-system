@@ -294,11 +294,11 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-slate-100">
           {/* Left: Title + Class Badge + Live Feedback */}
           <div className="flex flex-wrap items-center gap-2.5">
-            <h2 className="text-xl sm:text-2xl font-black text-slate-800 flex items-center">
+            <h2 className="text-lg sm:text-2xl font-black text-slate-800 flex items-center shrink-0">
               <CalendarCheck2 className="w-6 h-6 text-blue-600 mr-2 shrink-0" />
-              វត្តមានសិស្សប្រចាំថ្ងៃ ({currentClass?.name || 'ថ្នាក់រៀន'})
+              <span className="whitespace-nowrap">វត្តមានសិស្សប្រចាំថ្ងៃ</span>
             </h2>
-            <span className="inline-flex items-center px-3 py-1 bg-blue-50 text-blue-700 text-xs sm:text-sm font-bold rounded-xl border border-blue-200">
+            <span className="inline-flex items-center px-2.5 sm:px-3 py-1 bg-blue-50 text-blue-700 text-xs sm:text-sm font-bold rounded-xl border border-blue-200 shrink-0">
               📚 {currentClass?.name || 'ថ្នាក់រៀន'}
             </span>
             {currentClass?.homeroomTeacher && (
