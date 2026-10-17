@@ -37,6 +37,7 @@ import {
   exportTeachingPlanToExcel,
   type MonthColDef,
 } from '../utils/teachingPlanUtils';
+import { triggerPrint, type PrintOrientation } from '../utils/printUtils';
 
 interface TeachingPlanPageProps {
   classes: ClassRoom[];
@@ -257,6 +258,9 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
   // Model Standard School Benchmark Year Selection ('year1' to 'year6')
   const [benchmarkYear, setBenchmarkYear] = useState<BenchmarkYearKey>('year4');
   const [showBenchmarkMatrix, setShowBenchmarkMatrix] = useState<boolean>(true);
+
+  // Paper Print Orientation State (Default to 'portrait' as requested)
+  const [printOrientation, setPrintOrientation] = useState<PrintOrientation>('portrait');
 
   // Apply Model Standard School (សាលារៀនគំរូ) Benchmark to Plan
   const handleApplyModelSchoolBenchmark = (yearKey: BenchmarkYearKey) => {
@@ -490,8 +494,8 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
   };
 
   // Print trigger
-  const handlePrint = () => {
-    window.print();
+  const handlePrint = (orientation: PrintOrientation = printOrientation) => {
+    triggerPrint(orientation);
   };
 
   // Export to Excel
@@ -505,7 +509,7 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
     value: number,
     onChange: (val: number) => void
   ) => (
-    <td className="border border-black p-0 text-center font-bold font-mono text-black text-xs">
+    <td className="border border-black p-0 text-center font-bold font-mono text-black text-xs print:text-[8.5px]">
       <div className="flex items-center justify-center w-full h-full min-h-[26px] print:hidden">
         <input
           type="number"
@@ -515,7 +519,7 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
           className="w-full text-center font-mono font-bold text-black text-xs bg-transparent border-none outline-none p-0 focus:bg-amber-100 rounded"
         />
       </div>
-      <span className="hidden print:inline-block font-bold font-mono text-black text-[11px]">
+      <span className="hidden print:inline-block font-bold font-mono text-black text-[11px] print:text-[8.5px]">
         {value}
       </span>
     </td>
@@ -529,7 +533,7 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
     const isOver100 = value > 100;
     return (
       <td
-        className={`border border-black p-0 text-center font-bold font-mono text-xs ${
+        className={`border border-black p-0 text-center font-bold font-mono text-xs print:text-[8.5px] ${
           isOver100 ? 'bg-rose-100 text-rose-700 ring-2 ring-rose-500 ring-inset' : 'text-red-600'
         }`}
         title={isOver100 ? `⚠️ សញ្ញាព្រមាន៖ ភាគរយ ${value}% លើសពី ១០០%!` : undefined}
@@ -551,7 +555,7 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
           />
           <span className={`font-bold text-[11px] ml-0.5 select-none ${isOver100 ? 'text-rose-700 font-black' : 'text-red-600'}`}>%</span>
         </div>
-        <span className={`hidden print:inline-block font-bold font-mono text-[11px] ${isOver100 ? 'text-rose-700 font-black' : 'text-red-600'}`}>
+        <span className={`hidden print:inline-block font-bold font-mono text-[11px] print:text-[8.5px] ${isOver100 ? 'text-rose-700 font-black' : 'text-red-600'}`}>
           {value}%
         </span>
       </td>
@@ -569,7 +573,7 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
     const bgClass = isOver100 ? 'bg-rose-100 ring-2 ring-rose-500 ring-inset' : isHighGrade ? 'bg-[#FFC000]' : 'bg-white';
     return (
       <td
-        className={`border border-black p-0 text-center font-bold font-mono text-xs ${bgClass} ${
+        className={`border border-black p-0 text-center font-bold font-mono text-xs print:text-[8.5px] ${bgClass} ${
           isOver100 ? 'text-rose-700 font-black' : 'text-black'
         }`}
         title={isOver100 ? `⚠️ សញ្ញាព្រមាន៖ ភាគរយ ${value}% លើសពី ១០០%!` : undefined}
@@ -591,7 +595,7 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
           />
           <span className="text-black font-bold text-[11px] ml-0.5 select-none">%</span>
         </div>
-        <span className="hidden print:inline-block font-bold font-mono text-black text-[11px]">
+        <span className="hidden print:inline-block font-bold font-mono text-black text-[11px] print:text-[8.5px]">
           {value}%
         </span>
       </td>
@@ -610,47 +614,47 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
     const totalCols = 1 + 2 + months.length * 4 + 1;
 
     return (
-      <div className="overflow-x-auto mb-4 print:mb-3">
-        <table className="w-full text-center border-collapse border border-black text-xs font-sans">
+      <div className="overflow-x-auto mb-4 print:mb-3 print:overflow-visible break-inside-avoid">
+        <table className="w-full text-center border-collapse border border-black text-xs font-sans print:text-[8px]">
           <thead>
             {/* Banner Row 0 */}
             <tr>
               <th
                 colSpan={totalCols}
-                className="bg-[#FCE4D6] border border-black py-1 px-2 text-center font-bold text-black text-xs sm:text-sm tracking-wide"
+                className="bg-[#FCE4D6] border border-black py-1 px-2 text-center font-bold text-black text-xs sm:text-sm tracking-wide print:py-0.5 print:text-[9px]"
               >
                 ចំនួន និងភាគរយ {plan.subject}
               </th>
             </tr>
 
             {/* Header Tier 1 */}
-            <tr className="bg-white text-black font-bold text-xs">
-              <th rowSpan={3} className="border border-black px-1.5 py-1 w-12 align-middle text-center">
+            <tr className="bg-white text-black font-bold text-xs print:text-[8px]">
+              <th rowSpan={3} className="border border-black px-1 py-1 w-10 sm:w-12 align-middle text-center print:px-0.5 print:w-auto">
                 និទ្ទេស
               </th>
-              <th colSpan={2} rowSpan={2} className="border border-black px-1.5 py-1 align-middle text-center leading-tight">
+              <th colSpan={2} rowSpan={2} className="border border-black px-1 py-0.5 align-middle text-center leading-tight print:px-0.5">
                 <div>ទិន្នន័យ</div>
                 <div>មូលដ្ឋាន</div>
               </th>
               {months.map((m) => (
-                <th key={m.key} colSpan={4} className="border border-black px-1.5 py-1 align-middle text-center">
+                <th key={m.key} colSpan={4} className="border border-black px-1 py-0.5 align-middle text-center print:px-0.5">
                   {m.monthName}
                 </th>
               ))}
-              <th rowSpan={3} className="border border-black px-1.5 py-1 w-20 sm:w-24 align-middle text-center leading-tight">
-                <div>ចំនួន %</div>
+              <th rowSpan={3} className="border border-black px-1 py-0.5 w-16 sm:w-20 align-middle text-center leading-tight print:px-0.5 print:w-auto">
+                <div>ផែនការ %</div>
                 <div>ចុងឆ្នាំសិក្សា</div>
               </th>
             </tr>
 
             {/* Header Tier 2 */}
-            <tr className="bg-white text-black font-bold text-xs">
+            <tr className="bg-white text-black font-bold text-xs print:text-[8px]">
               {months.map((m) => (
                 <React.Fragment key={m.key}>
-                  <th colSpan={2} className="border border-black px-1.5 py-1 text-center">
+                  <th colSpan={2} className="border border-black px-1 py-0.5 text-center print:px-0.5">
                     ផែនការ
                   </th>
-                  <th colSpan={2} className="border border-black px-1.5 py-1 text-center">
+                  <th colSpan={2} className="border border-black px-1 py-0.5 text-center print:px-0.5">
                     {m.actualName}
                   </th>
                 </React.Fragment>
@@ -658,15 +662,15 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
             </tr>
 
             {/* Header Tier 3 (Subheaders: ចំនួន vs %) */}
-            <tr className="bg-white font-bold text-[11px]">
-              <th className="border border-black px-1 py-0.5 w-12 text-center text-black">ចំនួន</th>
-              <th className="border border-black px-1 py-0.5 w-10 text-center text-red-600">%</th>
+            <tr className="bg-white font-bold text-[11px] print:text-[8px]">
+              <th className="border border-black px-0.5 py-0.5 min-w-[24px] print:min-w-0 text-center text-black">ចំនួន</th>
+              <th className="border border-black px-0.5 py-0.5 min-w-[20px] print:min-w-0 text-center text-red-600">%</th>
               {months.map((m) => (
                 <React.Fragment key={m.key}>
-                  <th className="border border-black px-1 py-0.5 w-12 text-center text-black">ចំនួន</th>
-                  <th className="border border-black px-1 py-0.5 w-10 text-center text-red-600">%</th>
-                  <th className="border border-black px-1 py-0.5 w-12 text-center text-black">ចំនួន</th>
-                  <th className="border border-black px-1 py-0.5 w-10 text-center text-red-600">%</th>
+                  <th className="border border-black px-0.5 py-0.5 min-w-[24px] print:min-w-0 text-center text-black">ចំនួន</th>
+                  <th className="border border-black px-0.5 py-0.5 min-w-[20px] print:min-w-0 text-center text-red-600">%</th>
+                  <th className="border border-black px-0.5 py-0.5 min-w-[24px] print:min-w-0 text-center text-black">ចំនួន</th>
+                  <th className="border border-black px-0.5 py-0.5 min-w-[20px] print:min-w-0 text-center text-red-600">%</th>
                 </React.Fragment>
               ))}
             </tr>
@@ -818,12 +822,12 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
 
   return (
     <div className="space-y-6 pb-20">
-      {/* Print CSS Configuration for Official A4 Landscape Report */}
+      {/* Print CSS Configuration for Official A4 Portrait/Landscape Report */}
       <style>{`
         @media print {
           @page {
-            size: A4 landscape;
-            margin: 6mm 8mm 6mm 8mm;
+            size: A4 ${printOrientation};
+            margin: ${printOrientation === 'portrait' ? '6mm 5mm 6mm 5mm' : '6mm 8mm 6mm 8mm'};
           }
           body {
             background-color: #ffffff !important;
@@ -841,13 +845,29 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
             width: 100% !important;
             max-width: 100% !important;
           }
+          .overflow-x-auto {
+            overflow: visible !important;
+          }
           table {
             width: 100% !important;
+            max-width: 100% !important;
+            table-layout: auto !important;
             border-collapse: collapse !important;
             page-break-inside: avoid !important;
+            break-inside: avoid !important;
           }
           th, td {
             border: 1px solid #000000 !important;
+            padding: ${printOrientation === 'portrait' ? '1.5px 1px' : '3px 2px'} !important;
+            font-size: ${printOrientation === 'portrait' ? '8px' : '9px'} !important;
+            line-height: 1.15 !important;
+          }
+          th {
+            font-size: ${printOrientation === 'portrait' ? '8px' : '9px'} !important;
+            font-weight: bold !important;
+          }
+          td span {
+            font-size: ${printOrientation === 'portrait' ? '8.5px' : '10px'} !important;
           }
           .bg-\\[\\#FCE4D6\\] {
             background-color: #FCE4D6 !important;
@@ -857,6 +877,10 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
           }
           .text-red-600 {
             color: #dc2626 !important;
+          }
+          .break-inside-avoid {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
           }
         }
       `}</style>
@@ -906,13 +930,47 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
               <span>Excel (.xlsx)</span>
             </button>
 
+            {/* Paper Orientation Selector: Portrait (បញ្ឈរ) / Landscape (ផ្ដេក) */}
+            <div
+              className="inline-flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs font-bold shadow-2xs"
+              title="ជ្រើសរើសទម្រង់ក្រដាសបោះពុម្ព (Default: បញ្ឈរ)"
+            >
+              <button
+                type="button"
+                onClick={() => setPrintOrientation('portrait')}
+                className={`px-2.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
+                  printOrientation === 'portrait'
+                    ? 'bg-white text-blue-700 shadow-2xs font-black'
+                    : 'text-slate-500 hover:text-slate-900'
+                }`}
+                title="បោះពុម្ពជាទម្រង់បញ្ឈរ (A4 Portrait)"
+              >
+                <span>📄</span>
+                <span>បញ្ឈរ</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPrintOrientation('landscape')}
+                className={`px-2.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
+                  printOrientation === 'landscape'
+                    ? 'bg-white text-blue-700 shadow-2xs font-black'
+                    : 'text-slate-500 hover:text-slate-900'
+                }`}
+                title="បោះពុម្ពជាទម្រង់ផ្ដេក (A4 Landscape)"
+              >
+                <span>📃</span>
+                <span>ផ្ដេក</span>
+              </button>
+            </div>
+
             <button
               type="button"
-              onClick={handlePrint}
-              className="px-3 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+              onClick={() => handlePrint(printOrientation)}
+              className="px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+              title={`បោះពុម្ពជាទម្រង់${printOrientation === 'portrait' ? 'បញ្ឈរ (A4 Portrait)' : 'ផ្ដេក (A4 Landscape)'}`}
             >
-              <Printer className="w-3.5 h-3.5" />
-              <span>បោះពុម្ព (ទម្រង់ផ្លូវការ)</span>
+              <Printer className="w-3.5 h-3.5 text-emerald-400" />
+              <span>បោះពុម្ព ({printOrientation === 'portrait' ? 'ទម្រង់បញ្ឈរ' : 'ទម្រង់ផ្ដេក'})</span>
             </button>
 
             {warningColumns.length > 0 && (
@@ -1308,36 +1366,26 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
       {/* Official Plan Sheet Container (Matches Excel Template Exactly for Display & Print) */}
       <div className="official-sheet bg-white rounded-2xl p-4 sm:p-6 lg:p-8 border border-slate-200 shadow-sm print:p-0 print:border-none print:shadow-none space-y-2">
         {/* Kingdom & Ministry Header (Hidden on screen as requested in Image 1, appears ONLY when printing as official Kingdom format) */}
-        <div className="hidden print:block relative pt-1 pb-1 mb-2">
+        <div className="hidden print:flex items-start justify-between pt-1 pb-1 mb-2">
           {/* Top Left Organization */}
-          <div className="sm:absolute sm:top-0 sm:left-0 text-xs text-black font-bold space-y-0.5 mb-2 sm:mb-0">
-            <div className="flex items-center">
-              <input
-                type="text"
-                value={plan.districtOffice}
-                onChange={(e) => setPlan((p) => ({ ...p, districtOffice: e.target.value }))}
-                className="font-bold text-xs text-black bg-transparent border-none outline-none w-60 hover:bg-slate-50 focus:bg-white rounded px-0.5 print:border-none"
-              />
+          <div className="text-xs text-black font-bold space-y-0.5 text-left">
+            <div className="font-moul text-xs text-black">
+              {plan.districtOffice || 'ការិយាល័យអប់រំ យុវជន និងកីឡា'}
             </div>
-            <div className="flex items-center">
-              <input
-                type="text"
-                value={plan.schoolName}
-                onChange={(e) => setPlan((p) => ({ ...p, schoolName: e.target.value }))}
-                className="font-bold text-xs text-black bg-transparent border-none outline-none w-60 hover:bg-slate-50 focus:bg-white rounded px-0.5 print:border-none"
-              />
+            <div className="text-xs text-black">
+              {plan.schoolName || 'វិទ្យាល័យ ហ៊ុន សែន កំពង់ត្រឡាច'}
             </div>
           </div>
 
-          {/* Center Kingdom */}
+          {/* Center/Right Kingdom */}
           <div className="text-center">
-            <div className="font-moul text-sm sm:text-base text-black tracking-wide">
+            <div className="font-moul text-xs sm:text-sm text-black tracking-wide">
               ព្រះរាជាណាចក្រកម្ពុជា
             </div>
-            <div className="font-moul text-xs sm:text-sm text-black tracking-wider mt-0.5">
+            <div className="font-moul text-[11px] text-black tracking-wider mt-0.5">
               ជាតិ សាសនា ព្រះមហាក្សត្រ
             </div>
-            <div className="text-center text-xs tracking-widest my-1 text-black font-serif select-none">
+            <div className="text-center text-[10px] tracking-widest my-0.5 text-black font-serif select-none">
               ❖ ❖ ❖
             </div>
           </div>
@@ -1435,26 +1483,26 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
         </div>
 
         {/* Score Rubric Box (Exact 2-Row Bordered Table from Screenshot) */}
-        <div className="overflow-x-auto my-2.5">
-          <table className="w-full text-center border-collapse border border-black text-[11px]">
+        <div className="overflow-x-auto my-2.5 print:my-1.5 print:overflow-visible break-inside-avoid">
+          <table className="w-full text-center border-collapse border border-black text-[11px] print:text-[8px]">
             <tbody>
               <tr className="bg-white">
-                <td className="border border-black px-2 py-0.5 font-bold text-black w-24">កម្រិតពិន្ទុ</td>
-                <td className="border border-black px-2 py-0.5 text-black">F ក្រោម៥០ពិន្ទុ</td>
-                <td className="border border-black px-2 py-0.5 text-black">E ពី៥១-៦០ពិន្ទុ</td>
-                <td className="border border-black px-2 py-0.5 text-black">D ពី៦១-៧០ពិន្ទុ</td>
-                <td className="border border-black px-2 py-0.5 text-black">C ពី៧១-៧៩ពិន្ទុ</td>
-                <td className="border border-black px-2 py-0.5 text-black">B ពី៨០-៨៩ពិន្ទុ</td>
-                <td className="border border-black px-2 py-0.5 text-black font-bold">A ពី៩០-១០០ពិន្ទុ</td>
+                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 font-bold text-black w-24 print:w-auto">កម្រិតពិន្ទុ</td>
+                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black">F ក្រោម៥០ពិន្ទុ</td>
+                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black">E ពី៥១-៦០ពិន្ទុ</td>
+                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black">D ពី៦១-៧០ពិន្ទុ</td>
+                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black">C ពី៧១-៧៩ពិន្ទុ</td>
+                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black">B ពី៨០-៨៩ពិន្ទុ</td>
+                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black font-bold">A ពី៩០-១០០ពិន្ទុ</td>
               </tr>
               <tr className="bg-white">
-                <td className="border border-black px-2 py-0.5 font-bold text-black w-24">កម្រិតពិន្ទុ</td>
-                <td className="border border-black px-2 py-0.5 text-black">F ក្រោម 25ពិន្ទុ</td>
-                <td className="border border-black px-2 py-0.5 text-black">E ពី 25-29ពិន្ទុ</td>
-                <td className="border border-black px-2 py-0.5 text-black">D ពី 30-34ពិន្ទុ</td>
-                <td className="border border-black px-2 py-0.5 text-black">C ពី 35-39ពិន្ទុ</td>
-                <td className="border border-black px-2 py-0.5 text-black">B ពី 40-44ពិន្ទុ</td>
-                <td className="border border-black px-2 py-0.5 text-black font-bold">A ពី 45-50ពិន្ទុ</td>
+                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 font-bold text-black w-24 print:w-auto">កម្រិតពិន្ទុ</td>
+                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black">F ក្រោម 25ពិន្ទុ</td>
+                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black">E ពី 25-29ពិន្ទុ</td>
+                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black">D ពី 30-34ពិន្ទុ</td>
+                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black">C ពី 35-39ពិន្ទុ</td>
+                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black">B ពី 40-44ពិន្ទុ</td>
+                <td className="border border-black px-2 py-0.5 print:px-1 print:py-0.2 text-black font-bold">A ពី 45-50ពិន្ទុ</td>
               </tr>
             </tbody>
           </table>

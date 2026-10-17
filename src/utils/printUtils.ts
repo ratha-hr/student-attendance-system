@@ -1,6 +1,6 @@
 export type PrintOrientation = 'portrait' | 'landscape';
 
-export function triggerPrint(orientation: PrintOrientation = 'landscape') {
+export function triggerPrint(orientation: PrintOrientation = 'portrait') {
   // Immediately reset scroll positions on all scrollable elements so Chromium never offsets sticky columns
   try {
     const scrollContainers = document.querySelectorAll<HTMLElement>(
@@ -21,7 +21,7 @@ export function triggerPrint(orientation: PrintOrientation = 'landscape') {
     document.head.appendChild(styleEl);
   }
 
-  const margin = orientation === 'landscape' ? '4mm' : '8mm';
+  const margin = orientation === 'landscape' ? '4mm' : '6mm 5mm 6mm 5mm';
 
   styleEl.innerHTML = `
     @page {
