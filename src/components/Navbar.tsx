@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Menu, School, User, Plus, Settings, Clock, Sparkles, Undo2, Redo2 } from 'lucide-react';
+import { Menu, School, User, Plus, Settings, Clock, Sparkles, Undo2, Redo2, RotateCw } from 'lucide-react';
 import type { ClassRoom, TeacherSettings } from '../types';
 import { useUndoRedo } from '../context/UndoRedoContext';
 import {
@@ -202,6 +202,28 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span className="hidden sm:inline">Redo</span>
             </button>
           </div>
+
+          {/* Cache-Clear & Force Reload Button */}
+          <button
+            type="button"
+            onClick={async () => {
+              if ('caches' in window) {
+                const keys = await caches.keys();
+                await Promise.all(keys.map((k) => caches.delete(k)));
+              }
+              if ('serviceWorker' in navigator) {
+                const regs = await navigator.serviceWorker.getRegistrations();
+                await Promise.all(regs.map((r) => r.unregister()));
+              }
+              localStorage.removeItem('app_installed_ver');
+              window.location.href = window.location.pathname + '?v=' + Date.now();
+            }}
+            className="p-1 sm:px-2 sm:py-1 bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-700 rounded-xl border border-slate-200 text-xs font-bold transition-colors cursor-pointer shadow-2xs flex items-center space-x-1"
+            title="ចុចដើម្បីសម្អាត Cache និងទាញយកកំណែថ្មីបំផុត (v5.9)"
+          >
+            <RotateCw className="w-3.5 h-3.5 text-blue-600" />
+            <span className="hidden sm:inline text-[11px] text-blue-700 font-black">v5.9</span>
+          </button>
 
           {/* Settings button & Teacher Profile */}
           <button

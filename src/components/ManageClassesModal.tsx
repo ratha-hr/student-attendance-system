@@ -7,14 +7,10 @@ import {
   X,
   BookOpen,
   Search,
-  Sparkles,
-  RotateCcw,
   Users,
   User,
-  AlertTriangle,
   ChevronDown,
   ChevronUp,
-  Sliders,
 } from 'lucide-react';
 import type { ClassRoom, Student, ClassStream } from '../types';
 import { db } from '../db/db';
@@ -22,8 +18,6 @@ import { toKhmerNum } from '../utils/dateUtils';
 import {
   sortClasses,
   parseGradeNumber,
-  generateStandardClasses,
-  STANDARD_CLASS_CONFIGS,
   getStreamForClass,
   getStreamBadge,
 } from '../utils/classUtils';
@@ -55,20 +49,14 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGradeFilter, setSelectedGradeFilter] = useState<string>('ALL');
 
-  // Collapsible panels state for a clean, non-cluttered view (opens only when requested)
+  // Form toggle state (collapsed by default unless 0 classes)
   const [isAddFormOpen, setIsAddFormOpen] = useState<boolean>(classes.length === 0);
-  const [isQuickMenuOpen, setIsQuickMenuOpen] = useState<boolean>(false);
 
   // Add Class Form State
   const [formClassName, setFormClassName] = useState('');
   const [formGrade, setFormGrade] = useState('7');
   const [formStream, setFormStream] = useState<ClassStream>('science');
   const [formHomeroomTeacher, setFormHomeroomTeacher] = useState('ហ៊ុន រដ្ឋា');
-  const [formAcademicYear, setFormAcademicYear] = useState(academicYear || '២០២៤-២០២៥');
-
-  // Quick generator state
-  const [quickGrade, setQuickGrade] = useState('7');
-  const [quickLetter, setQuickLetter] = useState('F');
 
   // Inline edit state
   const [editingClassId, setEditingClassId] = useState<string | null>(null);
@@ -76,7 +64,7 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
   const [editingHomeroomTeacher, setEditingHomeroomTeacher] = useState('');
   const [editingStream, setEditingStream] = useState<ClassStream>('science');
 
-  // Status feedback message
+  // Feedback message
   const [feedbackMsg, setFeedbackMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const showFeedback = (type: 'success' | 'error', text: string) => {
@@ -107,7 +95,7 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
     });
   }, [sortedClassList, selectedGradeFilter, searchQuery]);
 
-  // Handle adding class via full Form
+  // Handle adding class
   const handleAddClassSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     let rawName = formClassName.trim();
@@ -118,21 +106,20 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
       fullName = `ថ្នាក់ទី ${fullName}`;
     }
 
-    // Check duplicate
     if (classes.some((c) => c.name.toLowerCase() === fullName.toLowerCase())) {
       showFeedback('error', `ថ្នាក់ "${fullName}" មានរួចហើយ!`);
       return;
     }
 
     const gNum = parseGradeNumber(formGrade || fullName);
-    const stream = (gNum === 11 || gNum === 12) ? formStream : getStreamForClass(formGrade, fullName);
+    const stream: ClassStream = (gNum === 11 || gNum === 12) ? formStream : 'general';
     const streamInfo = getStreamBadge(stream);
 
     const newClass: ClassRoom = {
       id: `class-${formGrade}-${Date.now()}`,
       name: fullName,
       grade: gNum !== 999 ? `${gNum}` : formGrade,
-      academicYear: formAcademicYear || academicYear,
+      academicYear,
       stream,
       homeroomTeacher: formHomeroomTeacher.trim() || 'គ្រូទទួលបន្ទុក',
       description: (gNum === 11 || gNum === 12) ? `ថ្នាក់ ${fullName} (${streamInfo.label})` : `ថ្នាក់ទី ${formGrade}`,
@@ -148,38 +135,7 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
     showFeedback('success', `បានបន្ថែម "${fullName}" ${stream !== 'general' ? `(${streamInfo.badgeKh})` : ''} ដោយជោគជ័យ!`);
   };
 
-  // Handle quick adding standard class (Grade + Letter)
-  const handleQuickAddClass = async () => {
-    const fullName = `ថ្នាក់ទី ${quickGrade}${quickLetter.toUpperCase()}`;
-    if (classes.some((c) => c.name.toLowerCase() === fullName.toLowerCase())) {
-      showFeedback('error', `ថ្នាក់ "${fullName}" មានរួចហើយ!`);
-      return;
-    }
-
-    const gNum = parseGradeNumber(quickGrade);
-    const stream = (gNum === 11 || gNum === 12) ? formStream : 'general';
-    const streamInfo = getStreamBadge(stream);
-
-    const newClass: ClassRoom = {
-      id: `class-${quickGrade}-${quickLetter.toLowerCase()}-${Date.now()}`,
-      name: fullName,
-      grade: quickGrade,
-      academicYear,
-      stream,
-      homeroomTeacher: formHomeroomTeacher.trim() || 'ហ៊ុន រដ្ឋា',
-      description: (gNum === 11 || gNum === 12) ? `ថ្នាក់ ${fullName} (${streamInfo.label})` : `ថ្នាក់ទី ${quickGrade}`,
-      createdAt: new Date().toISOString(),
-    };
-
-    await pushSnapshot(`បន្ថែមរហ័សថ្នាក់ "${fullName}"`);
-    await db.classes.add(newClass);
-    setIsQuickMenuOpen(false);
-    onSelectClass(newClass.id);
-    onRefresh();
-    showFeedback('success', `បានបង្កើត "${fullName}" ${stream !== 'general' ? `(${streamInfo.badgeKh})` : ''} ដោយជោគជ័យ!`);
-  };
-
-  // 1-Click Toggle Stream for Grade 11 & 12 (Teacher decides Science vs Social Science directly)
+  // 1-Click Toggle Stream for Grade 11 & 12
   const handleToggleClassStream = async (c: ClassRoom) => {
     const currentStream = getStreamForClass(c.grade, c.name, c.stream);
     const nextStream: ClassStream = currentStream === 'science' ? 'social' : 'science';
@@ -191,7 +147,7 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
       description: `ថ្នាក់ ${c.name} (${nextInfo.label})`,
     });
     onRefresh();
-    showFeedback('success', `បានកំណត់ "${c.name}" ជា ${nextInfo.label} (${nextInfo.badgeKh}) ដោយជោគជ័យ!`);
+    showFeedback('success', `បានកំណត់ "${c.name}" ជា ${nextInfo.label} (${nextInfo.badgeKh})`);
   };
 
   // Start inline edit
@@ -213,7 +169,7 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
     }
 
     const gNum = parseGradeNumber(newName);
-    const stream = (gNum === 11 || gNum === 12) ? editingStream : getStreamForClass(`${gNum}`, newName);
+    const stream = (gNum === 11 || gNum === 12) ? editingStream : 'general';
 
     await pushSnapshot(`កែសម្រួលព័ត៌មានថ្នាក់ "${newName}"`);
     await db.classes.update(c.id, {
@@ -229,7 +185,7 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
     showFeedback('success', `បានកែប្រែថ្នាក់ "${newName}" រួចរាល់!`);
   };
 
-  // Handle delete class directly WITHOUT confirmation
+  // Delete class
   const handleDeleteClass = async (c: ClassRoom) => {
     const enrolledStudents = students.filter((s) => s.classId === c.id);
     const count = enrolledStudents.length;
@@ -251,9 +207,11 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
     showFeedback('success', `បានលុប "${c.name}" រួចរាល់!`);
   };
 
-  // Handle delete ALL classes
+  // Delete ALL classes
   const handleDeleteAllClasses = async () => {
     if (classes.length === 0) return;
+    if (!window.confirm('តើលោកគ្រូ-អ្នកគ្រូពិតជាចង់លុបថ្នាក់ទាំងអស់នេះមែនទេ? (ទិន្នន័យសិស្សនៅដដែល តែនឹងមិនទាន់មានថ្នាក់)')) return;
+
     await pushSnapshot('លុបថ្នាក់ទាំងអស់');
     await db.classes.clear();
     for (const stu of students) {
@@ -266,61 +224,15 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
     showFeedback('success', 'បានលុបថ្នាក់ទាំងអស់រួចរាល់!');
   };
 
-  // Quick add standard classes for a specific grade (7, 8, 9, 10)
-  const handleAddGradeClasses = async (grade: string) => {
-    const cfg = STANDARD_CLASS_CONFIGS.find((c) => c.grade === grade);
-    if (!cfg) return;
-
-    const existingNames = new Set(classes.map((c) => c.name.toLowerCase()));
-    const toAdd: ClassRoom[] = [];
-
-    cfg.letters.forEach((letter, idx) => {
-      const fullName = `ថ្នាក់ទី ${cfg.grade}${letter}`;
-      if (!existingNames.has(fullName.toLowerCase())) {
-        const id = idx === 0 ? cfg.mainId : `class-${cfg.grade}-${letter.toLowerCase()}-${Date.now()}`;
-        const stream = getStreamForClass(cfg.grade, `${cfg.grade}${letter}`);
-        const streamInfo = getStreamBadge(stream);
-
-        toAdd.push({
-          id,
-          name: fullName,
-          grade: cfg.grade,
-          academicYear,
-          stream,
-          homeroomTeacher: (cfg.grade === '7' && letter === 'A') ? 'ហ៊ុន រដ្ឋា' : 'គ្រូទទួលបន្ទុក',
-          description: `ថ្នាក់ ${cfg.grade}${letter} (${cfg.grade === '11' || cfg.grade === '12' ? streamInfo.label : cfg.levelLabel})`,
-          createdAt: new Date().toISOString(),
-        });
-      }
-    });
-
-    if (toAdd.length === 0) {
-      showFeedback('error', `ថ្នាក់ទី ${grade} មានរួចរាល់ទាំងអស់ហើយ!`);
-      return;
-    }
-
-    await pushSnapshot(`បន្ថែមថ្នាក់ទី ${grade} (${toAdd.length} ថ្នាក់)`);
-    await db.classes.bulkAdd(toAdd);
-    setIsQuickMenuOpen(false);
-    onRefresh();
-    showFeedback('success', `បានបន្ថែមថ្នាក់ទី ${grade} (${toAdd.length} ថ្នាក់) ដោយជោគជ័យ!`);
-  };
-
-  // Reset or regenerate all 49 standard classes
-  const handleRestoreStandardClasses = async () => {
-    await pushSnapshot('កំណត់ថ្នាក់ស្តង់ដារឡើងវិញ');
-    await db.ensureStandardClasses();
-    setIsQuickMenuOpen(false);
-    onRefresh();
-    showFeedback('success', 'បានបង្កើតថ្នាក់ស្តង់ដារទាំង ៤៩ ថ្នាក់រួចរាល់!');
-  };
+  const formGNum = parseInt(formGrade, 10);
+  const isHighSchoolStream = formGNum === 11 || formGNum === 12;
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="🏫 គ្រប់គ្រងថ្នាក់រៀន (ថ្នាក់ • គ្រូទទួលបន្ទុក • ជំនាញ)"
-      subtitle={`សរុប ${classes.length} ថ្នាក់ | ងាយស្រួលមើល គ្រប់គ្រង និងកែសម្រួល`}
+      title="🏫 គ្រប់គ្រងថ្នាក់រៀន"
+      subtitle={`សរុប ${classes.length} ថ្នាក់ | ថ្នាក់ទី ៧-១០ (ទូទៅ) • ថ្នាក់ទី ១១-១២ (វិទ្យាសាស្ត្រ/សង្គម)`}
       maxWidth="4xl"
     >
       <div className="space-y-3.5">
@@ -340,9 +252,8 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
           </div>
         )}
 
-        {/* TOP BAR: Search & Action Buttons */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-slate-50 p-2.5 sm:p-3 rounded-2xl border border-slate-200">
-          {/* Search Box */}
+        {/* TOP BAR: Search & [+ បន្ថែមថ្នាក់ថ្មី] */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-slate-50 p-2.5 rounded-2xl border border-slate-200">
           <div className="relative flex-1">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
@@ -354,80 +265,50 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
             />
           </div>
 
-          {/* Action Buttons: Add Class & Quick Options */}
-          <div className="flex items-center space-x-2 shrink-0">
-            <button
-              type="button"
-              onClick={() => {
-                setIsAddFormOpen((prev) => !prev);
-                if (!isAddFormOpen) setIsQuickMenuOpen(false);
-              }}
-              className={`inline-flex items-center px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer shadow-2xs ${
-                isAddFormOpen
-                  ? 'bg-blue-700 text-white shadow-xs'
-                  : 'bg-blue-600 hover:bg-blue-700 text-white'
-              }`}
-            >
-              <Plus className="w-4 h-4 mr-1.5" />
-              <span>+ បន្ថែមថ្នាក់ថ្មី</span>
-              {isAddFormOpen ? <ChevronUp className="w-3.5 h-3.5 ml-1.5" /> : <ChevronDown className="w-3.5 h-3.5 ml-1.5" />}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setIsQuickMenuOpen((prev) => !prev);
-                if (!isQuickMenuOpen) setIsAddFormOpen(false);
-              }}
-              className={`inline-flex items-center px-3 py-2 rounded-xl text-xs sm:text-sm font-bold border transition-all cursor-pointer shadow-2xs ${
-                isQuickMenuOpen
-                  ? 'bg-amber-100 text-amber-900 border-amber-300 shadow-xs'
-                  : 'bg-white hover:bg-amber-50 text-slate-700 border-slate-300'
-              }`}
-              title="ជម្រើសបន្ថែមរហ័ស និងស្តារថ្នាក់ស្តង់ដារ"
-            >
-              <Sparkles className="w-4 h-4 mr-1.5 text-amber-500" />
-              <span>ជម្រើសរហ័ស</span>
-              {isQuickMenuOpen ? <ChevronUp className="w-3.5 h-3.5 ml-1" /> : <ChevronDown className="w-3.5 h-3.5 ml-1" />}
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setIsAddFormOpen(!isAddFormOpen)}
+            className={`inline-flex items-center justify-center px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer shadow-2xs ${
+              isAddFormOpen
+                ? 'bg-slate-700 text-white'
+                : 'bg-blue-600 hover:bg-blue-700 text-white'
+            }`}
+          >
+            <Plus className="w-4 h-4 mr-1.5" />
+            <span>+ បន្ថែមថ្នាក់ថ្មី</span>
+            {isAddFormOpen ? <ChevronUp className="w-4 h-4 ml-1.5" /> : <ChevronDown className="w-4 h-4 ml-1.5" />}
+          </button>
         </div>
 
-        {/* COLLAPSIBLE 1: Form បញ្ចូលថ្នាក់ថ្មី (Opens when requested) */}
+        {/* ADD CLASS FORM (Collapsible: Only opens when clicking [+ បន្ថែមថ្នាក់ថ្មី]) */}
         {isAddFormOpen && (
-          <div className="bg-blue-50/70 p-3.5 sm:p-4 rounded-2xl border-2 border-blue-200 shadow-xs space-y-3 animate-fade-in">
+          <div className="bg-blue-50/60 p-3.5 sm:p-4 rounded-2xl border-2 border-blue-200 shadow-xs space-y-3 animate-fade-in">
             <div className="flex items-center justify-between border-b border-blue-200/80 pb-2">
               <div className="flex items-center space-x-2">
-                <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs">
+                <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-xs">
                   <Plus className="w-4 h-4" />
                 </div>
                 <div>
                   <h4 className="text-xs sm:text-sm font-bold text-slate-900">
-                    ទម្រង់បញ្ចូលថ្នាក់រៀនថ្មី (Add Class)
+                    បញ្ចូលថ្នាក់រៀនថ្មី (Add Class)
                   </h4>
                   <p className="text-[11px] text-slate-500">
-                    សូមបំពេញឈ្មោះថ្នាក់ កម្រិតថ្នាក់ និងគ្រូទទួលបន្ទុកថ្នាក់
+                    សូមបំពេញឈ្មោះថ្នាក់ កម្រិតថ្នាក់ និងឈ្មោះគ្រូទទួលបន្ទុក
                   </p>
                 </div>
               </div>
-
-              <div className="flex items-center space-x-2">
-                <span className="text-[11px] font-bold text-blue-700 bg-white px-2 py-0.5 rounded-lg border border-blue-200">
-                  ឆ្នាំសិក្សា៖ {academicYear}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setIsAddFormOpen(false)}
-                  className="p-1 text-slate-400 hover:text-slate-600 cursor-pointer"
-                  title="បិទទម្រង់"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => setIsAddFormOpen(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 cursor-pointer"
+                title="បិទទម្រង់"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
 
             <form onSubmit={handleAddClassSubmit} className="space-y-3 pt-1">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {/* 1. ឈ្មោះថ្នាក់ */}
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 mb-1">
@@ -438,7 +319,7 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
                     required
                     value={formClassName}
                     onChange={(e) => setFormClassName(e.target.value)}
-                    placeholder="ឧ. 7F, 10M, 12K..."
+                    placeholder="ឧ. 7A, 10B, 11A..."
                     className="w-full px-3 py-1.5 text-xs sm:text-sm font-bold bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 shadow-2xs"
                   />
                 </div>
@@ -459,7 +340,6 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
                     <option value="10">ថ្នាក់ទី ១០ (វិទ្យាល័យ)</option>
                     <option value="11">ថ្នាក់ទី ១១ (វិទ្យាល័យ)</option>
                     <option value="12">ថ្នាក់ទី ១២ (វិទ្យាល័យ)</option>
-                    <option value="ទូទៅ">ថ្នាក់ទូទៅ</option>
                   </select>
                 </div>
 
@@ -478,35 +358,27 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
                   />
                 </div>
 
-                {/* If Grade 7 to 10: Strictly General Class indicator */}
-                {(formGrade === '7' || formGrade === '8' || formGrade === '9' || formGrade === '10' || formGrade === 'ទូទៅ') && (
-                  <div className="col-span-1 sm:col-span-3 bg-white/80 p-2.5 rounded-xl border border-blue-200 flex items-center justify-between text-xs">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-base">🎓</span>
-                      <span className="text-slate-700 font-bold">
-                        ប្រភេទថ្នាក់៖ <strong className="text-blue-700">ថ្នាក់ទូទៅ (General)</strong> — ថ្នាក់ទី ៧ ដល់ ទី ១០ ជាចំណេះទូទៅ គ្មានបែងចែកវិទ្យាសាស្ត្រ/សង្គមទេ។
-                      </span>
-                    </div>
-                    <span className="px-2.5 py-0.5 rounded-md bg-blue-100 text-blue-800 text-[10px] font-black border border-blue-200">
+                {/* Category Selection: Grade 7-10 = General, Grade 11-12 = Science vs Social */}
+                {!isHighSchoolStream ? (
+                  <div className="col-span-1 sm:col-span-3 bg-white p-2.5 rounded-xl border border-blue-200 flex items-center justify-between text-xs">
+                    <span className="text-slate-700 font-bold flex items-center gap-1.5">
+                      <span>🎓</span>
+                      <span>ប្រភេទថ្នាក់៖ <strong className="text-blue-700">ថ្នាក់ទូទៅ (General)</strong> (ថ្នាក់ទី ៧ ដល់ ១០ ជាចំណេះទូទៅ គ្មានបែងចែកវិទ្យាសាស្ត្រ/សង្គមទេ)</span>
+                    </span>
+                    <span className="px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 text-[11px] font-black">
                       ទូទៅ
                     </span>
                   </div>
-                )}
-
-                {/* If Grade 11 or 12: Stream selector (Science vs Social Science) */}
-                {(formGrade === '11' || formGrade === '12') && (
-                  <div className="col-span-1 sm:col-span-3 bg-linear-to-r from-emerald-50 via-teal-50 to-amber-50 p-2.5 sm:p-3 rounded-xl border-2 border-teal-300 shadow-2xs space-y-2">
+                ) : (
+                  <div className="col-span-1 sm:col-span-3 bg-white p-3 rounded-xl border-2 border-teal-300 shadow-2xs space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-black text-slate-800 flex items-center">
-                        <span className="mr-1.5 text-base">🎓</span>
-                        <span>បែងចែកប្រភេទថ្នាក់ (ថ្នាក់ទី {formGrade})៖</span>
-                      </span>
-                      <span className="text-[10px] font-bold text-teal-800 bg-white/90 px-2 py-0.5 rounded-md border border-teal-200">
-                        លោកគ្រូអ្នកគ្រូជាអ្នកកំណត់ផ្ទាល់
+                        <span className="mr-1 text-base">🎓</span>
+                        <span>ជ្រើសរើសប្រភេទថ្នាក់សម្រាប់ថ្នាក់ទី {formGrade}៖</span>
                       </span>
                     </div>
                     <div className="flex flex-wrap items-center gap-3">
-                      <label className={`flex items-center space-x-2 cursor-pointer px-3 py-1.5 rounded-xl border-2 transition-all shadow-2xs ${
+                      <label className={`flex items-center space-x-2 cursor-pointer px-4 py-2 rounded-xl border-2 transition-all shadow-2xs ${
                         formStream === 'science'
                           ? 'bg-emerald-600 text-white border-emerald-700 font-black'
                           : 'bg-white text-emerald-800 border-emerald-300 hover:bg-emerald-50 font-bold'
@@ -519,11 +391,11 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
                           onChange={() => setFormStream('science')}
                           className="hidden"
                         />
-                        <span className="text-sm">🔬</span>
+                        <span className="text-base">🔬</span>
                         <span className="text-xs">ថ្នាក់វិទ្យាសាស្ត្រ (Science)</span>
                       </label>
 
-                      <label className={`flex items-center space-x-2 cursor-pointer px-3 py-1.5 rounded-xl border-2 transition-all shadow-2xs ${
+                      <label className={`flex items-center space-x-2 cursor-pointer px-4 py-2 rounded-xl border-2 transition-all shadow-2xs ${
                         formStream === 'social'
                           ? 'bg-amber-600 text-white border-amber-700 font-black'
                           : 'bg-white text-amber-900 border-amber-300 hover:bg-amber-50 font-bold'
@@ -536,7 +408,7 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
                           onChange={() => setFormStream('social')}
                           className="hidden"
                         />
-                        <span className="text-sm">📚</span>
+                        <span className="text-base">📚</span>
                         <span className="text-xs">ថ្នាក់វិទ្យាសាស្ត្រសង្គម (Social Science)</span>
                       </label>
                     </div>
@@ -544,11 +416,12 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
                 )}
               </div>
 
+              {/* Submit Buttons */}
               <div className="flex items-center justify-end space-x-2 pt-2 border-t border-blue-200/80">
                 <button
                   type="button"
                   onClick={() => setIsAddFormOpen(false)}
-                  className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold cursor-pointer transition-colors"
+                  className="px-3.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold cursor-pointer transition-colors"
                 >
                   បោះបង់
                 </button>
@@ -561,125 +434,6 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
                 </button>
               </div>
             </form>
-          </div>
-        )}
-
-        {/* COLLAPSIBLE 2: Quick Presets & Bulk Actions (Opens when requested) */}
-        {isQuickMenuOpen && (
-          <div className="bg-amber-50/70 p-3.5 sm:p-4 rounded-2xl border-2 border-amber-200 shadow-xs space-y-3 animate-fade-in">
-            <div className="flex items-center justify-between border-b border-amber-200 pb-2">
-              <div className="flex items-center space-x-2">
-                <div className="w-7 h-7 rounded-lg bg-amber-500 text-white flex items-center justify-center shadow-xs">
-                  <Sparkles className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="text-xs sm:text-sm font-bold text-slate-900">
-                    ជម្រើសរហ័ស & ឧបករណ៍ជំនួយ (Quick Presets)
-                  </h4>
-                  <p className="text-[11px] text-slate-500">
-                    បង្កើតថ្នាក់តាមអក្សរ បង្កើតតាមកម្រិត ឬស្តារថ្នាក់ស្តង់ដារឡើងវិញ
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsQuickMenuOpen(false)}
-                className="p-1 text-slate-400 hover:text-slate-600 cursor-pointer"
-                title="បិទ"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Quick single-letter generator */}
-            <div className="bg-white p-2.5 rounded-xl border border-amber-200/80 flex flex-wrap items-center justify-between gap-2">
-              <div className="flex flex-wrap items-center gap-2 text-xs">
-                <span className="text-[11px] font-bold text-slate-600">បង្កើតមួយថ្នាក់រហ័ស៖</span>
-                <select
-                  value={quickGrade}
-                  onChange={(e) => setQuickGrade(e.target.value)}
-                  className="bg-slate-50 border border-slate-300 rounded-lg px-2 py-1 text-xs font-black text-slate-800 cursor-pointer"
-                >
-                  {['7', '8', '9', '10', '11', '12'].map((g) => (
-                    <option key={g} value={g}>ទី {g}</option>
-                  ))}
-                </select>
-                <select
-                  value={quickLetter}
-                  onChange={(e) => setQuickLetter(e.target.value)}
-                  className="bg-slate-50 border border-slate-300 rounded-lg px-2 py-1 text-xs font-black text-slate-800 cursor-pointer"
-                >
-                  {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P'].map((l) => (
-                    <option key={l} value={l}>{l}</option>
-                  ))}
-                </select>
-                {(quickGrade === '11' || quickGrade === '12') && (
-                  <select
-                    value={formStream}
-                    onChange={(e) => setFormStream(e.target.value as ClassStream)}
-                    className="bg-white border border-teal-300 rounded-lg px-2 py-1 text-xs font-bold text-teal-900 cursor-pointer"
-                  >
-                    <option value="science">🔬 វិទ្យាសាស្ត្រ</option>
-                    <option value="social">📚 វិទ្យាសាស្ត្រសង្គម</option>
-                  </select>
-                )}
-                <button
-                  type="button"
-                  onClick={handleQuickAddClass}
-                  className="inline-flex items-center px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer shadow-2xs"
-                >
-                  <Plus className="w-3.5 h-3.5 mr-1" />
-                  + ថ្នាក់ទី {quickGrade}{quickLetter}
-                </button>
-              </div>
-            </div>
-
-            {/* Quick Grade Batch Generators */}
-            <div className="space-y-1.5">
-              <span className="text-[11px] font-bold text-slate-600 block">បង្កើតម្តងមួយកម្រិតទាំងមូល (Bulk Add)៖</span>
-              <div className="flex flex-wrap items-center gap-1.5">
-                {[
-                  { grade: '7', label: 'ថ្នាក់ទី ៧ (7A-7E)' },
-                  { grade: '8', label: 'ថ្នាក់ទី ៨ (8A-8E)' },
-                  { grade: '9', label: 'ថ្នាក់ទី ៩ (9A-9D)' },
-                  { grade: '10', label: 'ថ្នាក់ទី ១០ (10A-10L)' },
-                  { grade: '11', label: 'ថ្នាក់ទី ១១ (11A-11J)' },
-                  { grade: '12', label: 'ថ្នាក់ទី ១២ (12A-12M)' },
-                ].map((g) => (
-                  <button
-                    key={g.grade}
-                    type="button"
-                    onClick={() => handleAddGradeClasses(g.grade)}
-                    className="px-2.5 py-1 bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-[11px] font-bold cursor-pointer transition-colors shadow-2xs"
-                  >
-                    + {g.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Bottom bulk actions: Restore Standard Classes & Clear all */}
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-amber-200/80">
-              <button
-                type="button"
-                onClick={handleRestoreStandardClasses}
-                className="inline-flex items-center px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-2xs"
-                title="បង្កើត ឬស្តារថ្នាក់ស្តង់ដារទាំង ៤៩ ថ្នាក់ឡើងវិញ"
-              >
-                <RotateCcw className="w-3.5 h-3.5 mr-1.5 text-blue-600" />
-                ស្តារ ៤៩ ថ្នាក់ស្តង់ដារ
-              </button>
-
-              <button
-                type="button"
-                onClick={handleDeleteAllClasses}
-                className="inline-flex items-center px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-2xs"
-                title="លុបថ្នាក់ទាំងអស់"
-              >
-                <Trash2 className="w-3.5 h-3.5 mr-1.5 text-rose-600" />
-                លុបថ្នាក់ទាំងអស់ ({classes.length})
-              </button>
-            </div>
           </div>
         )}
 
@@ -721,9 +475,9 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
           </span>
         </div>
 
-        {/* MAIN CLASS LIST (ROOMY & PROMINENT) */}
+        {/* MAIN CLASS LIST (SPACIOUS & CLEAN) */}
         <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-xs">
-          <div className="max-h-[50vh] sm:max-h-[55vh] overflow-y-auto divide-y divide-slate-100">
+          <div className="max-h-[55vh] overflow-y-auto divide-y divide-slate-100">
             {filteredClasses.length === 0 ? (
               <div className="p-8 text-center text-slate-400 space-y-2">
                 <BookOpen className="w-10 h-10 mx-auto text-slate-300" />
@@ -731,28 +485,14 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
                 <p className="text-xs text-slate-500">
                   {searchQuery ? 'រកមិនឃើញថ្នាក់ដែលត្រូវនឹងពាក្យស្វែងរកទេ' : 'មិនទាន់មានថ្នាក់រៀនក្នុងបញ្ជីនៅឡើយទេ'}
                 </p>
-                <div className="pt-2 flex items-center justify-center gap-2">
+                <div className="pt-2">
                   <button
                     type="button"
-                    onClick={() => {
-                      setIsAddFormOpen(true);
-                      setIsQuickMenuOpen(false);
-                    }}
-                    className="inline-flex items-center px-3.5 py-1.5 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 cursor-pointer shadow-2xs"
+                    onClick={() => setIsAddFormOpen(true)}
+                    className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 cursor-pointer shadow-2xs"
                   >
-                    <Plus className="w-4 h-4 mr-1" />
-                    + បន្ថែមថ្នាក់ថ្មី
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsQuickMenuOpen(true);
-                      setIsAddFormOpen(false);
-                    }}
-                    className="inline-flex items-center px-3.5 py-1.5 bg-amber-50 text-amber-900 border border-amber-300 rounded-xl text-xs font-bold hover:bg-amber-100 cursor-pointer shadow-2xs"
-                  >
-                    <Sparkles className="w-4 h-4 mr-1 text-amber-600" />
-                    ជម្រើសរហ័ស
+                    <Plus className="w-4 h-4 mr-1.5" />
+                    + បន្ថែមថ្នាក់រៀនដំបូង
                   </button>
                 </div>
               </div>
@@ -767,7 +507,7 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
                 return (
                   <div
                     key={c.id}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between p-2.5 sm:p-3 hover:bg-slate-50/80 transition-colors gap-2"
+                    className="flex flex-col sm:flex-row sm:items-center justify-between p-3 hover:bg-slate-50/80 transition-colors gap-2"
                   >
                     {isEditing ? (
                       /* Inline Editing View */
@@ -842,15 +582,15 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
                         </div>
                       </div>
                     ) : (
-                      /* Normal Display Row with Homeroom Teacher & Stream Badge */
+                      /* Normal Display Row */
                       <>
-                        <div className="flex items-center space-x-2.5 min-w-0">
-                          <span className="w-8 h-8 rounded-xl bg-blue-100 text-blue-800 flex items-center justify-center font-black text-xs shrink-0 shadow-2xs">
+                        <div className="flex items-center space-x-3 min-w-0">
+                          <span className="w-9 h-9 rounded-xl bg-blue-100 text-blue-800 flex items-center justify-center font-black text-sm shrink-0 shadow-2xs">
                             {c.grade || gNum}
                           </span>
                           <div className="min-w-0">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-bold text-xs sm:text-sm text-slate-900 truncate">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-sm text-slate-900 truncate">
                                 {c.name}
                               </span>
                               {gNum <= 10 && (
@@ -863,12 +603,12 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => handleToggleClassStream(c)}
-                                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border shadow-2xs cursor-pointer hover:scale-105 active:scale-95 transition-all ${streamInfo.colorClass}`}
+                                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border shadow-2xs cursor-pointer hover:scale-105 active:scale-95 transition-all ${streamInfo.colorClass}`}
                                   title={`ចុចដើម្បីប្តូររវាង វិទ្យាសាស្ត្រ និង វិទ្យាសាស្ត្រសង្គម (បច្ចុប្បន្ន៖ ${streamInfo.label})`}
                                 >
-                                  <span className="mr-0.5">{streamInfo.icon}</span>
+                                  <span className="mr-1">{streamInfo.icon}</span>
                                   <span>{streamInfo.badgeKh}</span>
-                                  <span className="ml-1 text-[9px] opacity-75 font-normal underline">⇄ ប្តូរ</span>
+                                  <span className="ml-1 text-[9px] opacity-75 underline">⇄ ប្តូរ</span>
                                 </button>
                               )}
                               <span
@@ -881,7 +621,7 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
                               </span>
                             </div>
                             <p className="text-[11px] text-slate-500 font-medium flex items-center gap-1 mt-0.5">
-                              <User className="w-3 h-3 text-indigo-500 shrink-0" />
+                              <User className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
                               <span>គ្រូទទួលបន្ទុក៖</span>
                               <strong className="text-slate-800">{c.homeroomTeacher || 'មិនទាន់កំណត់'}</strong>
                             </p>
@@ -896,15 +636,15 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
                             className="p-1.5 text-slate-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
                             title="កែសម្រួលឈ្មោះថ្នាក់ និងគ្រូទទួលបន្ទុក"
                           >
-                            <Edit2 className="w-3.5 h-3.5" />
+                            <Edit2 className="w-4 h-4" />
                           </button>
                           <button
                             type="button"
                             onClick={() => handleDeleteClass(c)}
                             className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                            title={count > 0 ? `លុបថ្នាក់នេះ (មានសិស្ស ${count} នាក់)` : 'លុបថ្នាក់ទទេនេះ'}
+                            title={count > 0 ? `លុបថ្នាក់នេះ (មានសិស្ស ${count} នាក់)` : 'លុបថ្នាក់នេះ'}
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
                       </>
@@ -916,9 +656,19 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
           </div>
         </div>
 
-        {/* Modal Footer Note */}
-        <div className="flex items-center justify-between text-[11px] text-slate-500 pt-2 border-t border-slate-100">
-          <span>💡 ថ្នាក់នីមួយៗមានគ្រូទទួលបន្ទុកច្បាស់លាស់ អាចកែសម្រួល និងស្រង់វត្តមានតាមថ្នាក់បានងាយស្រួល។</span>
+        {/* Modal Footer */}
+        <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
+          <div>
+            {classes.length > 0 && (
+              <button
+                type="button"
+                onClick={handleDeleteAllClasses}
+                className="text-rose-600 hover:text-rose-800 hover:underline cursor-pointer text-[11px] font-bold"
+              >
+                🗑️ លុបថ្នាក់ទាំងអស់
+              </button>
+            )}
+          </div>
           <button
             type="button"
             onClick={onClose}
