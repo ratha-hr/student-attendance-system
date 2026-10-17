@@ -24,6 +24,7 @@ import { CrossDeviceSyncModal } from './components/CrossDeviceSyncModal';
 import { StudentDailyAttendanceView } from './components/StudentDailyAttendanceView';
 import type { TeacherSettings } from './types';
 import { decodeRosterFromUrl } from './utils/attendanceShare';
+import { initAutoSyncEngine, notifyLocalDataChanged } from './services/autoSyncService';
 
 export function App() {
   // Check if link was shared for student daily attendance
@@ -93,7 +94,12 @@ export function App() {
       .catch(console.error);
     db.getSettings().then(setSettings).catch(console.error);
 
-    // Auto-detect & import sync_code from QR code or shared sync link
+    // 🚀 Start AutoSyncEngine (Automatic background sync PC ⇄ Mobile phone)
+    const cleanupAutoSync = initAutoSyncEngine(() => {
+      handleRefresh();
+    });
+
+    // Auto-detect & import sync_code from legacy link if present
     if (typeof window !== 'undefined') {
       const p = new URLSearchParams(window.location.search);
       const syncCode = p.get('sync_code') || p.get('sync');
@@ -139,6 +145,10 @@ export function App() {
         }
       }
     }
+
+    return () => {
+      cleanupAutoSync();
+    };
   }, []);
 
   useEffect(() => {
@@ -148,19 +158,23 @@ export function App() {
   // Ensure that if classes or students are empty on mobile, auto-load standard 200 students immediately
   useEffect(() => {
     if (classes.length === 0 || students.length === 0) {
-      db.classes.count().then(async (cCount) => {
-        if (cCount === 0) {
-          console.log('Detected 0 classes on mobile/device - auto-loading 200 students and classes...');
-          await db.loadSample200Students();
-          handleRefresh();
-        }
-      }).catch(console.error);
+      const timer = setTimeout(() => {
+        db.classes.count().then(async (cCount) => {
+          if (cCount === 0) {
+            console.log('Detected 0 classes on mobile/device - auto-loading 200 students and classes...');
+            await db.loadSample200Students();
+            handleRefresh();
+          }
+        }).catch(console.error);
+      }, 2500);
+      return () => clearTimeout(timer);
     }
   }, [classes.length, students.length]);
 
   const handleRefresh = () => {
     setRefreshKey((k) => k + 1);
     db.getSettings().then(setSettings).catch(console.error);
+    notifyLocalDataChanged(true);
   };
 
   const activeClass = selectedClassId === 'ALL'
