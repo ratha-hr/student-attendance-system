@@ -11,7 +11,7 @@
     <meta http-equiv="Expires" content="0" />
     <script>
       (function() {
-        var APP_VER = 'v6.20_20261017_1815';
+        var APP_VER = 'v6.21_20261017_1820';
         var lastVer = localStorage.getItem('app_installed_ver');
         if (lastVer !== APP_VER) {
           localStorage.setItem('app_installed_ver', APP_VER);
@@ -29,6 +29,17 @@
             window.location.reload();
           }
         }
+        // Immediate font scale restore to prevent flicker across all devices
+        try {
+          var savedScale = localStorage.getItem('app_font_scale');
+          if (savedScale === 'xlarge') {
+            document.documentElement.style.fontSize = '19px';
+          } else if (savedScale === 'large') {
+            document.documentElement.style.fontSize = '17.5px';
+          } else {
+            document.documentElement.style.fontSize = '16px';
+          }
+        } catch(e) {}
       })();
     </script>
     <link rel="manifest" href="./manifest.webmanifest" />
@@ -40,8 +51,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:ital,wght@0,100..700;1,100..700&family=Moul&family=Battambang:wght@400;700&family=Siemreap&display=swap" rel="stylesheet">
-    <script type="module" crossorigin src="./assets/index-mLswHyEq.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-ByB4gPh0.css">
+    <script type="module" crossorigin src="./assets/index-BxGJoy52.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-Co2K0oWr.css">
   </head>
   <body class="bg-slate-50 text-slate-800 antialiased font-kantumruy">
     <div id="root"></div>
