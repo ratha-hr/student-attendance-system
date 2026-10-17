@@ -56,22 +56,19 @@ export class TeacherDatabase extends Dexie {
   }
 
   async initializeSeedData() {
-    // 1. One-time clean wipe of all sample/mock data on user request
-    const sampleCleanKey = 'app_sample_data_cleared_v6.3';
-    if (!localStorage.getItem(sampleCleanKey)) {
-      console.log('Purging sample data so teacher can enter their own data...');
-      await this.students.clear();
-      await this.attendance.clear();
-      await this.grades.clear();
-      await this.letters.clear();
-      await this.classes.clear();
-      await this.yearlyPlans.clear();
-      await this.timetable.clear();
-      await this.extracts.clear();
-      localStorage.setItem(sampleCleanKey, 'true');
+    const classCount = await this.classes.count();
+    const studentCount = await this.students.count();
+
+    // If device/browser has 0 classes or 0 students (e.g. mobile phone, new browser, or empty database),
+    // automatically load the full 200 students & standard classes so mobile and computer have identical data!
+    if (classCount === 0 || studentCount === 0) {
+      console.log('Seeding initial classes and 200 students for mobile/new device...');
+      await this.loadSample200Students();
+    } else {
+      await this.ensureStandardClasses();
     }
 
-    // 2. Ensure teacher settings exist with Mr. Hun Ratha's school profile
+    // Ensure teacher settings exist with Mr. Hun Ratha's school profile
     const s = await this.settings.get('current_settings');
     if (!s) {
       await this.settings.put({ ...initialSettings, id: 'current_settings' });

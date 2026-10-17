@@ -121,6 +121,19 @@ export function App() {
     db.getSettings().then(setSettings).catch(console.error);
   }, [refreshKey]);
 
+  // Ensure that if classes or students are empty on mobile, auto-load standard 200 students immediately
+  useEffect(() => {
+    if (classes.length === 0 || students.length === 0) {
+      db.classes.count().then(async (cCount) => {
+        if (cCount === 0) {
+          console.log('Detected 0 classes on mobile/device - auto-loading 200 students and classes...');
+          await db.loadSample200Students();
+          handleRefresh();
+        }
+      }).catch(console.error);
+    }
+  }, [classes.length, students.length]);
+
   const handleRefresh = () => {
     setRefreshKey((k) => k + 1);
     db.getSettings().then(setSettings).catch(console.error);
