@@ -63,28 +63,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   const lunarInfo: KhmerLunarInfo = useMemo(() => getKhmerLunarDate(currentDate), [currentDate]);
   const solarInfo: KhmerSolarInfo = useMemo(() => getKhmerSolarDate(currentDate), [currentDate]);
 
-  // Font scale controller ('normal' = 16px, 'large' = 17.5px, 'xlarge' = 19px)
-  const [fontScale, setFontScale] = useState<'normal' | 'large' | 'xlarge'>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('app_font_scale');
-      if (saved === 'large' || saved === 'xlarge') return saved;
-    }
-    return 'normal';
-  });
-
-  const handleSetFontScale = (scale: 'normal' | 'large' | 'xlarge') => {
-    setFontScale(scale);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('app_font_scale', scale);
-      if (scale === 'xlarge') {
-        document.documentElement.style.fontSize = '19px';
-      } else if (scale === 'large') {
-        document.documentElement.style.fontSize = '17.5px';
-      } else {
-        document.documentElement.style.fontSize = '16px';
-      }
-    }
-  };
 
   const gradeGroups = useMemo(() => groupClassesByGrade(classes), [classes]);
 
@@ -225,49 +203,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           </div>
 
-          {/* Font Scale Adjuster (A=ស្តង់ដារ, A+=ធំ, A++=ធំច្បាស់) for comfortable reading across all devices */}
-          <div
-            className="inline-flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs font-bold shadow-2xs"
-            title="ទំហំអក្សរ (A=ស្តង់ដារ ១០០%, A+=ធំ ១១០%, A++=ធំច្បាស់ ១២០%)"
-          >
-            <button
-              type="button"
-              onClick={() => handleSetFontScale('normal')}
-              className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg text-xs transition-all cursor-pointer ${
-                fontScale === 'normal'
-                  ? 'bg-white text-blue-700 shadow-2xs font-black'
-                  : 'text-slate-600 hover:text-slate-900 font-bold'
-              }`}
-              title="អក្សរស្តង់ដារ (១០០%)"
-            >
-              A
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSetFontScale('large')}
-              className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg text-xs transition-all cursor-pointer ${
-                fontScale === 'large'
-                  ? 'bg-white text-blue-700 shadow-2xs font-black'
-                  : 'text-slate-600 hover:text-slate-900 font-bold'
-              }`}
-              title="អក្សរធំល្មម (១១០%)"
-            >
-              A+
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSetFontScale('xlarge')}
-              className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg text-xs transition-all cursor-pointer ${
-                fontScale === 'xlarge'
-                  ? 'bg-white text-blue-700 shadow-2xs font-black'
-                  : 'text-slate-600 hover:text-slate-900 font-bold'
-              }`}
-              title="អក្សរធំច្បាស់ (១២០%)"
-            >
-              A++
-            </button>
-          </div>
-
           {/* Cache-Clear & Force Reload Button (Keep only arrow icon as requested) */}
           <button
             type="button"
@@ -284,7 +219,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               window.location.href = window.location.pathname + '?v=' + Date.now();
             }}
             className="p-2 bg-slate-100 hover:bg-blue-50 text-blue-600 hover:text-blue-700 rounded-xl border border-slate-200 transition-all cursor-pointer shadow-2xs flex items-center justify-center hover:rotate-180 active:scale-95"
-            title="ចុចដើម្បី Refresh & Update កំណែថ្មីបំផុត (v6.24)"
+            title="ចុចដើម្បី Refresh & Update កំណែថ្មីបំផុត (v6.25)"
           >
             <RotateCw className="w-4 h-4 text-blue-600" />
           </button>

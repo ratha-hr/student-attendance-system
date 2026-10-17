@@ -11,7 +11,7 @@
     <meta http-equiv="Expires" content="0" />
     <script>
       (function() {
-        var APP_VER = 'v6.24_20261017_1845';
+        var APP_VER = 'v6.25_20261017_1850';
         var lastVer = localStorage.getItem('app_installed_ver');
         if (lastVer !== APP_VER) {
           localStorage.setItem('app_installed_ver', APP_VER);
@@ -29,16 +29,9 @@
             window.location.reload();
           }
         }
-        // Immediate font scale restore to prevent flicker across all devices
         try {
-          var savedScale = localStorage.getItem('app_font_scale');
-          if (savedScale === 'xlarge') {
-            document.documentElement.style.fontSize = '19px';
-          } else if (savedScale === 'large') {
-            document.documentElement.style.fontSize = '17.5px';
-          } else {
-            document.documentElement.style.fontSize = '16px';
-          }
+          localStorage.removeItem('app_font_scale');
+          document.documentElement.style.fontSize = '16px';
         } catch(e) {}
       })();
     </script>
