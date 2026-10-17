@@ -181,11 +181,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             type="button"
             onClick={() => setStickerPickerType('school')}
-            className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-blue-900/40 hover:scale-105 active:scale-95 transition-transform cursor-pointer overflow-hidden border border-blue-400/30 hover:border-amber-400"
+            className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-blue-900/40 hover:scale-105 active:scale-95 transition-transform cursor-pointer overflow-hidden border-2 border-blue-400/40 hover:border-amber-400 ring-2 ring-blue-500/20"
             title="ចុចដើម្បីប្តូររូបភាព ឬ Sticker សាលារៀន"
           >
             {isSchoolImage ? (
-              <img src={schoolLogo} alt="School Logo" className="w-full h-full object-cover rounded-2xl" />
+              <img src={schoolLogo} alt="School Logo" className="w-full h-full object-cover rounded-full" />
             ) : (
               <span className="text-2xl leading-none select-none">{schoolLogo}</span>
             )}

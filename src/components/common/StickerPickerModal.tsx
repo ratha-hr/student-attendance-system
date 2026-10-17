@@ -108,9 +108,7 @@ export const StickerPickerModal: React.FC<StickerPickerModalProps> = ({
             រូបភាពដែលបានជ្រើសរើស (Preview)
           </span>
           <div
-            className={`w-20 h-20 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-md border-2 border-white overflow-hidden transition-transform ${
-              type === 'teacher' ? 'rounded-full' : 'rounded-2xl'
-            }`}
+            className="w-20 h-20 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-md border-2 border-white overflow-hidden transition-transform"
           >
             {isImage ? (
               <img src={selected} alt="Preview" className="w-full h-full object-cover" />
