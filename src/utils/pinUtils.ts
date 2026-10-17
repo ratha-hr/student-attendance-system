@@ -2,6 +2,10 @@ import type { TeacherSettings } from '../types';
 
 export type PinMode = 'per_share' | 'daily' | 'date_format' | 'fixed';
 
+export const ACTIVE_OTP_STORAGE_KEY = 'attendance_active_share_otp';
+export const CONSUMED_TOKENS_STORAGE_KEY = 'attendance_consumed_otp_tokens';
+export const OTP_BROADCAST_CHANNEL = 'kh_attendance_otp_channel';
+
 /**
  * Generates a fresh, non-guessable 4-digit One-Time Passcode (OTP)
  * for per-share links (e.g. 1000 - 9999).
@@ -16,6 +20,114 @@ export function generateOneTimeSharePin(): string {
     }
   } catch {}
   return String(Math.floor(1000 + Math.random() * 9000));
+}
+
+/**
+ * Gets or creates the active OTP for sharing.
+ * Stored in localStorage so it stays consistent across modals and tabs until consumed or rotated.
+ */
+export function getActiveShareOtp(): string {
+  try {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(ACTIVE_OTP_STORAGE_KEY);
+      if (saved && /^\d{4}$/.test(saved)) {
+        return saved;
+      }
+    }
+  } catch {}
+  const fresh = generateOneTimeSharePin();
+  try {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(ACTIVE_OTP_STORAGE_KEY, fresh);
+    }
+  } catch {}
+  return fresh;
+}
+
+/**
+ * Rotates the active OTP code immediately (used when a student unlocks or teacher clicks 'ប្តូរកូដថ្មី')
+ * Broadcasts the event to all other tabs/windows in real time.
+ */
+export function rotateActiveShareOtp(): string {
+  const fresh = generateOneTimeSharePin();
+  try {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(ACTIVE_OTP_STORAGE_KEY, fresh);
+      if ('BroadcastChannel' in window) {
+        const bc = new BroadcastChannel(OTP_BROADCAST_CHANNEL);
+        bc.postMessage({ type: 'OTP_ROTATED', newPin: fresh, timestamp: Date.now() });
+        bc.close();
+      }
+    }
+  } catch {}
+  return fresh;
+}
+
+/**
+ * Checks if an OTP token or PIN has already been used/consumed.
+ * Single-use security ensures a code cannot be reused once unlocked.
+ */
+export function isPinTokenConsumed(pinToken?: string | null, pin?: string | null): boolean {
+  if (!pinToken && !pin) return false;
+  try {
+    if (typeof window !== 'undefined') {
+      const raw = localStorage.getItem(CONSUMED_TOKENS_STORAGE_KEY);
+      if (raw) {
+        const list: string[] = JSON.parse(raw);
+        if (pinToken && list.includes(pinToken)) return true;
+        if (pin && list.includes(`pin_${pin.trim()}`)) return true;
+      }
+      const sessRaw = sessionStorage.getItem(CONSUMED_TOKENS_STORAGE_KEY);
+      if (sessRaw) {
+        const sessList: string[] = JSON.parse(sessRaw);
+        if (pinToken && sessList.includes(pinToken)) return true;
+        if (pin && sessList.includes(`pin_${pin.trim()}`)) return true;
+      }
+    }
+  } catch {}
+  return false;
+}
+
+/**
+ * Marks an OTP token and its PIN as consumed immediately upon successful student unlock.
+ */
+export function markPinTokenAsConsumed(pinToken?: string | null, pin?: string | null): void {
+  if (!pinToken && !pin) return;
+  try {
+    if (typeof window !== 'undefined') {
+      const raw = localStorage.getItem(CONSUMED_TOKENS_STORAGE_KEY);
+      const list: string[] = raw ? JSON.parse(raw) : [];
+      if (pinToken && !list.includes(pinToken)) list.push(pinToken);
+      if (pin && !list.includes(`pin_${pin.trim()}`)) list.push(`pin_${pin.trim()}`);
+      const trimmed = list.slice(-100);
+      localStorage.setItem(CONSUMED_TOKENS_STORAGE_KEY, JSON.stringify(trimmed));
+      sessionStorage.setItem(CONSUMED_TOKENS_STORAGE_KEY, JSON.stringify(trimmed));
+
+      if ('BroadcastChannel' in window) {
+        const bc = new BroadcastChannel(OTP_BROADCAST_CHANNEL);
+        bc.postMessage({
+          type: 'PIN_CONSUMED',
+          pinToken,
+          pin,
+          timestamp: Date.now(),
+        });
+        bc.close();
+      }
+    }
+  } catch {}
+}
+
+/**
+ * Formats seconds into a Khmer countdown string (e.g. 295s -> "០៤:៥៥")
+ */
+export function formatKhmerCountdown(totalSeconds: number): string {
+  const m = Math.floor(Math.max(0, totalSeconds) / 60);
+  const s = Math.max(0, totalSeconds) % 60;
+  const mStr = String(m).padStart(2, '0');
+  const sStr = String(s).padStart(2, '0');
+  const khmerDigits = ['០', '១', '២', '៣', '៤', '៥', '៦', '៧', '៨', '៩'];
+  const toKh = (str: string) => str.split('').map((c) => khmerDigits[parseInt(c, 10)] ?? c).join('');
+  return `${toKh(mStr)}:${toKh(sStr)}`;
 }
 
 /**
@@ -110,23 +222,41 @@ export function hashPin(pin: string): string {
   return `${Math.abs(hash1).toString(36)}_${Math.abs(hash2).toString(36)}`;
 }
 
+export interface PinVerificationResult {
+  isValid: boolean;
+  isConsumed?: boolean;
+  message?: string;
+}
+
 /**
- * Verifies if entered PIN matches the expected PIN for that date or share link
+ * Detailed verification that checks for consumed (already used) OTP codes,
+ * URL token matching, daily deterministic PIN, or master key.
  */
-export function verifyPin(
+export function verifyPinDetailed(
   enteredPin: string,
   dateStr: string,
   settings?: TeacherSettings | null,
   pinTokenFromUrl?: string | null
-): boolean {
+): PinVerificationResult {
   const cleanEntered = enteredPin.trim();
-  if (!cleanEntered) return false;
+  if (!cleanEntered) {
+    return { isValid: false, message: 'សូមបញ្ចូលលេខកូដសម្ងាត់ ៤ ខ្ទង់' };
+  }
+
+  // 0. Check if this token or PIN has already been consumed (single-use defense)
+  if (isPinTokenConsumed(pinTokenFromUrl, cleanEntered)) {
+    return {
+      isValid: false,
+      isConsumed: true,
+      message: '🚫 លេខកូដ OTP នេះត្រូវបានប្រើប្រាស់រួចហើយ (Single-Use)! ប្រព័ន្ធបានប្តូរកូដថ្មីដោយស្វ័យប្រវត្តិ សូមស្នើសុំកូដថ្មីពីលោកគ្រូ។',
+    };
+  }
 
   // 1. If pinToken is present in the URL, verify against hash (Primary for per-share OTP and dynamic links)
   if (pinTokenFromUrl) {
     // Check dual-hash token
     if (hashPin(cleanEntered) === pinTokenFromUrl) {
-      return true;
+      return { isValid: true };
     }
     // Also check legacy single-hash for backward compatibility
     let legacyHash = 0x811c9dc5;
@@ -136,7 +266,7 @@ export function verifyPin(
       legacyHash = Math.imul(legacyHash, 0x01000193);
     }
     if (Math.abs(legacyHash).toString(36) === pinTokenFromUrl) {
-      return true;
+      return { isValid: true };
     }
 
     // In per_share mode, the token is strict: students cannot use an old daily PIN or fixed PIN!
@@ -147,39 +277,51 @@ export function verifyPin(
         settings.studentAttendancePin !== '1234' &&
         cleanEntered === settings.studentAttendancePin
       ) {
-        return true;
+        return { isValid: true };
       }
-      return false;
+      return { isValid: false, message: 'លេខកូដមិនត្រូវនឹងតំណភ្ជាប់ OTP នេះទេ' };
     }
   }
 
   // 2. Check against expected PIN for this date based on settings
   const expectedPin = getPinForDate(dateStr, settings);
   if (cleanEntered === expectedPin) {
-    return true;
+    return { isValid: true };
   }
 
   // 3. Fallback: Check if entered pin matches DDMM or MMDD date pin
   if (cleanEntered === getDateBasedPin(dateStr, 'DDMM') || cleanEntered === getDateBasedPin(dateStr, 'MMDD')) {
-    if (settings?.pinMode === 'date_format') return true;
+    if (settings?.pinMode === 'date_format') return { isValid: true };
   }
 
   // 4. Fallback: If in fixed mode, check settings custom PIN
   if (settings?.pinMode === 'fixed' && cleanEntered === (settings?.studentAttendancePin || '1234')) {
-    return true;
+    return { isValid: true };
   }
 
   // 5. Fallback: Daily security pin with default seed (in daily mode)
   if (settings?.pinMode === 'daily') {
     if (cleanEntered === getDailySecurityPin(dateStr, 'cambodia_moeys_attendance')) {
-      return true;
+      return { isValid: true };
     }
   }
 
   // 6. Master key fallback if teacher configured custom secret
   if (settings?.studentAttendancePin && cleanEntered === settings.studentAttendancePin) {
-    return true;
+    return { isValid: true };
   }
 
-  return false;
+  return { isValid: false, message: 'លេខកូដសម្ងាត់មិនត្រឹមត្រូវទេ' };
+}
+
+/**
+ * Backwards-compatible verifyPin wrapper returning boolean
+ */
+export function verifyPin(
+  enteredPin: string,
+  dateStr: string,
+  settings?: TeacherSettings | null,
+  pinTokenFromUrl?: string | null
+): boolean {
+  return verifyPinDetailed(enteredPin, dateStr, settings, pinTokenFromUrl).isValid;
 }

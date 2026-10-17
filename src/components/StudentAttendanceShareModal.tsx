@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Share2,
   Copy,
@@ -24,7 +24,17 @@ import type { Student, ClassRoom, AttendanceRecord, TeacherSettings } from '../t
 import { formatKhmerDate, fromKhmerNum, toKhmerNum } from '../utils/dateUtils';
 import { generateStudentQRCodeSVG } from '../utils/qrCode';
 import { encodeAttendanceForUrl, encodeRosterForUrl } from '../utils/attendanceShare';
-import { getPinForDate, hashPin, generateOneTimeSharePin, getDateBasedPin, getDailySecurityPin } from '../utils/pinUtils';
+import {
+  getPinForDate,
+  hashPin,
+  generateOneTimeSharePin,
+  getDateBasedPin,
+  getDailySecurityPin,
+  getActiveShareOtp,
+  rotateActiveShareOtp,
+  OTP_BROADCAST_CHANNEL,
+  ACTIVE_OTP_STORAGE_KEY,
+} from '../utils/pinUtils';
 
 interface StudentAttendanceShareModalProps {
   isOpen: boolean;
@@ -58,12 +68,42 @@ export const StudentAttendanceShareModal: React.FC<StudentAttendanceShareModalPr
   const [includeStudentList, setIncludeStudentList] = useState(false);
 
   // Dynamic One-Time Passcode (OTP) generated freshly on every share action / modal open
-  const [shareOtpPin, setShareOtpPin] = useState<string>(() => generateOneTimeSharePin());
+  const [shareOtpPin, setShareOtpPin] = useState<string>(() => getActiveShareOtp());
   const [isRotatingPin, setIsRotatingPin] = useState(false);
+
+  // Sync OTP with storage and broadcast events in real-time when student unlocks or code rotates
+  useEffect(() => {
+    if (!isOpen) return;
+    setShareOtpPin(getActiveShareOtp());
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === ACTIVE_OTP_STORAGE_KEY && e.newValue) {
+        setShareOtpPin(e.newValue);
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
+    let bc: BroadcastChannel | null = null;
+    if ('BroadcastChannel' in window) {
+      bc = new BroadcastChannel(OTP_BROADCAST_CHANNEL);
+      bc.onmessage = (event) => {
+        if (event.data?.type === 'OTP_ROTATED' && event.data.newPin) {
+          setShareOtpPin(event.data.newPin);
+        } else if (event.data?.type === 'PIN_CONSUMED') {
+          setShareOtpPin(getActiveShareOtp());
+        }
+      };
+    }
+
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      if (bc) bc.close();
+    };
+  }, [isOpen]);
 
   const handleRegeneratePin = () => {
     setIsRotatingPin(true);
-    const fresh = generateOneTimeSharePin();
+    const fresh = rotateActiveShareOtp();
     setShareOtpPin(fresh);
     setTimeout(() => setIsRotatingPin(false), 450);
   };
@@ -358,10 +398,14 @@ export const StudentAttendanceShareModal: React.FC<StudentAttendanceShareModalPr
                   <Sparkles className="w-3 h-3 text-indigo-600" />
                   <span>{isPerShare ? '⚡ OTP ផ្ញើម្តងប្តូរម្តង' : settings?.pinMode === 'fixed' ? 'Fixed PIN' : 'Daily PIN'}</span>
                 </span>
+                <span className="text-[10px] text-emerald-800 font-bold bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300 flex items-center gap-1">
+                  <Clock className="w-3 h-3 text-emerald-600" />
+                  <span>ចាក់សោវិញ ៥ នាទី</span>
+                </span>
               </div>
               <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
                 {isPerShare
-                  ? '🛡️ រាល់ពេលផ្ញើតំណ ឬចុច «ប្តូរកូដថ្មី» ប្រព័ន្ធបង្កើតកូដ ៤ ខ្ទង់ថ្មីភ្លាមៗ។ សិស្សមិនអាចយកកូដចាស់មកដោះសោលើតំណថ្មីបានឡើយ។'
+                  ? '🔒 កូដសុវត្ថិភាព OTP ប្រើបានតែម្តង (Single-Use)៖ ប្រព័ន្ធនឹងប្តូរកូដថ្មីដោយស្វ័យប្រវត្តិភ្លាមៗពេលសិស្សដោះសោរកត់វត្តមាន ហើយនឹងចាក់សោរវិញដោយស្វ័យប្រវត្តិក្រោយ ៥ នាទី។'
                   : 'ផ្តល់ជូនតែប្រធានថ្នាក់ ឬសិស្សសម្រាប់ដោះសោស្រង់វត្តមាន។'}
               </p>
             </div>

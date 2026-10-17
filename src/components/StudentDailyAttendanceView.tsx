@@ -29,7 +29,12 @@ import { db } from '../db/db';
 import { fromKhmerNum, formatKhmerDate, getTodayDateString } from '../utils/dateUtils';
 import { soundEffects } from '../utils/soundEffects';
 import { decodeAttendanceFromUrl, encodeAttendanceForUrl, decodeRosterFromUrl } from '../utils/attendanceShare';
-import { verifyPin } from '../utils/pinUtils';
+import {
+  verifyPinDetailed,
+  markPinTokenAsConsumed,
+  rotateActiveShareOtp,
+  formatKhmerCountdown,
+} from '../utils/pinUtils';
 import { Modal } from './common/Modal';
 
 const MORNING_TIME_SLOTS = [
@@ -130,6 +135,10 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
   const [pinError, setPinError] = useState('');
   const [showPinText, setShowPinText] = useState(false);
 
+  // 5-Minute Auto-Lock Timer state (ចាក់សោវិញស្វ័យប្រវត្តិក្នុ​ងពេល ៥ នាទី)
+  const [unlockExpiresAt, setUnlockExpiresAt] = useState<number | null>(null);
+  const [unlockRemainingSeconds, setUnlockRemainingSeconds] = useState<number>(0);
+
   // Brute-force protection & cooldown rate limiter
   const [failedAttempts, setFailedAttempts] = useState<number>(() => {
     try {
@@ -166,15 +175,31 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
     return () => clearInterval(timer);
   }, [lockoutUntil]);
 
-  // Auto-lock after 15 minutes of inactivity when unlocked
+  // Auto-lock countdown timer: exactly 5 minutes (300 seconds) after unlock
   useEffect(() => {
-    if (!isEditUnlocked) return;
-    const timeout = setTimeout(() => {
-      setIsEditUnlocked(false);
-      showToast('🔒 បានចាក់សោសុវត្ថិភាពឡើងវិញដោយស្វ័យប្រវត្តិ (ផុតកំណត់ពេល)!');
-    }, 15 * 60 * 1000);
-    return () => clearTimeout(timeout);
-  }, [isEditUnlocked]);
+    if (!isEditUnlocked || !unlockExpiresAt) {
+      setUnlockRemainingSeconds(0);
+      return;
+    }
+
+    const checkLock = () => {
+      const now = Date.now();
+      const diffSecs = Math.ceil((unlockExpiresAt - now) / 1000);
+      if (diffSecs <= 0) {
+        setIsEditUnlocked(false);
+        setUnlockExpiresAt(null);
+        setUnlockRemainingSeconds(0);
+        if (soundOn) soundEffects.playClick();
+        showToast('🔒 បានចាក់សោសុវត្ថិភាពឡើងវិញដោយស្វ័យប្រវត្តិ (ផុតកំណត់ ៥ នាទី)! សិស្សមិនអាចកែប្រែទៀតឡើយ។');
+      } else {
+        setUnlockRemainingSeconds(diffSecs);
+      }
+    };
+
+    checkLock();
+    const timer = setInterval(checkLock, 1000);
+    return () => clearInterval(timer);
+  }, [isEditUnlocked, unlockExpiresAt, soundOn]);
 
   // 1. Decoded student roster from URL parameter (enables 100% data availability on ANY mobile device)
   const urlRoster = useMemo(() => {
@@ -357,8 +382,28 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
     e.preventDefault();
     if (cooldownRemaining > 0) return;
 
-    const isPinValid = verifyPin(enteredPin, selectedDate, settings, initialPinToken);
-    if (isPinValid) {
+    const result = verifyPinDetailed(enteredPin, selectedDate, settings, initialPinToken);
+    if (result.isValid) {
+      // 1. Immediately mark this OTP token and pin as consumed so it cannot be reused (Single-Use)!
+      markPinTokenAsConsumed(initialPinToken, enteredPin);
+
+      // 2. Immediately auto-rotate to a brand new 4-digit OTP code for the next share/usage
+      rotateActiveShareOtp();
+
+      // 3. Strip pinToken from the URL in the browser address bar so URL cannot be forwarded with token
+      try {
+        if (typeof window !== 'undefined' && window.history) {
+          const url = new URL(window.location.href);
+          url.searchParams.delete('pinToken');
+          window.history.replaceState({}, '', url.toString());
+        }
+      } catch {}
+
+      // 4. Set 5-Minute Auto-Lock Timer (300 seconds)
+      const lockTime = Date.now() + 5 * 60 * 1000;
+      setUnlockExpiresAt(lockTime);
+      setUnlockRemainingSeconds(300);
+
       setIsEditUnlocked(true);
       setIsPinModalOpen(false);
       setEnteredPin('');
@@ -370,8 +415,14 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
         sessionStorage.removeItem('attendance_pin_lockout_until');
       } catch {}
       if (soundOn) soundEffects.playSuccess();
-      showToast('🔓 ដោះសោជោគជ័យ! លោកគ្រូ ឬប្រធានថ្នាក់អាចកត់វត្តមានបានហើយ។');
+      showToast('🔓 ដោះសោជោគជ័យ! ប្រព័ន្ធបានប្តូរកូដ OTP ថ្មីភ្លាមៗ ហើយនឹងចាក់សោវិញស្វ័យប្រវត្តិក្រោយ ៥ នាទី។');
     } else {
+      if (result.isConsumed) {
+        setPinError(result.message || '🚫 លេខកូដ OTP នេះត្រូវបានប្រើប្រាស់រួចហើយ (Single-Use)! ប្រព័ន្ធបានប្តូរកូដថ្មីដោយស្វ័យប្រវត្តិ សូមស្នើសុំកូដថ្មីពីលោកគ្រូ។');
+        if (soundOn) soundEffects.playAbsentChime();
+        return;
+      }
+
       const nextFailures = failedAttempts + 1;
       setFailedAttempts(nextFailures);
       try {
@@ -403,6 +454,8 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
   // Lock back into Read-Only mode
   const handleLockEdit = () => {
     setIsEditUnlocked(false);
+    setUnlockExpiresAt(null);
+    setUnlockRemainingSeconds(0);
     if (soundOn) soundEffects.playClick();
     showToast('🔒 បានចាក់សោសុវត្ថិភាពឡើងវិញជោគជ័យ! សិស្សមិនអាចលួចកែវត្តមានបានឡើយ។');
   };
@@ -567,8 +620,8 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
                 </h1>
                 {isEditUnlocked ? (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/30 border border-emerald-400/50 text-[10px] font-bold text-emerald-200">
-                    <Unlock className="w-2.5 h-2.5 text-emerald-300" />
-                    <span>កែប្រែ</span>
+                    <Clock className="w-2.5 h-2.5 text-amber-300 animate-pulse" />
+                    <span>កែប្រែ ({formatKhmerCountdown(unlockRemainingSeconds)})</span>
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-500/30 border border-violet-400/40 text-[10px] font-bold text-violet-200">
@@ -602,7 +655,7 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
                 title="ចាក់សោបញ្ចប់ការស្រង់វត្តមាន"
               >
                 <Lock className="w-3.5 h-3.5 mr-1" />
-                <span>ចាក់សោបញ្ចប់</span>
+                <span>ចាក់សោបញ្ចប់ ({formatKhmerCountdown(unlockRemainingSeconds)})</span>
               </button>
             ) : (
               <button
@@ -627,14 +680,24 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
       <main className="max-w-3xl mx-auto w-full px-2.5 sm:px-4 py-2.5 flex-1 space-y-2">
         {/* Status Indicator Banner (Slim, Single-line, No duplicate buttons!) */}
         {isEditUnlocked ? (
-          <div className="bg-emerald-50 border border-emerald-300 rounded-xl px-3 py-1.5 flex items-center justify-between text-xs text-emerald-900 shadow-2xs">
+          <div className="bg-emerald-50 border border-emerald-300 rounded-xl px-3 py-2 flex flex-wrap items-center justify-between gap-2 text-xs text-emerald-900 shadow-2xs">
             <span className="flex items-center font-bold">
               <Unlock className="w-3.5 h-3.5 mr-1.5 text-emerald-600 shrink-0" />
-              <span>កំពុងបើកសិទ្ធិស្រង់វត្តមាន (សម្រាប់គ្រូ/ប្រធានថ្នាក់)</span>
+              <span>កំពុងបើកសិទ្ធិស្រង់វត្តមាន (កូដ OTP បានប្តូរថ្មីរួច)</span>
             </span>
-            <span className="text-[11px] text-emerald-700 font-medium hidden sm:inline">
-              ចុច "ចាក់សោបញ្ចប់" ខាងលើពេលស្រង់រួច
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-100 border border-emerald-300 text-emerald-900 font-bold text-[11px]">
+                <Clock className="w-3 h-3 text-emerald-700 animate-pulse" />
+                <span>ចាក់សោវិញស្វ័យប្រវត្តិក្នុ​ងពេល៖ {formatKhmerCountdown(unlockRemainingSeconds)}</span>
+              </span>
+              <button
+                type="button"
+                onClick={handleLockEdit}
+                className="px-2 py-0.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-[11px] font-bold cursor-pointer"
+              >
+                ចាក់សោឥឡូវ
+              </button>
+            </div>
           </div>
         ) : (
           <div className="bg-blue-50/80 border border-blue-200/80 rounded-xl px-3 py-1.5 flex items-center justify-between text-[11px] text-blue-900 shadow-2xs">
@@ -1111,11 +1174,11 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
               <p className="text-indigo-800 text-[11px] leading-relaxed">
                 {initialPinToken ? (
                   <>
-                    ដើម្បីការពារកុំឱ្យសិស្សលួចកែវត្តមានខ្លួនឯង សូមបញ្ចូល <strong className="text-indigo-950 font-bold">លេខកូដសម្ងាត់ ៤ ខ្ទង់ (OTP)</strong> ដែលបានផ្ញើជូនតាមតំណភ្ជាប់នេះ ឬលេខកូដ Master Key របស់លោកគ្រូ-អ្នកគ្រូ។
+                    ដើម្បីការពារកុំឱ្យសិស្សលួចកែវត្តមានខ្លួនឯង សូមបញ្ចូល <strong className="text-indigo-950 font-bold">លេខកូដសម្ងាត់ ៤ ខ្ទង់ (OTP)</strong> ដែលបានផ្ញើជូនតាមតំណភ្ជាប់នេះ ឬលេខកូដ Master Key។ <span className="text-amber-800 font-bold">កូដនេះប្រើបានតែម្តងគត់ (Single-Use) ហើយប្រព័ន្ធនឹងចាក់សោរវិញដោយស្វ័យប្រវត្តិក្រោយ ៥ នាទី។</span>
                   </>
                 ) : (
                   <>
-                    ដើម្បីការពារកុំឱ្យសិស្សលួចកែវត្តមានខ្លួនឯង សូមបញ្ចូលលេខកូដសម្ងាត់ ៤ ខ្ទង់ដែលលោកគ្រូ-អ្នកគ្រូបានកំណត់ ឬបានផ្តល់ជូនសម្រាប់ថ្ងៃនេះ។
+                    ដើម្បីការពារកុំឱ្យសិស្សលួចកែវត្តមានខ្លួនឯង សូមបញ្ចូលលេខកូដសម្ងាត់ ៤ ខ្ទង់ដែលលោកគ្រូ-អ្នកគ្រូបានកំណត់ ឬបានផ្តល់ជូនសម្រាប់ថ្ងៃនេះ។ <span className="text-amber-800 font-bold">ប្រព័ន្ធនឹងចាក់សោរវិញដោយស្វ័យប្រវត្តិក្រោយ ៥ នាទី។</span>
                   </>
                 )}
               </p>

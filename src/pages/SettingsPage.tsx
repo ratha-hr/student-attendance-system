@@ -30,7 +30,17 @@ import {
 import type { TeacherSettings } from '../types';
 import { db } from '../db/db';
 import { toKhmerNum } from '../utils/dateUtils';
-import { getPinForDate, getDateBasedPin, getDailySecurityPin, generateOneTimeSharePin, type PinMode } from '../utils/pinUtils';
+import {
+  getPinForDate,
+  getDateBasedPin,
+  getDailySecurityPin,
+  generateOneTimeSharePin,
+  getActiveShareOtp,
+  rotateActiveShareOtp,
+  OTP_BROADCAST_CHANNEL,
+  ACTIVE_OTP_STORAGE_KEY,
+  type PinMode,
+} from '../utils/pinUtils';
 import { useUndoRedo } from '../context/UndoRedoContext';
 import { CrossDeviceSyncModal } from '../components/CrossDeviceSyncModal';
 
@@ -59,12 +69,42 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ settings, onRefresh 
   const [absenceWarningThreshold, setAbsenceWarningThreshold] = useState(settings?.absenceWarningThreshold || 3);
   const [studentAttendancePin, setStudentAttendancePin] = useState(settings?.studentAttendancePin || '1234');
   const [pinMode, setPinMode] = useState<PinMode>(settings?.pinMode || 'per_share');
-  const [testSharePin, setTestSharePin] = useState<string>(() => generateOneTimeSharePin());
+  const [testSharePin, setTestSharePin] = useState<string>(() => getActiveShareOtp());
   const [isSimulating, setIsSimulating] = useState(false);
+
+  // Sync OTP with storage and broadcast events in real-time
+  React.useEffect(() => {
+    setTestSharePin(getActiveShareOtp());
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === ACTIVE_OTP_STORAGE_KEY && e.newValue) {
+        setTestSharePin(e.newValue);
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
+    let bc: BroadcastChannel | null = null;
+    if ('BroadcastChannel' in window) {
+      bc = new BroadcastChannel(OTP_BROADCAST_CHANNEL);
+      bc.onmessage = (event) => {
+        if (event.data?.type === 'OTP_ROTATED' && event.data.newPin) {
+          setTestSharePin(event.data.newPin);
+        } else if (event.data?.type === 'PIN_CONSUMED') {
+          setTestSharePin(getActiveShareOtp());
+        }
+      };
+    }
+
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      if (bc) bc.close();
+    };
+  }, []);
 
   const handleSimulateNewPin = () => {
     setIsSimulating(true);
-    setTestSharePin(generateOneTimeSharePin());
+    const fresh = rotateActiveShareOtp();
+    setTestSharePin(fresh);
     setTimeout(() => setIsSimulating(false), 450);
   };
 
@@ -520,7 +560,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ settings, onRefresh 
                       </div>
 
                       <p className="text-[11px] text-slate-600 mt-2 leading-relaxed">
-                        រាល់ពេលចម្លងតំណ ឬផ្ញើទៅ Telegram ប្រព័ន្ធបង្កើតកូដ ៤ ខ្ទង់ថ្មីមួយភ្លាមៗ (Single-use OTP)។
+                        កូដ OTP ប្រើបានតែម្តង (Single-use)៖ ប្រព័ន្ធប្តូរកូដថ្មីភ្លាមៗពេលសិស្សដោះសោ ហើយនឹងចាក់សោរវិញដោយស្វ័យប្រវត្តិក្រោយ ៥ នាទី។
                       </p>
                     </div>
 
