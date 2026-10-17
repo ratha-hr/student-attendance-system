@@ -23,6 +23,7 @@ import {
   Sparkles,
   BookOpenCheck,
   AlertTriangle,
+  Pencil,
 } from 'lucide-react';
 import type { Student, ClassRoom, AttendanceRecord, Gender, TeacherSettings } from '../types';
 import type { NavTab } from '../components/Sidebar';
@@ -70,6 +71,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [genderFilter, setGenderFilter] = useState<'all' | 'ប្រុស' | 'ស្រី'>('all');
   const [viewingStudent, setViewingStudent] = useState<Student | null>(null);
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [lastSavedId, setLastSavedId] = useState<string | null>(null);
   const [isIDCardsOpen, setIsIDCardsOpen] = useState(false);
 
@@ -497,7 +499,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
       }
 
       // Don't intercept if any modal is open
-      if (isAddModalOpen || isPasteModalOpen || isIDCardsOpen || viewingStudent) {
+      if (isAddModalOpen || isPasteModalOpen || isIDCardsOpen || viewingStudent || editingStudent) {
         return;
       }
 
@@ -520,7 +522,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
 
     window.addEventListener('paste', handleGlobalPaste);
     return () => window.removeEventListener('paste', handleGlobalPaste);
-  }, [selectedClassId, classes, selectedCell, filteredStudents, isAddModalOpen, isPasteModalOpen, isIDCardsOpen, viewingStudent]);
+  }, [selectedClassId, classes, selectedCell, filteredStudents, isAddModalOpen, isPasteModalOpen, isIDCardsOpen, viewingStudent, editingStudent]);
 
   // Keyboard navigation inside table (Enter moves down, Tab moves right)
   const handleCellKeyDown = (
@@ -1684,7 +1686,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                 <th colSpan={3} className="py-1.5 px-2 border border-white/30 bg-[#0f3b73] print:bg-slate-200">គោត្តនាម នាម (ឪពុក)</th>
                 <th colSpan={3} className="py-1.5 px-2 border border-white/30 bg-[#0f3b73] print:bg-slate-200">គោត្តនាម នាម (ម្តាយ)</th>
                 <th rowSpan={2} className="py-3 px-2 border border-white/30 min-w-[120px]">ផ្សេងៗ</th>
-                <th rowSpan={2} className="py-3 px-2 border border-white/30 w-24 min-w-[95px] no-print bg-[#001730]">សកម្មភាព</th>
+                <th rowSpan={2} className="py-3 px-2 border border-white/30 w-32 min-w-[130px] no-print bg-[#001730]">សកម្មភាព</th>
               </tr>
 
               {/* Row 2 Sub-Headers */}
@@ -2264,6 +2266,15 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                         {/* សកម្មភាព (Sticky right on horizontal scroll) */}
                         <td className="py-1 px-1 text-center no-print bg-slate-50/95 sticky right-0 z-10 border-l border-slate-200 shadow-xs print:hidden">
                           <div className="flex items-center justify-center space-x-1">
+                            {/* កែទិន្នន័យសិស្ស */}
+                            <button
+                              onClick={() => setEditingStudent(stu)}
+                              className="p-1.5 text-amber-600 hover:bg-amber-100 rounded-lg transition-colors cursor-pointer"
+                              title="កែទិន្នន័យសិស្ស (Edit)"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+
                             {/* ចម្លងសិស្ស */}
                             <button
                               onClick={() => handleDirectDuplicate(stu)}
@@ -2600,14 +2611,30 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
             </div>
 
             <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => handleDirectDuplicate(viewingStudent)}
-                className="px-3.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl border border-indigo-200 transition-colors cursor-pointer"
-              >
-                <Copy className="w-3.5 h-3.5 mr-1 inline-block" />
-                ចម្លងសិស្សនេះ
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const target = viewingStudent;
+                    setViewingStudent(null);
+                    setEditingStudent(target);
+                  }}
+                  className="px-3.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-bold rounded-xl border border-amber-200 transition-colors cursor-pointer flex items-center space-x-1"
+                  title="កែប្រែព័ត៌មានសិស្សនេះ"
+                >
+                  <Pencil className="w-3.5 h-3.5 mr-1 inline-block" />
+                  <span>កែប្រែទិន្នន័យ</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleDirectDuplicate(viewingStudent)}
+                  className="px-3.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl border border-indigo-200 transition-colors cursor-pointer flex items-center space-x-1"
+                >
+                  <Copy className="w-3.5 h-3.5 mr-1 inline-block" />
+                  <span>ចម្លងសិស្សនេះ</span>
+                </button>
+              </div>
 
               <button
                 type="button"
@@ -2630,13 +2657,28 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
         settings={settings}
       />
 
-      {/* Dedicated Add Student Form Modal (តាមក្បាលតារាង & ភូមិសាស្ត្ររដ្ឋបាលកម្ពុជា) */}
+      {/* Dedicated Add / Edit Student Form Modal (តាមក្បាលតារាង & ភូមិសាស្ត្ររដ្ឋបាលកម្ពុជា) */}
       <AddStudentModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
+        isOpen={isAddModalOpen || !!editingStudent}
+        onClose={() => {
+          setIsAddModalOpen(false);
+          setEditingStudent(null);
+        }}
         classes={classes}
-        defaultClassId={activeClassId}
-        onSave={handleSaveNewStudent}
+        defaultClassId={editingStudent ? editingStudent.classId : activeClassId}
+        studentToEdit={editingStudent}
+        onSave={async (savedStudent) => {
+          if (editingStudent) {
+            await pushSnapshot(`កែប្រែព័ត៌មានសិស្ស "${savedStudent.nameKh}"`);
+            await db.students.update(savedStudent.id, savedStudent);
+            setLastSavedId(savedStudent.id);
+            setEditingStudent(null);
+            onRefresh();
+            showToast(`✨ បានកែប្រែព័ត៌មានសិស្ស "${savedStudent.nameKh}" ដោយជោគជ័យ!`);
+          } else {
+            await handleSaveNewStudent(savedStudent);
+          }
+        }}
         nextRollNo={1}
       />
 

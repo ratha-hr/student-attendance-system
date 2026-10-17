@@ -13,6 +13,7 @@ import {
   Building,
   Phone,
   BookmarkCheck,
+  Pencil,
 } from 'lucide-react';
 import type { Student, ClassRoom, Gender } from '../types';
 import {
@@ -30,6 +31,7 @@ interface AddStudentModalProps {
   defaultClassId: string;
   onSave: (student: Student) => Promise<void>;
   nextRollNo: number;
+  studentToEdit?: Student | null;
 }
 
 export const AddStudentModal: React.FC<AddStudentModalProps> = ({
@@ -39,6 +41,7 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({
   defaultClassId,
   onSave,
   nextRollNo,
+  studentToEdit,
 }) => {
   // All 25 provinces/capital of Cambodia
   const allProvinces = useMemo(() => getAllProvinces(), []);
@@ -98,49 +101,91 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({
   // Reset/Initialize on open
   useEffect(() => {
     if (isOpen) {
-      const targetClass = defaultClassId !== 'ALL' ? defaultClassId : (classes[0]?.id ?? '');
-      setClassId(targetClass);
-      setStudentCode(`STU-${String(Date.now()).slice(-4)}`);
-      setNameKh('');
-      setNameEn('');
-      setGender('ប្រុស');
-      setDob('');
-      setOriginSchool('វិទ្យាល័យ ហ៊ុន សែន កំពង់ត្រឡាច');
-      setStudentPhone('');
+      if (studentToEdit) {
+        setClassId(studentToEdit.classId || defaultClassId || (classes[0]?.id ?? ''));
+        setStudentCode(studentToEdit.studentCode || '');
+        setNameKh(studentToEdit.nameKh || '');
+        setNameEn(studentToEdit.nameEn || '');
+        setGender(studentToEdit.gender || 'ប្រុស');
+        setDob(studentToEdit.dob || '');
+        setOriginSchool(studentToEdit.originSchool || 'វិទ្យាល័យ ហ៊ុន សែន កំពង់ត្រឡាច');
+        setStudentPhone(studentToEdit.studentPhone || '');
 
-      // Default to Kampong Chhnang
-      setPobProvince('ខេត្តកំពង់ឆ្នាំង');
-      setPobDistrict('ស្រុកកំពង់ត្រឡាច');
-      setPobCommune('ឃុំកំពង់ត្រឡាច');
-      setPobVillage('');
+        setPobProvince(studentToEdit.pobProvince || studentToEdit.pob || 'ខេត្តកំពង់ឆ្នាំង');
+        setPobDistrict(studentToEdit.pobDistrict || 'ស្រុកកំពង់ត្រឡាច');
+        setPobCommune(studentToEdit.pobCommune || 'ឃុំកំពង់ត្រឡាច');
+        setPobVillage(studentToEdit.pobVillage || '');
 
-      setAddrProvince('ខេត្តកំពង់ឆ្នាំង');
-      setAddrDistrict('ស្រុកកំពង់ត្រឡាច');
-      setAddrCommune('ឃុំកំពង់ត្រឡាច');
-      setAddrVillage('');
-      setSameAsPob(true);
+        setAddrProvince(studentToEdit.addrProvince || studentToEdit.currentAddress || 'ខេត្តកំពង់ឆ្នាំង');
+        setAddrDistrict(studentToEdit.addrDistrict || 'ស្រុកកំពង់ត្រឡាច');
+        setAddrCommune(studentToEdit.addrCommune || 'ឃុំកំពង់ត្រឡាច');
+        setAddrVillage(studentToEdit.addrVillage || '');
+        setSameAsPob(false);
 
-      setOrphanStatus('none');
-      setIsDisabled(false);
-      setIsPoor(false);
-      setHasScholarship(false);
-      setStayInPagoda(false);
+        setOrphanStatus(studentToEdit.orphanStatus || 'none');
+        setIsDisabled(!!studentToEdit.isDisabled);
+        setIsPoor(!!studentToEdit.isPoor);
+        setHasScholarship(!!studentToEdit.hasScholarship);
+        setStayInPagoda(!!studentToEdit.stayInPagoda);
 
-      setFatherName('');
-      setFatherOccupation('');
-      setFatherPhone('');
-      setMotherName('');
-      setMotherOccupation('');
-      setMotherPhone('');
-      setGuardianName('');
-      setGuardianRelationship('ឪពុក');
-      setGuardianOccupation('');
-      setGuardianPhone('');
-      setOtherNotes('');
-      setErrors({});
-      setIsSubmitting(false);
+        setFatherName(studentToEdit.fatherName || '');
+        setFatherOccupation(studentToEdit.fatherOccupation || '');
+        setFatherPhone(studentToEdit.fatherPhone || '');
+        setMotherName(studentToEdit.motherName || '');
+        setMotherOccupation(studentToEdit.motherOccupation || '');
+        setMotherPhone(studentToEdit.motherPhone || '');
+        setGuardianName(studentToEdit.guardianName || '');
+        setGuardianRelationship(studentToEdit.guardianRelationship || 'ឪពុក');
+        setGuardianOccupation(studentToEdit.guardianOccupation || '');
+        setGuardianPhone(studentToEdit.guardianPhone || '');
+        setOtherNotes(studentToEdit.otherNotes || studentToEdit.notes || '');
+        setErrors({});
+        setIsSubmitting(false);
+      } else {
+        const targetClass = defaultClassId !== 'ALL' ? defaultClassId : (classes[0]?.id ?? '');
+        setClassId(targetClass);
+        setStudentCode(`STU-${String(Date.now()).slice(-4)}`);
+        setNameKh('');
+        setNameEn('');
+        setGender('ប្រុស');
+        setDob('');
+        setOriginSchool('វិទ្យាល័យ ហ៊ុន សែន កំពង់ត្រឡាច');
+        setStudentPhone('');
+
+        // Default to Kampong Chhnang
+        setPobProvince('ខេត្តកំពង់ឆ្នាំង');
+        setPobDistrict('ស្រុកកំពង់ត្រឡាច');
+        setPobCommune('ឃុំកំពង់ត្រឡាច');
+        setPobVillage('');
+
+        setAddrProvince('ខេត្តកំពង់ឆ្នាំង');
+        setAddrDistrict('ស្រុកកំពង់ត្រឡាច');
+        setAddrCommune('ឃុំកំពង់ត្រឡាច');
+        setAddrVillage('');
+        setSameAsPob(true);
+
+        setOrphanStatus('none');
+        setIsDisabled(false);
+        setIsPoor(false);
+        setHasScholarship(false);
+        setStayInPagoda(false);
+
+        setFatherName('');
+        setFatherOccupation('');
+        setFatherPhone('');
+        setMotherName('');
+        setMotherOccupation('');
+        setMotherPhone('');
+        setGuardianName('');
+        setGuardianRelationship('ឪពុក');
+        setGuardianOccupation('');
+        setGuardianPhone('');
+        setOtherNotes('');
+        setErrors({});
+        setIsSubmitting(false);
+      }
     }
-  }, [isOpen, defaultClassId, classes]);
+  }, [isOpen, defaultClassId, classes, studentToEdit]);
 
   // Sync POB to Addr if sameAsPob checked
   useEffect(() => {
@@ -236,10 +281,11 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({
         .filter(Boolean)
         .join(' ');
 
-      const newStudent: Student = {
-        id: `stu-${Date.now()}`,
+      const studentData: Student = {
+        ...(studentToEdit || {}),
+        id: studentToEdit?.id || `stu-${Date.now()}`,
         classId,
-        rollNo: 1, // Will be placed at Row 1
+        rollNo: studentToEdit?.rollNo || 1, // Keep existing rollNo if editing, otherwise row 1
         studentCode: studentCode.trim() || `STU-${String(Date.now()).slice(-4)}`,
         nameKh: nameKh.trim(),
         nameEn: nameEn.trim(),
@@ -279,14 +325,14 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({
         guardianOccupation: guardianOccupation.trim(),
         guardianPhone: guardianPhone.trim(),
         otherNotes: otherNotes.trim(),
-        status: 'active',
-        createdAt: new Date().toISOString(),
+        status: studentToEdit?.status || 'active',
+        createdAt: studentToEdit?.createdAt || new Date().toISOString(),
       };
 
-      await onSave(newStudent);
+      await onSave(studentData);
       onClose();
     } catch (err) {
-      console.error('Error saving new student:', err);
+      console.error('Error saving student:', err);
       alert('មានបញ្ហាក្នុងការរក្សាទុកសិស្ស! សូមព្យាយាមម្តងទៀត។');
     } finally {
       setIsSubmitting(false);
@@ -304,13 +350,24 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({
         <div className="px-6 py-4 bg-gradient-to-r from-[#002060] via-[#0b3c7b] to-[#002060] text-white flex items-center justify-between shrink-0 shadow-sm">
           <div className="flex items-center space-x-3">
             <div className="p-2 bg-white/10 rounded-xl backdrop-blur-xs">
-              <UserPlus className="w-5 h-5 text-emerald-300" />
+              {studentToEdit ? (
+                <Pencil className="w-5 h-5 text-amber-300" />
+              ) : (
+                <UserPlus className="w-5 h-5 text-emerald-300" />
+              )}
             </div>
             <div>
               <h3 className="text-base sm:text-lg font-black tracking-wide flex items-center gap-2">
-                ទម្រង់បញ្ចូលព័ត៌មានសិស្សថ្មី
-                <span className="text-[11px] font-normal px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
-                  រៀបតាមក្បាលតារាងផ្លូវការ
+                {studentToEdit ? (
+                  <>
+                    <span>កែប្រែព័ត៌មានសិស្ស</span>
+                    <span className="text-amber-300 font-bold">({studentToEdit.nameKh})</span>
+                  </>
+                ) : (
+                  <span>ទម្រង់បញ្ចូលព័ត៌មានសិស្សថ្មី</span>
+                )}
+                <span className={`text-[11px] font-normal px-2 py-0.5 rounded-full border ${studentToEdit ? 'bg-amber-500/20 text-amber-300 border-amber-400/30' : 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30'}`}>
+                  {studentToEdit ? 'កែប្រែទិន្នន័យសិស្ស' : 'រៀបតាមក្បាលតារាងផ្លូវការ'}
                 </span>
               </h3>
               <p className="text-xs text-blue-200">
@@ -900,14 +957,16 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({
               type="button"
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-2 text-xs sm:text-sm disabled:opacity-50"
+              className={`px-6 py-2 text-white font-bold rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-2 text-xs sm:text-sm disabled:opacity-50 ${
+                studentToEdit ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'
+              }`}
             >
               {isSubmitting ? (
                 <>កំពុងរក្សាទុក...</>
               ) : (
                 <>
-                  <CheckCircle2 className="w-4 h-4 text-emerald-200" />
-                  រក្សាទុកសិស្សថ្មី
+                  <CheckCircle2 className="w-4 h-4 text-white" />
+                  {studentToEdit ? 'រក្សាទុកការកែប្រែ' : 'រក្សាទុកសិស្សថ្មី'}
                 </>
               )}
             </button>
