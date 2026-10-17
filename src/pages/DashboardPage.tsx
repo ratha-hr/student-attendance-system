@@ -75,46 +75,22 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       (r) => r.date === selectedDate && activeStudentIds.has(r.studentId) && activeClassIds.has(r.classId)
     );
 
-    // Map each student to their resolved status for selectedDate and selectedSession
-    const studentStatusMap = new Map<string, AttendanceStatus>();
-
-    if (selectedSession !== 'all') {
-      const sessionRecords = dateRecords.filter((r) => r.session === selectedSession);
-      sessionRecords.forEach((r) => {
-        studentStatusMap.set(r.studentId, r.status);
-      });
-    } else {
-      // Priority hierarchy when merging sessions:
-      // absent (4) > permission (3) > late (2) > present (1)
-      const priorityWeight: Record<AttendanceStatus, number> = {
-        absent: 4,
-        permission: 3,
-        late: 2,
-        present: 1,
-      };
-
-      dateRecords.forEach((r) => {
-        const prev = studentStatusMap.get(r.studentId);
-        if (!prev) {
-          studentStatusMap.set(r.studentId, r.status);
-        } else {
-          if ((priorityWeight[r.status] || 0) > (priorityWeight[prev] || 0)) {
-            studentStatusMap.set(r.studentId, r.status);
-          }
-        }
-      });
-    }
+    // Resolve attendance records for selectedDate and selectedSession
+    // When selectedSession === 'all' (ពេញមួយថ្ងៃ), aggregate and sum across both morning and afternoon sessions directly
+    const targetDateRecords = selectedSession !== 'all'
+      ? dateRecords.filter((r) => r.session === selectedSession)
+      : dateRecords;
 
     let presentToday = 0;
     let permissionToday = 0;
     let absentToday = 0;
     let lateToday = 0;
 
-    studentStatusMap.forEach((status) => {
-      if (status === 'present') presentToday++;
-      else if (status === 'permission') permissionToday++;
-      else if (status === 'absent') absentToday++;
-      else if (status === 'late') lateToday++;
+    targetDateRecords.forEach((r) => {
+      if (r.status === 'present') presentToday++;
+      else if (r.status === 'permission') permissionToday++;
+      else if (r.status === 'absent') absentToday++;
+      else if (r.status === 'late') lateToday++;
     });
 
     const totalRecorded = presentToday + permissionToday + absentToday + lateToday;
@@ -143,18 +119,21 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     // Class performance overview for currently active classes
     const classStats = activeClasses.map((c) => {
       const classStudents = students.filter((s) => s.classId === c.id);
+      const studentIds = new Set(classStudents.map((s) => s.id));
+      const targetClassRecords = targetDateRecords.filter(
+        (r) => r.classId === c.id && studentIds.has(r.studentId)
+      );
 
       let present = 0;
       let late = 0;
       let permission = 0;
       let absent = 0;
 
-      classStudents.forEach((s) => {
-        const st = studentStatusMap.get(s.id);
-        if (st === 'present') present++;
-        else if (st === 'late') late++;
-        else if (st === 'permission') permission++;
-        else if (st === 'absent') absent++;
+      targetClassRecords.forEach((r) => {
+        if (r.status === 'present') present++;
+        else if (r.status === 'late') late++;
+        else if (r.status === 'permission') permission++;
+        else if (r.status === 'absent') absent++;
       });
 
       return {
@@ -455,7 +434,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   ដ្យាក្រាមវត្តមាន{selectedDate === today ? 'ថ្ងៃនេះ' : ''}{selectedSession === 'morning' ? ' (ពេលព្រឹក)' : selectedSession === 'afternoon' ? ' (ពេលរសៀល)' : ' (ពេញមួយថ្ងៃ)'}
                 </h3>
                 <p className="text-[11px] text-slate-400">
-                  សរុបបានកត់ {toKhmerNum(totalRecordedToday)} នាក់
+                  {selectedSession === 'all'
+                    ? `សរុបបានកត់ ${toKhmerNum(totalRecordedToday)} លើក/នាក់ (បូកសរុបទាំង២ពេល)`
+                    : `សរុបបានកត់ ${toKhmerNum(totalRecordedToday)} នាក់`}
                 </p>
               </div>
             </div>
@@ -643,7 +624,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 <TrendingUp className="w-4 h-4" />
               </div>
               <h3 className="font-bold text-sm text-slate-800">
-                ស្ថានភាពវត្តមានតាមថ្នាក់នីមួយៗ (Class Performance) {selectedSession === 'morning' ? '• វេនព្រឹក' : selectedSession === 'afternoon' ? '• វេនរសៀល' : '• ពេញមួយថ្ងៃ'}
+                ស្ថានភាពវត្តមានតាមថ្នាក់នីមួយៗ (Class Performance) {selectedSession === 'morning' ? '• វេនព្រឹក' : selectedSession === 'afternoon' ? '• វេនរសៀល' : '• ពេញមួយថ្ងៃ (បូកទាំង២ពេល)'}
               </h3>
             </div>
             <button
