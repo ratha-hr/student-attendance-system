@@ -95,6 +95,21 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
     });
   }, [sortedClassList, selectedGradeFilter, searchQuery]);
 
+  // Auto-detect grade when typing class name (e.g. typing "7" or "7A" auto-selects Grade 7)
+  const handleClassNameChange = (val: string) => {
+    setFormClassName(val);
+    const gNum = parseGradeNumber(val);
+    if (gNum >= 7 && gNum <= 12) {
+      setFormGrade(String(gNum));
+      if (gNum === 11 || gNum === 12) {
+        const detectedStream = getStreamForClass(String(gNum), val);
+        if (detectedStream === 'science' || detectedStream === 'social') {
+          setFormStream(detectedStream);
+        }
+      }
+    }
+  };
+
   // Handle adding class
   const handleAddClassSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -275,12 +290,12 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
             }`}
           >
             <Plus className="w-4 h-4 mr-1.5" />
-            <span>+ បន្ថែមថ្នាក់ថ្មី</span>
+            <span>បន្ថែមថ្នាក់ថ្មី</span>
             {isAddFormOpen ? <ChevronUp className="w-4 h-4 ml-1.5" /> : <ChevronDown className="w-4 h-4 ml-1.5" />}
           </button>
         </div>
 
-        {/* ADD CLASS FORM (Collapsible: Only opens when clicking [+ បន្ថែមថ្នាក់ថ្មី]) */}
+        {/* ADD CLASS FORM (Collapsible: Only opens when clicking [បន្ថែមថ្នាក់ថ្មី]) */}
         {isAddFormOpen && (
           <div className="bg-blue-50/60 p-3.5 sm:p-4 rounded-2xl border-2 border-blue-200 shadow-xs space-y-3 animate-fade-in">
             <div className="flex items-center justify-between border-b border-blue-200/80 pb-2">
@@ -318,7 +333,7 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
                     type="text"
                     required
                     value={formClassName}
-                    onChange={(e) => setFormClassName(e.target.value)}
+                    onChange={(e) => handleClassNameChange(e.target.value)}
                     placeholder="ឧ. 7A, 10B, 11A..."
                     className="w-full px-3 py-1.5 text-xs sm:text-sm font-bold bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 shadow-2xs"
                   />
@@ -492,7 +507,7 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
                     className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 cursor-pointer shadow-2xs"
                   >
                     <Plus className="w-4 h-4 mr-1.5" />
-                    + បន្ថែមថ្នាក់រៀនដំបូង
+                    <span>បន្ថែមថ្នាក់រៀនដំបូង</span>
                   </button>
                 </div>
               </div>

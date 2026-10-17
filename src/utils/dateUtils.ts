@@ -104,6 +104,44 @@ export function checkIfHolidayDate(dateStr: string): { isHoliday: boolean; holid
   };
 }
 
+// User-declared custom holidays stored in localStorage & synced across daily/monthly views
+export function getCustomHolidays(): Record<string, string> {
+  try {
+    const raw = localStorage.getItem('app_custom_holidays');
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function setCustomHoliday(dateStr: string, isHoliday: boolean, note: string = ''): void {
+  try {
+    const map = getCustomHolidays();
+    if (isHoliday) {
+      map[dateStr] = note.trim() || 'សាលារៀនឈប់សម្រាកផ្លូវការ';
+    } else {
+      delete map[dateStr];
+    }
+    localStorage.setItem('app_custom_holidays', JSON.stringify(map));
+    window.dispatchEvent(new Event('app_holidays_updated'));
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+export function isDateDeclaredHoliday(dateStr: string): { isHoliday: boolean; holidayName: string | null; isSun: boolean } {
+  const customMap = getCustomHolidays();
+  if (customMap[dateStr]) {
+    const d = new Date(dateStr);
+    return {
+      isHoliday: true,
+      holidayName: customMap[dateStr],
+      isSun: !isNaN(d.getTime()) && d.getDay() === 0,
+    };
+  }
+  return checkIfHolidayDate(dateStr);
+}
+
 // សត្វទាំង ១២ (Khmer 12 Zodiac Animal Years)
 export const KHMER_ANIMALS = [
   'ជូត', 'ឆ្លូវ', 'ខាល', 'ថោះ', 'រោង', 'ម្សាញ់', 'មមី', 'មមែ', 'វក', 'រកា', 'ច', 'កុរ'

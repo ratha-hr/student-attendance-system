@@ -22,12 +22,20 @@ import {
 } from 'lucide-react';
 import type { Student, ClassRoom, AttendanceRecord, AttendanceStatus, TeacherSettings } from '../types';
 import { db } from '../db/db';
-import { useUndoRedo } from '../context/UndoRedoContext';
-import { toKhmerNum, fromKhmerNum, formatKhmerDate, getTodayDateString, checkIfHolidayDate } from '../utils/dateUtils';
+import {
+  toKhmerNum,
+  fromKhmerNum,
+  formatKhmerDate,
+  getTodayDateString,
+  checkIfHolidayDate,
+  isDateDeclaredHoliday,
+  setCustomHoliday,
+} from '../utils/dateUtils';
 import { TelegramShareModal } from '../components/TelegramShareModal';
 import { StudentAttendanceShareModal } from '../components/StudentAttendanceShareModal';
 import { soundEffects } from '../utils/soundEffects';
 import { PrintButton } from '../components/common/PrintButton';
+import { useUndoRedo } from '../context/UndoRedoContext';
 
 // ម៉ោងចេញចូលសម្រាប់មុខវិជ្ជា វេនព្រឹក និងវេនរសៀល
 const MORNING_HOURS = [
@@ -75,22 +83,40 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
   const [statusFilter, setStatusFilter] = useState<'all' | 'present' | 'permission' | 'absent' | 'late' | 'notRecorded'>('all');
   const [soundOn, setSoundOn] = useState(true);
 
-  // Holiday detection & override
-  const holidayInfo = useMemo(() => checkIfHolidayDate(selectedDate), [selectedDate]);
+  // Holiday detection & override (supports national holidays, Sundays & user-declared holidays)
+  const holidayInfo = useMemo(() => isDateDeclaredHoliday(selectedDate), [selectedDate]);
   const [isHolidayMode, setIsHolidayMode] = useState<boolean>(false);
   const [holidayNote, setHolidayNote] = useState<string>('');
 
-  // Auto-detect and prefill holiday
+  // Auto-detect and prefill holiday with persistence
   useEffect(() => {
-    const info = checkIfHolidayDate(selectedDate);
+    const info = isDateDeclaredHoliday(selectedDate);
     if (info.isHoliday) {
       setIsHolidayMode(true);
-      setHolidayNote(info.holidayName ? `ឈប់សម្រាក៖ ${info.holidayName}` : 'ថ្ងៃឈប់សម្រាកប្រចាំសប្ដាហ៍ (ថ្ងៃអាទិត្យ)');
+      setHolidayNote(info.holidayName || (info.isSun ? 'ថ្ងៃអាទិត្យ (ថ្ងៃឈប់សម្រាកប្រចាំសប្ដាហ៍)' : 'សាលារៀនឈប់សម្រាកផ្លូវការ'));
     } else {
       setIsHolidayMode(false);
       setHolidayNote('');
     }
   }, [selectedDate]);
+
+  const handleToggleHoliday = (checked: boolean) => {
+    setIsHolidayMode(checked);
+    const note = (holidayNote || '').trim() || holidayInfo.holidayName || 'សាលារៀនឈប់សម្រាកផ្លូវការ';
+    if (checked) {
+      setHolidayNote(note);
+    }
+    setCustomHoliday(selectedDate, checked, note);
+    onRefresh();
+  };
+
+  const handleHolidayNoteChange = (text: string) => {
+    setHolidayNote(text);
+    if (isHolidayMode) {
+      setCustomHoliday(selectedDate, true, text);
+      onRefresh();
+    }
+  };
 
   const { pushSnapshot } = useUndoRedo();
 
@@ -383,7 +409,7 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
                 <input
                   type="checkbox"
                   checked={isHolidayMode}
-                  onChange={(e) => setIsHolidayMode(e.target.checked)}
+                  onChange={(e) => handleToggleHoliday(e.target.checked)}
                   className="w-4 h-4 text-rose-600 rounded border-rose-300 focus:ring-rose-500 cursor-pointer"
                 />
                 <span className="text-xs sm:text-sm font-black text-rose-700 whitespace-nowrap">
@@ -394,7 +420,7 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
                 <input
                   type="text"
                   value={holidayNote}
-                  onChange={(e) => setHolidayNote(e.target.value)}
+                  onChange={(e) => handleHolidayNoteChange(e.target.value)}
                   placeholder="វាយកំណត់ត្រាថ្ងៃឈប់..."
                   className="ml-2 px-2.5 py-1 text-xs sm:text-sm font-bold bg-white text-rose-900 border border-rose-300 rounded-xl focus:ring-2 focus:ring-rose-500 w-48 shadow-2xs"
                 />
@@ -404,37 +430,92 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
         </div>
       </div>
 
-      {/* Daily Summary Statistics Bar - Clear, bold, readable */}
+      {/* Daily Summary Statistics Bar - Interactive Filters matching Students table */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 no-print">
         {/* Card 1: សិស្សសរុប */}
-        <div className="bg-white p-3.5 rounded-2xl border border-slate-200 text-center shadow-2xs">
-          <p className="text-xs sm:text-sm font-bold text-slate-500 truncate whitespace-nowrap">សិស្សសរុប</p>
-          <p className="text-2xl sm:text-3xl font-black text-slate-800 mt-1 font-mono">{dailyStats.total}</p>
-        </div>
+        <button
+          type="button"
+          onClick={() => setStatusFilter('all')}
+          className={`p-3.5 rounded-2xl border text-center transition-all cursor-pointer shadow-2xs ${
+            statusFilter === 'all'
+              ? 'bg-slate-900 text-white border-slate-900 ring-2 ring-slate-900 ring-offset-2 scale-102'
+              : 'bg-white text-slate-800 border-slate-200 hover:border-slate-400 hover:shadow-xs'
+          }`}
+          title="ចុចដើម្បីមើលសិស្សទាំងអស់"
+        >
+          <p className={`text-xs sm:text-sm font-bold truncate whitespace-nowrap ${statusFilter === 'all' ? 'text-slate-300' : 'text-slate-500'}`}>
+            សិស្សសរុប
+          </p>
+          <p className="text-2xl sm:text-3xl font-black mt-1 font-mono">{dailyStats.total}</p>
+        </button>
 
         {/* Card 2: មក (Present) */}
-        <div className="bg-emerald-50/70 p-3.5 rounded-2xl border border-emerald-200 text-center shadow-2xs">
-          <p className="text-xs sm:text-sm font-bold text-emerald-700 truncate whitespace-nowrap">មក (Present)</p>
-          <p className="text-2xl sm:text-3xl font-black text-emerald-700 mt-1 font-mono">{dailyStats.present}</p>
-        </div>
+        <button
+          type="button"
+          onClick={() => setStatusFilter('present')}
+          className={`p-3.5 rounded-2xl border text-center transition-all cursor-pointer shadow-2xs ${
+            statusFilter === 'present'
+              ? 'bg-emerald-600 text-white border-emerald-700 ring-2 ring-emerald-600 ring-offset-2 scale-102'
+              : 'bg-emerald-50/70 text-emerald-800 border-emerald-200 hover:border-emerald-400 hover:shadow-xs'
+          }`}
+          title="ចុចដើម្បីចម្រាញ់មើលតែសិស្សមានវត្តមាន (មក)"
+        >
+          <p className={`text-xs sm:text-sm font-bold truncate whitespace-nowrap ${statusFilter === 'present' ? 'text-emerald-100' : 'text-emerald-700'}`}>
+            មក (Present)
+          </p>
+          <p className="text-2xl sm:text-3xl font-black mt-1 font-mono">{dailyStats.present}</p>
+        </button>
 
         {/* Card 3: ច្បាប់ (Excused) */}
-        <div className="bg-amber-50/70 p-3.5 rounded-2xl border border-amber-200 text-center shadow-2xs">
-          <p className="text-xs sm:text-sm font-bold text-amber-700 truncate whitespace-nowrap">ច្បាប់ (Excused)</p>
-          <p className="text-2xl sm:text-3xl font-black text-amber-700 mt-1 font-mono">{dailyStats.permission}</p>
-        </div>
+        <button
+          type="button"
+          onClick={() => setStatusFilter('permission')}
+          className={`p-3.5 rounded-2xl border text-center transition-all cursor-pointer shadow-2xs ${
+            statusFilter === 'permission'
+              ? 'bg-amber-500 text-white border-amber-600 ring-2 ring-amber-500 ring-offset-2 scale-102'
+              : 'bg-amber-50/70 text-amber-800 border-amber-200 hover:border-amber-400 hover:shadow-xs'
+          }`}
+          title="ចុចដើម្បីចម្រាញ់មើលតែសិស្សសុំច្បាប់"
+        >
+          <p className={`text-xs sm:text-sm font-bold truncate whitespace-nowrap ${statusFilter === 'permission' ? 'text-amber-100' : 'text-amber-700'}`}>
+            ច្បាប់ (Excused)
+          </p>
+          <p className="text-2xl sm:text-3xl font-black mt-1 font-mono">{dailyStats.permission}</p>
+        </button>
 
         {/* Card 4: ឥតច្បាប់ (Absent) */}
-        <div className="bg-rose-50/70 p-3.5 rounded-2xl border border-rose-200 text-center shadow-2xs">
-          <p className="text-xs sm:text-sm font-bold text-rose-700 truncate whitespace-nowrap">ឥតច្បាប់ (Absent)</p>
-          <p className="text-2xl sm:text-3xl font-black text-rose-700 mt-1 font-mono">{dailyStats.absent}</p>
-        </div>
+        <button
+          type="button"
+          onClick={() => setStatusFilter('absent')}
+          className={`p-3.5 rounded-2xl border text-center transition-all cursor-pointer shadow-2xs ${
+            statusFilter === 'absent'
+              ? 'bg-rose-600 text-white border-rose-700 ring-2 ring-rose-600 ring-offset-2 scale-102'
+              : 'bg-rose-50/70 text-rose-800 border-rose-200 hover:border-rose-400 hover:shadow-xs'
+          }`}
+          title="ចុចដើម្បីចម្រាញ់មើលតែសិស្សអវត្តមានឥតច្បាប់"
+        >
+          <p className={`text-xs sm:text-sm font-bold truncate whitespace-nowrap ${statusFilter === 'absent' ? 'text-rose-100' : 'text-rose-700'}`}>
+            ឥតច្បាប់ (Absent)
+          </p>
+          <p className="text-2xl sm:text-3xl font-black mt-1 font-mono">{dailyStats.absent}</p>
+        </button>
 
         {/* Card 5: យឺត (Late) */}
-        <div className="bg-blue-50/70 p-3.5 rounded-2xl border border-blue-200 text-center shadow-2xs col-span-2 sm:col-span-1">
-          <p className="text-xs sm:text-sm font-bold text-blue-700 truncate whitespace-nowrap">យឺត (Late)</p>
-          <p className="text-2xl sm:text-3xl font-black text-blue-700 mt-1 font-mono">{dailyStats.late}</p>
-        </div>
+        <button
+          type="button"
+          onClick={() => setStatusFilter('late')}
+          className={`p-3.5 rounded-2xl border text-center transition-all cursor-pointer shadow-2xs col-span-2 sm:col-span-1 ${
+            statusFilter === 'late'
+              ? 'bg-blue-600 text-white border-blue-700 ring-2 ring-blue-600 ring-offset-2 scale-102'
+              : 'bg-blue-50/70 text-blue-800 border-blue-200 hover:border-blue-400 hover:shadow-xs'
+          }`}
+          title="ចុចដើម្បីចម្រាញ់មើលតែសិស្សមកយឺត"
+        >
+          <p className={`text-xs sm:text-sm font-bold truncate whitespace-nowrap ${statusFilter === 'late' ? 'text-blue-100' : 'text-blue-700'}`}>
+            យឺត (Late)
+          </p>
+          <p className="text-2xl sm:text-3xl font-black mt-1 font-mono">{dailyStats.late}</p>
+        </button>
       </div>
 
       {/* Quick Filter Status Chips & Sound Toggle */}

@@ -23,6 +23,7 @@ import {
   getKhmerHoliday,
   isSunday,
   getDaysInMonth,
+  isDateDeclaredHoliday,
 } from '../utils/dateUtils';
 
 interface MonthlyAttendancePageProps {
@@ -69,15 +70,18 @@ export const MonthlyAttendancePage: React.FC<MonthlyAttendancePageProps> = ({
   const daysInMonth = getDaysInMonth(selectedYear, selectedMonth);
   const daysArray = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
-  // Analyze holidays and sundays in this month
+  // Analyze holidays (both national and teacher-declared holidays) and sundays in this month
   const monthHolidays = useMemo(() => {
     const holidays: { day: number; name: string }[] = [];
     daysArray.forEach((day) => {
-      const hName = getKhmerHoliday(selectedMonth + 1, day);
-      if (hName) holidays.push({ day, name: hName });
+      const dateStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const info = isDateDeclaredHoliday(dateStr);
+      if (info.isHoliday && !info.isSun) {
+        holidays.push({ day, name: info.holidayName || 'ថ្ងៃឈប់សម្រាក' });
+      }
     });
     return holidays;
-  }, [selectedMonth, daysArray]);
+  }, [selectedYear, selectedMonth, daysArray]);
 
   const sundaysCount = useMemo(() => {
     return daysArray.filter((day) => isSunday(selectedYear, selectedMonth, day)).length;
@@ -99,11 +103,14 @@ export const MonthlyAttendancePage: React.FC<MonthlyAttendancePageProps> = ({
       attendanceRecords.forEach((r) => {
         if (r.studentId === stu.id && r.date.startsWith(datePrefix)) {
           const day = parseInt(r.date.slice(8, 10), 10);
+          const hInfo = isDateDeclaredHoliday(r.date);
           dayMap[day] = { status: r.status, reason: r.reason };
-          if (r.status === 'present') present++;
-          else if (r.status === 'permission') permission++;
-          else if (r.status === 'absent') absent++;
-          else if (r.status === 'late') late++;
+          if (!hInfo.isHoliday) {
+            if (r.status === 'present') present++;
+            else if (r.status === 'permission') permission++;
+            else if (r.status === 'absent') absent++;
+            else if (r.status === 'late') late++;
+          }
         }
       });
 
@@ -293,11 +300,13 @@ export const MonthlyAttendancePage: React.FC<MonthlyAttendancePageProps> = ({
 
                 {/* Day Columns */}
                 {daysArray.map((day) => {
-                  const holiday = getKhmerHoliday(selectedMonth + 1, day);
-                  const isSun = isSunday(selectedYear, selectedMonth, day);
+                  const dateStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                  const hInfo = isDateDeclaredHoliday(dateStr);
+                  const holiday = hInfo.holidayName;
+                  const isSun = hInfo.isSun;
 
                   let thClass = 'py-1 px-1 text-center w-7 border-r border-slate-200 ';
-                  if (holiday) {
+                  if (holiday && !isSun) {
                     thClass += 'bg-rose-100 text-rose-700 font-extrabold border-rose-300 ';
                   } else if (isSun) {
                     thClass += 'bg-amber-100 text-amber-900 font-bold border-amber-300 ';
@@ -313,7 +322,7 @@ export const MonthlyAttendancePage: React.FC<MonthlyAttendancePageProps> = ({
                     >
                       <div className="flex flex-col items-center">
                         <span className="text-[11px] leading-tight">{toKhmerNum(day)}</span>
-                        {holiday ? (
+                        {holiday && !isSun ? (
                           <span className="text-[8px] text-rose-600 truncate max-w-[28px] font-black">ឈប់</span>
                         ) : isSun ? (
                           <span className="text-[8px] text-amber-700 font-bold">អា</span>
@@ -370,18 +379,20 @@ export const MonthlyAttendancePage: React.FC<MonthlyAttendancePageProps> = ({
 
                     {/* Day Matrix Cells */}
                     {daysArray.map((day) => {
-                      const holiday = getKhmerHoliday(selectedMonth + 1, day);
-                      const isSun = isSunday(selectedYear, selectedMonth, day);
+                      const dateStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                      const hInfo = isDateDeclaredHoliday(dateStr);
+                      const holiday = hInfo.holidayName;
+                      const isSun = hInfo.isSun;
                       const record = item.dayMap[day];
 
-                      if (holiday) {
+                      if (holiday && !isSun) {
                         return (
                           <td
                             key={day}
                             className="py-1 px-1 text-center bg-rose-50 border-r border-rose-200/80 text-rose-600 font-bold"
                             title={`${toKhmerNum(day)} ${KHMER_MONTHS[selectedMonth]}៖ ${holiday}`}
                           >
-                            <span className="text-[10px] text-rose-600">ឈប់</span>
+                            <span className="text-[10px] text-rose-600 font-bold">ឈប់</span>
                           </td>
                         );
                       }
