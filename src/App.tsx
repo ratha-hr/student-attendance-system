@@ -41,6 +41,7 @@ export function App() {
         session: (params.get('session') as 'morning' | 'afternoon') || undefined,
         readOnly: params.get('view') === 'readonly' || params.get('readonly') === 'true' || true,
         payload: params.get('att') || params.get('data') || undefined,
+        pinToken: params.get('pinToken') || params.get('token') || undefined,
       };
     }
     return {};
@@ -118,6 +119,7 @@ export function App() {
         initialSession={studentModeParams.session}
         initialReadOnly={studentModeParams.readOnly}
         initialAttendancePayload={studentModeParams.payload}
+        initialPinToken={studentModeParams.pinToken}
         onExitStudentMode={() => {
           setIsStudentMode(false);
           if (typeof window !== 'undefined' && window.history) {

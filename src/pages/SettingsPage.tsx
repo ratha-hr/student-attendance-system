@@ -13,10 +13,14 @@ import {
   AlertTriangle,
   Lock,
   Key,
+  Sparkles,
+  Copy,
+  Check,
 } from 'lucide-react';
 import type { TeacherSettings } from '../types';
 import { db } from '../db/db';
-import { toKhmerNum } from '../utils/dateUtils';
+import { toKhmerNum, formatKhmerDate } from '../utils/dateUtils';
+import { getPinForDate, getDateBasedPin, getDailySecurityPin, type PinMode } from '../utils/pinUtils';
 import { useUndoRedo } from '../context/UndoRedoContext';
 
 interface SettingsPageProps {
@@ -36,6 +40,21 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ settings, onRefresh 
   const [academicYear, setAcademicYear] = useState(settings?.academicYear || '២០២៤-២០២៥');
   const [absenceWarningThreshold, setAbsenceWarningThreshold] = useState(settings?.absenceWarningThreshold || 3);
   const [studentAttendancePin, setStudentAttendancePin] = useState(settings?.studentAttendancePin || '1234');
+  const [pinMode, setPinMode] = useState<PinMode>(settings?.pinMode || 'daily');
+  const [copiedTodayPin, setCopiedTodayPin] = useState(false);
+
+  const todayStr = React.useMemo(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  }, []);
+
+  const currentEffectivePin = React.useMemo(() => {
+    return getPinForDate(todayStr, {
+      ...settings,
+      pinMode,
+      studentAttendancePin,
+    } as TeacherSettings);
+  }, [todayStr, settings, pinMode, studentAttendancePin]);
 
   const [savedSuccess, setSavedSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -54,6 +73,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ settings, onRefresh 
       academicYear: academicYear.trim(),
       absenceWarningThreshold: Number(absenceWarningThreshold),
       studentAttendancePin: studentAttendancePin.trim() || '1234',
+      pinMode,
     });
 
     setSavedSuccess(true);
@@ -278,39 +298,174 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ settings, onRefresh 
           </div>
         </div>
 
-        {/* Card 4: Security & PIN Code for Student Attendance */}
+        {/* Card 4: Security & Daily Dynamic PIN Code for Student Attendance */}
         <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
-          <h3 className="font-bold text-base text-slate-800 flex items-center border-b border-slate-100 pb-3">
-            <Lock className="w-5 h-5 text-indigo-600 mr-2" />
-            សុវត្ថិភាពទប់ស្កាត់ការលួចកែវត្តមាន (លេខសម្ងាត់ PIN)
-          </h3>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+            <h3 className="font-bold text-base text-slate-800 flex items-center">
+              <Lock className="w-5 h-5 text-indigo-600 mr-2 shrink-0" />
+              <span>សុវត្ថិភាពទប់ស្កាត់ការលួចកែវត្តមាន (លេខសម្ងាត់ PIN)</span>
+            </h3>
+            <span className="inline-flex items-center px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-bold w-fit">
+              <Sparkles className="w-3.5 h-3.5 mr-1 text-emerald-600 shrink-0" />
+              {pinMode === 'daily'
+                ? '✨ ប្តូររាល់ថ្ងៃស្វ័យប្រវត្តិ (Daily PIN)'
+                : pinMode === 'date_format'
+                ? '📅 តាមថ្ងៃខែ (DDMM)'
+                : '🔒 លេខកូដថេរ (Fixed PIN)'}
+            </span>
+          </div>
 
-          <div className="max-w-md space-y-3">
+          {/* Today's Active PIN Highlight Display Banner */}
+          <div className="bg-linear-to-r from-indigo-600 via-indigo-700 to-purple-700 text-white rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                លេខកូដសម្ងាត់ ៤ ខ្ទង់ (Security PIN) សម្រាប់ដោះសោស្រង់វត្តមាន៖
-              </label>
-              <div className="flex items-center space-x-3">
-                <div className="relative">
-                  <Key className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    maxLength={6}
-                    value={studentAttendancePin}
-                    onChange={(e) => setStudentAttendancePin(e.target.value)}
-                    placeholder="1234"
-                    className="w-36 pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono font-black text-indigo-700 tracking-widest text-center"
-                  />
-                </div>
-                <span className="text-xs text-slate-500 font-medium">
-                  (លេខសម្ងាត់លំនាំដើម៖ <strong className="font-mono text-indigo-600">1234</strong>)
+              <p className="text-xs text-indigo-200 font-bold flex items-center">
+                <Key className="w-3.5 h-3.5 mr-1 text-yellow-300" />
+                លេខកូដសម្ងាត់ដោះសោថ្ងៃនេះ ({formatKhmerDate(todayStr, true)})៖
+              </p>
+              <div className="flex items-center space-x-3 mt-2">
+                <span className="text-3xl sm:text-4xl font-mono font-black tracking-widest bg-white/20 px-4 py-1 rounded-xl border border-white/30 text-white shadow-inner">
+                  {currentEffectivePin}
                 </span>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(currentEffectivePin);
+                      setCopiedTodayPin(true);
+                      setTimeout(() => setCopiedTodayPin(false), 2000);
+                    } catch {}
+                  }}
+                  className="px-3 py-2 bg-white hover:bg-indigo-50 text-indigo-900 active:scale-95 text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer flex items-center"
+                >
+                  {copiedTodayPin ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+                      <span className="text-emerald-700 font-black">ចម្លងរួច!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5 mr-1 text-indigo-600" />
+                      <span>ចម្លងកូដថ្ងៃនេះ</span>
+                    </>
+                  )}
+                </button>
               </div>
             </div>
+            <div className="text-xs text-indigo-100 max-w-xs leading-relaxed bg-white/10 p-3 rounded-xl border border-white/15">
+              🛡️ <strong>សុវត្ថិភាពខ្ពស់៖</strong> ផ្ញើកូដនេះទៅប្រធានថ្នាក់សម្រាប់ស្រង់វត្តមានថ្ងៃនេះ។ នៅពេលដល់ថ្ងៃស្អែក ប្រព័ន្ធនឹងប្តូរលេខកូដថ្មីស្វ័យប្រវត្តិ សិស្សមិនអាចចាំកូដចាស់មកលួចកែបានឡើយ។
+            </div>
+          </div>
 
-            <p className="text-xs text-slate-600 leading-relaxed bg-amber-50 border border-amber-200 p-3 rounded-xl">
-              🛡️ <strong>គោលការណ៍សុវត្ថិភាព៖</strong> នៅពេលលោកគ្រូ-អ្នកគ្រូផ្ញើតំណភ្ជាប់ (Link) ទៅកាន់សិស្ស ឬមាតាបិតា ប្រព័ន្ធនឹងចាក់សោរជា <strong>Read-Only</strong> ដោយស្វ័យប្រវត្តិ (សិស្សមិនអាចកែប្រែបានឡើយ)។ លុះត្រាតែលោកគ្រូ ឬប្រធានថ្នាក់វាយលេខកូដសម្ងាត់ PIN នេះ ទើបអាចដោះសោស្រង់វត្តមានបាន។
-            </p>
+          {/* PIN Mode Selection Cards */}
+          <div className="space-y-2.5 pt-1">
+            <label className="block text-xs font-bold text-slate-700">
+              ជ្រើសរើសរបៀបកំណត់លេខកូដសម្ងាត់ (PIN Mode)៖
+            </label>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+              {/* Option 1: Daily Dynamic (Recommended) */}
+              <label
+                className={`p-3.5 rounded-xl border-2 transition-all cursor-pointer flex flex-col justify-between ${
+                  pinMode === 'daily'
+                    ? 'bg-indigo-50/80 border-indigo-600 text-indigo-950 shadow-xs'
+                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300'
+                }`}
+              >
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    name="pinMode"
+                    value="daily"
+                    checked={pinMode === 'daily'}
+                    onChange={() => setPinMode('daily')}
+                    className="w-4 h-4 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                  />
+                  <span className="font-bold text-xs sm:text-sm text-slate-900">
+                    🌟 ប្តូររាល់ថ្ងៃស្វ័យប្រវត្តិ
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
+                  កូដ ៤ ខ្ទង់សុវត្ថិភាពប្តូរថ្មីរៀងរាល់ថ្ងៃតាមកាលបរិច្ឆេទ (ថ្ងៃនេះ៖ <strong className="font-mono text-indigo-700 font-bold">{getDailySecurityPin(todayStr, studentAttendancePin)}</strong>)
+                </p>
+              </label>
+
+              {/* Option 2: Date-based DDMM */}
+              <label
+                className={`p-3.5 rounded-xl border-2 transition-all cursor-pointer flex flex-col justify-between ${
+                  pinMode === 'date_format'
+                    ? 'bg-indigo-50/80 border-indigo-600 text-indigo-950 shadow-xs'
+                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300'
+                }`}
+              >
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    name="pinMode"
+                    value="date_format"
+                    checked={pinMode === 'date_format'}
+                    onChange={() => setPinMode('date_format')}
+                    className="w-4 h-4 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                  />
+                  <span className="font-bold text-xs sm:text-sm text-slate-900">
+                    📅 តាមថ្ងៃ និងខែ (DDMM)
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
+                  យកថ្ងៃ និងខែធ្វើជាកូដ ងាយស្រួលចាំ (ឧ. ថ្ងៃទី១៧ ខែ១០ ➔ <strong className="font-mono text-indigo-700 font-bold">{getDateBasedPin(todayStr, 'DDMM')}</strong>)
+                </p>
+              </label>
+
+              {/* Option 3: Fixed Custom */}
+              <label
+                className={`p-3.5 rounded-xl border-2 transition-all cursor-pointer flex flex-col justify-between ${
+                  pinMode === 'fixed'
+                    ? 'bg-indigo-50/80 border-indigo-600 text-indigo-950 shadow-xs'
+                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300'
+                }`}
+              >
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    name="pinMode"
+                    value="fixed"
+                    checked={pinMode === 'fixed'}
+                    onChange={() => setPinMode('fixed')}
+                    className="w-4 h-4 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                  />
+                  <span className="font-bold text-xs sm:text-sm text-slate-900">
+                    🔒 លេខកូដថេរផ្ទាល់ខ្លួន
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
+                  ប្រើលេខកូដថេរដដែលរាល់ថ្ងៃ ដែលលោកគ្រូវាយកំណត់ដោយខ្លួនឯង
+                </p>
+              </label>
+            </div>
+          </div>
+
+          {/* Master Key / Custom PIN Input field (if fixed mode, or seed) */}
+          <div className="pt-2">
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              {pinMode === 'fixed'
+                ? 'វាយបញ្ចូលលេខកូដសម្ងាត់ថេរ (Fixed PIN ៤ ដល់ ៦ ខ្ទង់)៖'
+                : 'ពាក្យសម្ងាត់គ្រឹះសម្រាប់បំប្លែងកូដប្រចាំថ្ងៃ (Master Key / Seed)៖'}
+            </label>
+            <div className="flex items-center space-x-3">
+              <div className="relative">
+                <Key className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  maxLength={10}
+                  value={studentAttendancePin}
+                  onChange={(e) => setStudentAttendancePin(e.target.value)}
+                  placeholder="1234"
+                  className="w-40 pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono font-black text-indigo-700 tracking-widest text-center"
+                />
+              </div>
+              <span className="text-xs text-slate-500 font-medium">
+                {pinMode === 'fixed' ? '(លេខកូដថេរសម្រាប់ដោះសោ)' : '(ប្រើសម្រាប់បង្កើតកូដប្រចាំថ្ងៃ)'}
+              </span>
+            </div>
           </div>
         </div>
 

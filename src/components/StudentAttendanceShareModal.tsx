@@ -23,6 +23,7 @@ import type { Student, ClassRoom, AttendanceRecord, TeacherSettings } from '../t
 import { formatKhmerDate, fromKhmerNum, toKhmerNum } from '../utils/dateUtils';
 import { generateStudentQRCodeSVG } from '../utils/qrCode';
 import { encodeAttendanceForUrl } from '../utils/attendanceShare';
+import { getPinForDate, hashPin } from '../utils/pinUtils';
 
 interface StudentAttendanceShareModalProps {
   isOpen: boolean;
@@ -52,6 +53,11 @@ export const StudentAttendanceShareModal: React.FC<StudentAttendanceShareModalPr
   const [activeTab, setActiveTab] = useState<'message' | 'roster' | 'qrcode'>('message');
   const [copiedText, setCopiedText] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedPin, setCopiedPin] = useState(false);
+
+  const activePinForSelectedDate = useMemo(() => {
+    return getPinForDate(selectedDate, settings);
+  }, [selectedDate, settings]);
 
   // Filter students for the current class
   const classStudents = useMemo(() => {
@@ -161,8 +167,9 @@ export const StudentAttendanceShareModal: React.FC<StudentAttendanceShareModalPr
     const path = window.location.pathname;
     const classParam = currentClass ? encodeURIComponent(currentClass.id) : 'ALL';
     const payloadParam = attPayload ? `&att=${encodeURIComponent(attPayload)}` : '';
-    return `${origin}${path}?mode=student&class=${classParam}&date=${selectedDate}&session=${selectedSession}&view=readonly${payloadParam}`;
-  }, [currentClass, selectedDate, selectedSession, attPayload]);
+    const pinTokenParam = `&pinToken=${encodeURIComponent(hashPin(activePinForSelectedDate))}`;
+    return `${origin}${path}?mode=student&class=${classParam}&date=${selectedDate}&session=${selectedSession}&view=readonly${pinTokenParam}${payloadParam}`;
+  }, [currentClass, selectedDate, selectedSession, attPayload, activePinForSelectedDate]);
 
   const handleCopyText = async () => {
     try {
@@ -196,7 +203,7 @@ export const StudentAttendanceShareModal: React.FC<StudentAttendanceShareModalPr
   const handleOpenTelegram = () => {
     // Keep message short and clean to strictly avoid Nginx 400 Bad Request URL limit
     const homeroom = currentClass?.homeroomTeacher || settings?.teacherName || 'លោកគ្រូ-អ្នកគ្រូ';
-    const shortSummary = `📋 តារាងវត្តមានប្រចាំថ្ងៃ ${currentClass?.name || 'ថ្នាក់រៀន'} (${sessionLabel})\n📅 ${formatKhmerDate(selectedDate, true)}\n👨‍🏫 គ្រូទទួលបន្ទុក៖ ${homeroom}\n📊 ស្ថិតិ៖ សរុប ${total} នាក់ | មក ${presentCount} | ច្បាប់ ${permissionCount} | អវត្តមាន ${absentCount}${lateCount > 0 ? ` | យឺត ${lateCount}` : ''}\n🔒 បញ្ជីវត្តមានត្រូវបានចាក់សោសុវត្ថិភាព (សិស្សមិនអាចកែប្រែបានឡើយ)\n\n👉 សូមចុចតំណភ្ជាប់ខាងក្រោមដើម្បីពិនិត្យមើលវត្តមាន៖`;
+    const shortSummary = `📋 តារាងវត្តមានប្រចាំថ្ងៃ ${currentClass?.name || 'ថ្នាក់រៀន'} (${sessionLabel})\n📅 ${formatKhmerDate(selectedDate, true)}\n👨‍🏫 គ្រូទទួលបន្ទុក៖ ${homeroom}\n📊 ស្ថិតិ៖ សរុប ${total} នាក់ | មក ${presentCount} | ច្បាប់ ${permissionCount} | អវត្តមាន ${absentCount}${lateCount > 0 ? ` | យឺត ${lateCount}` : ''}\n🔒 បញ្ជីវត្តមានត្រូវបានចាក់សោសុវត្ថិភាព\n🔑 លេខកូដដោះសោស្រង់វត្តមានថ្ងៃនេះ៖ ${activePinForSelectedDate} (ប្តូររៀងរាល់ថ្ងៃ)\n\n👉 សូមចុចតំណភ្ជាប់ខាងក្រោមដើម្បីពិនិត្យមើលវត្តមាន៖`;
     const tgUrl = `https://t.me/share/url?url=${encodeURIComponent(studentReadOnlyUrl)}&text=${encodeURIComponent(shortSummary)}`;
     window.open(tgUrl, '_blank', 'noopener,noreferrer');
   };
@@ -506,16 +513,48 @@ export const StudentAttendanceShareModal: React.FC<StudentAttendanceShareModalPr
             </button>
           </div>
 
-          <div className="bg-indigo-50/90 border border-indigo-200/90 rounded-xl p-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-indigo-900">
-            <div className="flex items-center space-x-2">
-              <Key className="w-4 h-4 text-indigo-600 shrink-0" />
-              <span>
-                លេខកូដសម្ងាត់ដោះសោសម្រាប់ប្រធានថ្នាក់ស្រង់វត្តមាន៖ <strong className="font-mono text-indigo-700 text-sm tracking-wider font-black">{settings?.studentAttendancePin || '1234'}</strong>
-              </span>
+          <div className="bg-indigo-50/95 border border-indigo-200 rounded-2xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs text-indigo-950">
+            <div className="flex items-center space-x-2.5">
+              <Key className="w-5 h-5 text-indigo-600 shrink-0" />
+              <div>
+                <p className="font-bold flex items-center flex-wrap gap-1.5">
+                  <span>លេខកូដសម្ងាត់ដោះសោថ្ងៃនេះ ({formatKhmerDate(selectedDate, false)})៖</span>
+                  <span className="font-mono text-indigo-800 text-base sm:text-lg tracking-widest font-black bg-white px-2.5 py-0.5 rounded-lg border border-indigo-300 shadow-2xs">
+                    {activePinForSelectedDate}
+                  </span>
+                  <span className="text-[10px] text-emerald-700 font-bold bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-300">
+                    ✨ ប្តូររាល់ថ្ងៃ
+                  </span>
+                </p>
+                <p className="text-[11px] text-indigo-600 font-medium mt-0.5">
+                  (ផ្តល់ជូនតែប្រធានថ្នាក់ប៉ុណ្ណោះ។ ដល់ថ្ងៃស្អែក ប្រព័ន្ធនឹងប្តូរលេខកូដថ្មីស្វ័យប្រវត្តិ)
+                </p>
+              </div>
             </div>
-            <span className="text-[11px] text-indigo-600 font-medium">
-              (សិស្សទូទៅមិនស្គាល់កូដនេះ មិនអាចលួចកែបានឡើយ)
-            </span>
+
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(activePinForSelectedDate);
+                  setCopiedPin(true);
+                  setTimeout(() => setCopiedPin(false), 2000);
+                } catch {}
+              }}
+              className="inline-flex items-center px-3 py-1.5 rounded-xl bg-white hover:bg-indigo-100/70 text-indigo-800 font-bold border border-indigo-300 transition-all shrink-0 cursor-pointer text-xs shadow-2xs"
+            >
+              {copiedPin ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-600 mr-1" />
+                  <span className="text-emerald-700 font-black">ចម្លងកូដរួច!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3.5 h-3.5 mr-1 text-indigo-600" />
+                  <span>ចម្លងលេខកូដ</span>
+                </>
+              )}
+            </button>
           </div>
         </div>
 

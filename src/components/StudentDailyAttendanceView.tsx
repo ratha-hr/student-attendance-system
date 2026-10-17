@@ -28,6 +28,7 @@ import { db } from '../db/db';
 import { fromKhmerNum, formatKhmerDate, getTodayDateString } from '../utils/dateUtils';
 import { soundEffects } from '../utils/soundEffects';
 import { decodeAttendanceFromUrl, encodeAttendanceForUrl } from '../utils/attendanceShare';
+import { verifyPin } from '../utils/pinUtils';
 import { Modal } from './common/Modal';
 
 interface StudentDailyAttendanceViewProps {
@@ -40,6 +41,7 @@ interface StudentDailyAttendanceViewProps {
   initialSession?: 'morning' | 'afternoon';
   initialReadOnly?: boolean;
   initialAttendancePayload?: string;
+  initialPinToken?: string;
   onExitStudentMode?: () => void;
   onRefresh: () => void;
 }
@@ -53,6 +55,8 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
   initialDate,
   initialSession,
   initialAttendancePayload,
+  initialPinToken,
+  onExitStudentMode,
   onRefresh,
 }) => {
   const [selectedClassId, setSelectedClassId] = useState<string>(
@@ -229,8 +233,8 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
     e.preventDefault();
     if (cooldownRemaining > 0) return;
 
-    const correctPin = settings?.studentAttendancePin || '1234';
-    if (enteredPin.trim() === correctPin.trim()) {
+    const isPinValid = verifyPin(enteredPin, selectedDate, settings, initialPinToken);
+    if (isPinValid) {
       setIsEditUnlocked(true);
       setIsPinModalOpen(false);
       setEnteredPin('');
@@ -266,7 +270,7 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
         setPinError('⚠️ បានបញ្ចូលខុស ៣ ដង! សូមរង់ចាំ ១ នាទី មុននឹងសាកល្បងម្ដងទៀត។');
       } else {
         const remaining = 3 - nextFailures;
-        setPinError(`❌ លេខកូដសម្ងាត់មិនត្រឹមត្រូវទេ! នៅសល់ ${remaining} ដងទៀត មុននឹងប្រព័ន្ធចាក់សោបណ្តោះអាសន្ន។`);
+        setPinError(`❌ លេខកូដសម្ងាត់ប្រចាំថ្ងៃមិនត្រឹមត្រូវទេ! (សូមសួរលេខកូដថ្ងៃនេះពីលោកគ្រូ ឬប្រធានថ្នាក់) នៅសល់ ${remaining} ដងទៀត។`);
       }
       if (soundOn) soundEffects.playAbsentChime();
     }
@@ -868,16 +872,16 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
           setEnteredPin('');
         }}
         title="ដោះសោដើម្បីស្រង់វត្តមាន"
-        subtitle="សម្រាប់តែលោកគ្រូ-អ្នកគ្រូ ឬប្រធានថ្នាក់ដែលមានការអនុញ្ញាត"
+        subtitle={`សម្រាប់តែលោកគ្រូ-អ្នកគ្រូ ឬប្រធានថ្នាក់ស្រង់វត្តមាន (${formatKhmerDate(selectedDate, false)})`}
         maxWidth="md"
       >
         <form onSubmit={handleVerifyPin} className="space-y-4">
           <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-3.5 text-xs text-indigo-900 flex items-start space-x-2.5">
             <Lock className="w-5 h-5 text-indigo-600 shrink-0 mt-0.5" />
             <div className="leading-relaxed">
-              <p className="font-bold">ការពារសុវត្ថិភាពវត្តមាន</p>
+              <p className="font-bold">ការពារសុវត្ថិភាពវត្តមាន (លេខកូដប្តូររាល់ថ្ងៃ)</p>
               <p className="text-indigo-800 text-[11px] mt-0.5">
-                ដើម្បីការពារកុំឱ្យសិស្សលួចកែវត្តមានខ្លួនឯង សូមបញ្ចូលលេខកូដសម្ងាត់ ៤ ខ្ទង់ដែលលោកគ្រូ-អ្នកគ្រូបានកំណត់។
+                ដើម្បីការពារកុំឱ្យសិស្សលួចកែវត្តមានខ្លួនឯង សូមបញ្ចូលលេខកូដសម្ងាត់ ៤ ខ្ទង់ប្រចាំថ្ងៃ (ប្តូររាល់ថ្ងៃ) ដែលលោកគ្រូ-អ្នកគ្រូបានផ្តល់ជូនសម្រាប់ថ្ងៃនេះ។
               </p>
             </div>
           </div>
