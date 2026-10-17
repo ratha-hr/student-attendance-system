@@ -100,20 +100,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ settings, onRefresh 
     }
   };
 
-  const handleLoad200Students = async () => {
-    if (window.confirm('តើអ្នកចង់ផ្ទុកទិន្នន័យសិស្សគំរូចំនួន ២០០ នាក់ (ថ្នាក់ទី ៧ ដល់ ទី ១២) មែនទេ?')) {
-      await pushSnapshot('ផ្ទុកទិន្នន័យសិស្សគំរូ ២០០ នាក់');
-      await db.loadSample200Students();
-      alert('បានផ្ទុកទិន្នន័យសិស្ស ២០០ នាក់ (ថ្នាក់ទី ៧ ដល់ ទី ១២) ដោយជោគជ័យ!');
-      onRefresh();
-    }
-  };
-
-  const handleResetSampleData = async () => {
-    if (window.confirm('តើអ្នកពិតជាចង់កំណត់ទិន្នន័យឡើងវិញទៅកាន់ទិន្នន័យគំរូដើមមែនទេ? ទិន្នន័យថ្មីដែលបានបញ្ចូលនឹងត្រូវបានលុប។')) {
-      await pushSnapshot('កំណត់ទិន្នន័យឡើងវិញទៅគំរូដើម');
-      await db.resetToSeedData();
-      alert('បានកំណត់ទិន្នន័យឡើងវិញដោយជោគជ័យ!');
+  const handleClearAllData = async () => {
+    if (window.confirm('តើលោកគ្រូពិតជាចង់សម្អាតទិន្នន័យទាំងអស់ (សិស្ស ថ្នាក់ វត្តមាន ពិន្ទុ) ដើម្បីចាប់ផ្តើមបញ្ចូលទិន្នន័យជាក់ស្តែងដោយខ្លួនឯងមែនទេ?')) {
+      await pushSnapshot('សម្អាតទិន្នន័យទាំងអស់ដើម្បីបញ្ចូលខ្លួនឯង');
+      await db.clearAllData();
+      alert('បានសម្អាតទិន្នន័យទាំងអស់ដោយជោគជ័យ! លោកគ្រូអាចចាប់ផ្តើមបង្កើតថ្នាក់ និងបញ្ចូលទិន្នន័យសិស្សជាក់ស្តែងដោយខ្លួនឯង។');
       onRefresh();
     }
   };
@@ -368,23 +359,15 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ settings, onRefresh 
             />
           </label>
 
-          {/* Reset Demo Data Button */}
-          <button
-            onClick={handleResetSampleData}
-            className="flex items-center justify-center p-4 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
-          >
-            <RefreshCw className="w-4 h-4 mr-2 text-slate-500" />
-            កំណត់ទិន្នន័យឡើងវិញ
-          </button>
-
-          {/* Load 200 Students Button */}
+          {/* Clear All Data Button */}
           <button
             type="button"
-            onClick={handleLoad200Students}
-            className="col-span-1 sm:col-span-3 flex items-center justify-center p-3.5 rounded-xl border border-blue-500 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm transition-colors cursor-pointer shadow-md shadow-blue-500/20"
+            onClick={handleClearAllData}
+            className="flex items-center justify-center p-4 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs transition-colors cursor-pointer"
+            title="លុបទិន្នន័យសិស្ស ថ្នាក់ វត្តមាន ពិន្ទុ ដើម្បីចាប់ផ្តើមថ្មី"
           >
-            <RefreshCw className="w-4 h-4 mr-2 animate-spin-slow" />
-            🚀 ផ្ទុកទិន្នន័យសិស្សគំរូ ២០០ នាក់ (ថ្នាក់ទី ៧ ដល់ ទី ១២)
+            <RefreshCw className="w-4 h-4 mr-2 text-rose-600" />
+            🗑️ សម្អាតទិន្នន័យទាំងអស់ (Reset)
           </button>
         </div>
       </div>

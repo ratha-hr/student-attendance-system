@@ -211,6 +211,7 @@ export function App() {
               onSelectClass={setSelectedClassId}
               onRefresh={handleRefresh}
               onGenerateLetterForStudent={handleSelectStudentForLetter}
+              onOpenManageClasses={() => setIsManageClassesOpen(true)}
             />
           )}
 
@@ -236,6 +237,7 @@ export function App() {
               selectedClassId={selectedClassId}
               onRefresh={handleRefresh}
               onNavigateTab={setCurrentTab}
+              onOpenManageClasses={() => setIsManageClassesOpen(true)}
             />
           )}
 

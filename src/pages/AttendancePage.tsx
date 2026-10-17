@@ -62,6 +62,7 @@ interface AttendancePageProps {
   onSelectClass: (id: string) => void;
   onRefresh: () => void;
   onGenerateLetterForStudent?: (studentId: string) => void;
+  onOpenManageClasses?: () => void;
 }
 
 export const AttendancePage: React.FC<AttendancePageProps> = ({
@@ -72,6 +73,7 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
   selectedClassId,
   onRefresh,
   onGenerateLetterForStudent,
+  onOpenManageClasses,
 }) => {
   const [selectedDate, setSelectedDate] = useState(getTodayDateString());
   const [selectedSession, setSelectedSession] = useState<'morning' | 'afternoon'>('morning');
@@ -260,6 +262,32 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* If No Classes Created Yet */}
+      {classes.length === 0 && (
+        <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 sm:p-5 text-amber-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs animate-fade-in no-print">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-200 text-amber-800 flex items-center justify-center font-bold text-lg shrink-0">
+              🏫
+            </div>
+            <div>
+              <p className="font-bold text-sm sm:text-base text-amber-900">មិនទាន់មានថ្នាក់រៀននៅឡើយទេ</p>
+              <p className="text-xs text-amber-700 mt-0.5">
+                សូមបង្កើតថ្នាក់រៀនដំបូងរបស់លោកគ្រូ (ឧ. ថ្នាក់ទី 7A ឬ 10B...) ដើម្បីចាប់ផ្តើមបញ្ចូលសិស្ស និងកត់វត្តមាន។
+              </p>
+            </div>
+          </div>
+          {onOpenManageClasses && (
+            <button
+              type="button"
+              onClick={onOpenManageClasses}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-xs transition-colors cursor-pointer shrink-0"
+            >
+              + បង្កើតថ្នាក់រៀនថ្មី
+            </button>
+          )}
+        </div>
+      )}
+
       {/* 2-Row Unified Controller Bar (Organized into exactly TWO rows as requested) */}
       <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs space-y-3.5 no-print">
         {/* ROW 1: Page Title, Class Badge & Action Buttons */}

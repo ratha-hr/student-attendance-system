@@ -51,103 +51,37 @@ export class TeacherDatabase extends Dexie {
   }
 
   async initializeSeedData() {
-    const classCount = await this.classes.count();
-    const studentCount = await this.students.count();
-    if (classCount === 0 || studentCount < 50) {
-      console.log('Seeding initial data with 200 students across Grade 7 to 12...');
-      await this.classes.clear();
+    // 1. One-time clean wipe of all sample/mock data on user request
+    const sampleCleanKey = 'app_sample_data_cleared_v6.3';
+    if (!localStorage.getItem(sampleCleanKey)) {
+      console.log('Purging sample data so teacher can enter their own data...');
       await this.students.clear();
       await this.attendance.clear();
-      await this.classes.bulkAdd(initialClasses);
-      const enriched = initialStudents.map((s, i) => enrichStudentWithMoEYSFields(s, i));
-      await this.students.bulkAdd(enriched);
-      await this.attendance.bulkAdd(initialAttendance);
-      if ((await this.extracts.count()) === 0) {
-        await this.extracts.bulkAdd(initialExtracts);
-      }
-      if ((await this.yearlyPlans.count()) === 0) {
-        await this.yearlyPlans.bulkAdd(initialYearlyPlan);
-      }
-      if ((await this.timetable.count()) === 0) {
-        await this.timetable.bulkAdd(initialTimetable);
-      }
+      await this.grades.clear();
+      await this.letters.clear();
+      await this.classes.clear();
+      await this.yearlyPlans.clear();
+      await this.timetable.clear();
+      await this.extracts.clear();
+      localStorage.setItem(sampleCleanKey, 'true');
+    }
+
+    // 2. Ensure teacher settings exist with Mr. Hun Ratha's school profile
+    const s = await this.settings.get('current_settings');
+    if (!s) {
       await this.settings.put({ ...initialSettings, id: 'current_settings' });
-    } else {
-      // Auto-enrich existing students if they don't have Image 2 fields yet
-      const current = await this.students.toArray();
-      const needsEnrich = current.some((s) => !s.fatherName || !s.pobVillage || !s.motherName);
-      if (needsEnrich) {
-        console.log('Auto-enriching existing students with Image 2 fields...');
-        const enriched = current.map((s, i) => enrichStudentWithMoEYSFields(s, i));
-        await this.students.bulkPut(enriched);
-      }
-
-      if ((await this.timetable.count()) === 0) {
-        await this.timetable.bulkAdd(initialTimetable);
-      }
     }
+  }
 
-    // Auto-migrate any student codes with Khmer digits (e.g. STU-0៧-001 -> STU-07-001)
-    const existingStudents = await this.students.toArray();
-    const hasKhmerCodes = existingStudents.some((s) => /[០-៩]/.test(s.studentCode));
-    if (hasKhmerCodes) {
-      console.log('Migrating student codes from Khmer digits to normal numbers...');
-      const updatedStudents = existingStudents.map((s) => ({
-        ...s,
-        studentCode: fromKhmerNum(s.studentCode),
-      }));
-      await this.students.bulkPut(updatedStudents);
-    }
-
-    // Clean up room/building on existing classes and ensure correct stream classification:
-    // Grade 7-10 are strictly "general" (ទូទៅ), Grade 11-12 are "science" (វិទ្យាសាស្ត្រ) or "social" (វិទ្យាសាស្ត្រសង្គម)
-    const existingClasses = await this.classes.toArray();
-    for (const c of existingClasses) {
-      const gNum = parseGradeNumber(c.grade || c.name);
-      let changed = false;
-      let targetStream = c.stream;
-      if (gNum <= 10 && targetStream !== 'general') {
-        targetStream = 'general';
-        changed = true;
-      } else if ((gNum === 11 || gNum === 12) && (!targetStream || targetStream === 'general')) {
-        targetStream = getStreamForClass(c.grade, c.name, c.stream);
-        changed = true;
-      }
-      if (c.room) {
-        changed = true;
-      }
-      if (changed) {
-        await this.classes.update(c.id, {
-          room: '',
-          stream: targetStream,
-        });
-      }
-    }
-
-    // Only if completely empty on fresh install, create one clean starter class
-    if (existingClasses.length === 0) {
-      await this.classes.add({
-        id: 'class-7',
-        name: 'ថ្នាក់ទី 7A',
-        grade: '7',
-        academicYear: '២០២៤-២០២៥',
-        stream: 'general',
-        homeroomTeacher: 'ហ៊ុន រដ្ឋា',
-        description: 'ថ្នាក់ទី 7A (អនុវិទ្យាល័យ)',
-        createdAt: new Date().toISOString(),
-      });
-    }
-
-    // Clean up any orphaned attendance records referencing non-existent students or classes
-    const validStudentIds = new Set((await this.students.toArray()).map((s) => s.id));
-    const validClassIds = new Set((await this.classes.toArray()).map((c) => c.id));
-    const allAttendance = await this.attendance.toArray();
-    const orphanedAttIds = allAttendance
-      .filter((a) => !validStudentIds.has(a.studentId) || !validClassIds.has(a.classId))
-      .map((a) => a.id);
-    if (orphanedAttIds.length > 0) {
-      await this.attendance.bulkDelete(orphanedAttIds);
-    }
+  async clearAllData() {
+    await this.classes.clear();
+    await this.students.clear();
+    await this.attendance.clear();
+    await this.grades.clear();
+    await this.letters.clear();
+    await this.yearlyPlans.clear();
+    await this.timetable.clear();
+    await this.extracts.clear();
   }
 
   async ensureStandardClasses() {
@@ -289,23 +223,7 @@ export class TeacherDatabase extends Dexie {
   }
 
   async resetToSeedData() {
-    await this.classes.clear();
-    await this.students.clear();
-    await this.attendance.clear();
-    await this.extracts.clear();
-    await this.letters.clear();
-    await this.yearlyPlans.clear();
-    await this.grades.clear();
-    await this.timetable.clear();
-    await this.settings.clear();
-
-    await this.classes.bulkAdd(initialClasses);
-    await this.students.bulkAdd(initialStudents);
-    await this.attendance.bulkAdd(initialAttendance);
-    await this.extracts.bulkAdd(initialExtracts);
-    await this.yearlyPlans.bulkAdd(initialYearlyPlan);
-    await this.timetable.bulkAdd(initialTimetable);
-    await this.settings.put({ ...initialSettings, id: 'current_settings' });
+    await this.clearAllData();
   }
 
   async exportBackupJSON(): Promise<string> {
