@@ -15,11 +15,14 @@ import {
   HelpCircle,
   BookOpenCheck,
   TrendingUp,
+  Undo2,
+  Redo2,
 } from 'lucide-react';
 import type { Student, ClassRoom, TeacherSettings, AttendanceRecord, StudentGrade } from '../types';
 import { db } from '../db/db';
 import { toKhmerNum, KHMER_MONTHS } from '../utils/dateUtils';
 import { PrintButton } from '../components/common/PrintButton';
+import { useUndoRedo } from '../context/UndoRedoContext';
 import { calculateLetterMention, type SubjectScoreRule } from '../utils/gradeCoefficients';
 import * as XLSX from 'xlsx';
 
@@ -66,6 +69,7 @@ export const ContinuousAssessmentTable: React.FC<ContinuousAssessmentTableProps>
   savedSuccess,
 }) => {
   const [showFormulaGuide, setShowFormulaGuide] = useState(true);
+  const { undo, redo, canUndo, canRedo } = useUndoRedo();
 
   // Filter class students
   const classStudents = useMemo(() => {
@@ -274,6 +278,30 @@ export const ContinuousAssessmentTable: React.FC<ContinuousAssessmentTableProps>
           {/* Print */}
           <PrintButton defaultOrientation="landscape" label="បោះពុម្ព (A4)" />
 
+          {/* Undo / Redo */}
+          <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs font-bold shadow-2xs">
+            <button
+              type="button"
+              onClick={undo}
+              disabled={!canUndo}
+              className="inline-flex items-center px-2 py-1 rounded-lg text-slate-700 hover:bg-white hover:text-indigo-600 disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-slate-400 transition-colors cursor-pointer"
+              title="ត្រឡប់ក្រោយ (Ctrl+Z)"
+            >
+              <Undo2 className="w-3.5 h-3.5 mr-1 text-slate-600" />
+              Undo
+            </button>
+            <button
+              type="button"
+              onClick={redo}
+              disabled={!canRedo}
+              className="inline-flex items-center px-2 py-1 rounded-lg text-slate-700 hover:bg-white hover:text-indigo-600 disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-slate-400 transition-colors cursor-pointer"
+              title="ធ្វើឡើងវិញ (Ctrl+Y)"
+            >
+              <Redo2 className="w-3.5 h-3.5 mr-1 text-slate-600" />
+              Redo
+            </button>
+          </div>
+
           {/* Save Button */}
           <button
             type="button"
@@ -379,7 +407,7 @@ export const ContinuousAssessmentTable: React.FC<ContinuousAssessmentTableProps>
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
         <div className="overflow-auto max-h-[72vh] table-scrollbar">
           <table className="w-full text-left border-collapse text-xs">
-            <thead className="sticky top-0 z-20 shadow-xs">
+            <thead className="sticky top-0 z-20 shadow-xs print:static print:table-header-group">
               <tr className="bg-[#002060] text-white font-bold text-center">
                 <th className="py-2.5 px-2 border border-blue-900/40 w-12">ល.រ</th>
                 <th className="py-2.5 px-2 border border-blue-900/40 w-24">អត្តលេខ</th>

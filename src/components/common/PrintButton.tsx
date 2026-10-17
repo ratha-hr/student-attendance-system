@@ -11,7 +11,7 @@ interface PrintButtonProps {
 
 export const PrintButton: React.FC<PrintButtonProps> = ({
   defaultOrientation = 'landscape',
-  label = 'បោះពុម្ព',
+  label = 'បោះពុម្ព / PDF',
   className = '',
   onBeforePrint,
 }) => {
@@ -27,7 +27,7 @@ export const PrintButton: React.FC<PrintButtonProps> = ({
       {/* Paper Orientation Selector: Portrait (បញ្ឈរ) / Landscape (ផ្ដេក) */}
       <div
         className="inline-flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs font-bold shadow-2xs"
-        title="ជ្រើសរើសទម្រង់ក្រដាសបោះពុម្ព"
+        title="ជ្រើសរើសទម្រង់ក្រដាសបោះពុម្ព ឬទាញយកជា PDF"
       >
         <button
           type="button"
@@ -37,7 +37,7 @@ export const PrintButton: React.FC<PrintButtonProps> = ({
               ? 'bg-white text-blue-700 shadow-2xs font-black'
               : 'text-slate-500 hover:text-slate-900'
           }`}
-          title="ក្រដាសបញ្ឈរ (Portrait)"
+          title="ក្រដាសបញ្ឈរ (Portrait) សម្រាប់បោះពុម្ព ឬ Save as PDF"
         >
           <span>📄</span>
           <span className="hidden sm:inline">បញ្ឈរ</span>
@@ -50,7 +50,7 @@ export const PrintButton: React.FC<PrintButtonProps> = ({
               ? 'bg-white text-blue-700 shadow-2xs font-black'
               : 'text-slate-500 hover:text-slate-900'
           }`}
-          title="ក្រដាសផ្ដេក (Landscape)"
+          title="ក្រដាសផ្ដេក (Landscape) សម្រាប់បោះពុម្ព ឬ Save as PDF"
         >
           <span>📃</span>
           <span className="hidden sm:inline">ផ្ដេក</span>
@@ -62,9 +62,9 @@ export const PrintButton: React.FC<PrintButtonProps> = ({
         type="button"
         onClick={handlePrint}
         className="inline-flex items-center px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer"
-        title={`បោះពុម្ពឯកសារជាក្រដាស ${orientation === 'portrait' ? 'បញ្ឈរ (Portrait)' : 'ផ្ដេក (Landscape)'}`}
+        title={`បោះពុម្ព ឬរក្សាទុកជា PDF (Save as PDF) ជាក្រដាស ${orientation === 'portrait' ? 'បញ្ឈរ (Portrait)' : 'ផ្ដេក (Landscape)'}`}
       >
-        <Printer className="w-3.5 h-3.5 mr-1" />
+        <Printer className="w-3.5 h-3.5 mr-1 text-emerald-400" />
         <span>{label}</span>
       </button>
     </div>

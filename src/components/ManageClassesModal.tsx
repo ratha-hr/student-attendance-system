@@ -25,6 +25,7 @@ import {
   getStreamBadge,
 } from '../utils/classUtils';
 import { Modal } from './common/Modal';
+import { useUndoRedo } from '../context/UndoRedoContext';
 
 interface ManageClassesModalProps {
   isOpen: boolean;
@@ -47,6 +48,7 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
   onSelectClass,
   academicYear = '២០២៤-២០២៥',
 }) => {
+  const { pushSnapshot } = useUndoRedo();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGradeFilter, setSelectedGradeFilter] = useState<string>('ALL');
 
@@ -130,6 +132,7 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
       createdAt: new Date().toISOString(),
     };
 
+    await pushSnapshot(`បន្ថែមថ្នាក់ថ្មី "${fullName}"`);
     await db.classes.add(newClass);
     setFormClassName('');
     onSelectClass(newClass.id);
@@ -160,6 +163,7 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
       createdAt: new Date().toISOString(),
     };
 
+    await pushSnapshot(`បន្ថែមរហ័សថ្នាក់ "${fullName}"`);
     await db.classes.add(newClass);
     onSelectClass(newClass.id);
     onRefresh();
@@ -172,6 +176,7 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
     const nextStream: ClassStream = currentStream === 'science' ? 'social' : 'science';
     const nextInfo = getStreamBadge(nextStream);
 
+    await pushSnapshot(`ប្តូរមុខជំនាញថ្នាក់ ${c.name} ទៅ ${nextInfo.label}`);
     await db.classes.update(c.id, {
       stream: nextStream,
       description: `ថ្នាក់ ${c.name} (${nextInfo.label})`,
@@ -200,6 +205,8 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
 
     const gNum = parseGradeNumber(newName);
     const stream = (gNum === 11 || gNum === 12) ? editingStream : getStreamForClass(`${gNum}`, newName);
+
+    await pushSnapshot(`កែសម្រួលព័ត៌មានថ្នាក់ "${newName}"`);
     await db.classes.update(c.id, {
       name: newName,
       homeroomTeacher: editingHomeroomTeacher.trim() || 'គ្រូទទួលបន្ទុក',
@@ -218,6 +225,7 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
     const enrolledStudents = students.filter((s) => s.classId === c.id);
     const count = enrolledStudents.length;
 
+    await pushSnapshot(`លុបថ្នាក់ "${c.name}"`);
     await db.classes.delete(c.id);
 
     if (count > 0) {
@@ -237,6 +245,7 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
   // Handle delete ALL classes
   const handleDeleteAllClasses = async () => {
     if (classes.length === 0) return;
+    await pushSnapshot('លុបថ្នាក់ទាំងអស់');
     await db.classes.clear();
     for (const stu of students) {
       if (stu.classId) {
@@ -281,6 +290,7 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
       return;
     }
 
+    await pushSnapshot(`បន្ថែមថ្នាក់ទី ${grade} (${toAdd.length} ថ្នាក់)`);
     await db.classes.bulkAdd(toAdd);
     onRefresh();
     showFeedback('success', `បានបន្ថែមថ្នាក់ទី ${grade} (${toAdd.length} ថ្នាក់) ដោយជោគជ័យ!`);
@@ -289,6 +299,7 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
 
   // Reset or regenerate all 49 standard classes
   const handleRestoreStandardClasses = async () => {
+    await pushSnapshot('កំណត់ថ្នាក់ស្តង់ដារឡើងវិញ');
     await db.ensureStandardClasses();
     onRefresh();
     showFeedback('success', 'បានបង្កើតថ្នាក់ស្តង់ដារទាំង ៤៩ ថ្នាក់រួចរាល់!');

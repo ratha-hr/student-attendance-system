@@ -16,11 +16,14 @@ import {
   BookOpenCheck,
   Layers,
   RotateCcw,
+  Undo2,
+  Redo2,
 } from 'lucide-react';
 import type { Student, ClassRoom, TeacherSettings, StudentGrade, AttendanceRecord } from '../types';
 import { db } from '../db/db';
 import { toKhmerNum, KHMER_MONTHS } from '../utils/dateUtils';
 import { PrintButton } from '../components/common/PrintButton';
+import { useUndoRedo } from '../context/UndoRedoContext';
 import {
   resolveGradeTrack,
   getTrackSubjects,
@@ -58,6 +61,7 @@ export const GradesPage: React.FC<GradesPageProps> = ({
   const [viewMode, setViewMode] = useState<GradesViewMode>(initialViewMode);
   const [selectedMonth, setSelectedMonth] = useState<string>('តុលា');
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const { pushSnapshot, undo, redo, canUndo, canRedo } = useUndoRedo();
 
   // Sync initialViewMode if prop changes
   useEffect(() => {
@@ -204,7 +208,8 @@ export const GradesPage: React.FC<GradesPageProps> = ({
   };
 
   // Auto-fill sample realistic scores for subjects
-  const handleFillSampleScores = () => {
+  const handleFillSampleScores = async () => {
+    await pushSnapshot(`បំពេញពិន្ទុសាកល្បងមុខវិជ្ជា ថ្នាក់ ${currentClass?.name || ''}`);
     const newScores: Record<string, Record<string, number>> = {};
     classStudents.forEach((stu, idx) => {
       newScores[stu.id] = {};
@@ -217,7 +222,8 @@ export const GradesPage: React.FC<GradesPageProps> = ({
   };
 
   // Auto-fill sample realistic continuous scores
-  const handleFillSampleContinuous = () => {
+  const handleFillSampleContinuous = async () => {
+    await pushSnapshot(`បំពេញពិន្ទុសាកល្បងការវាយតម្លៃជាប់ប្រចាំ ថ្នាក់ ${currentClass?.name || ''}`);
     const updated = { ...continuousState };
     classStudents.forEach((stu, idx) => {
       const abs = computeStudentAbsences(stu.id, selectedMonth);
@@ -235,6 +241,7 @@ export const GradesPage: React.FC<GradesPageProps> = ({
 
   // Save scores & continuous assessments to IndexedDB
   const handleSaveScores = async () => {
+    await pushSnapshot(`រក្សាទុកពិន្ទុថ្នាក់ ${currentClass?.name || ''} ខែ ${selectedMonth}`);
     const recordsToPut: StudentGrade[] = classStudents.map((stu) => {
       const stuScores = scoresState[stu.id] || {};
       const cData = continuousState[stu.id] || {
@@ -553,6 +560,30 @@ export const GradesPage: React.FC<GradesPageProps> = ({
               {/* Print with Orientation Selector */}
               <PrintButton defaultOrientation="landscape" label="បោះពុម្ព" />
 
+              {/* Undo / Redo */}
+              <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs font-bold shadow-2xs">
+                <button
+                  type="button"
+                  onClick={undo}
+                  disabled={!canUndo}
+                  className="inline-flex items-center px-2 py-1 rounded-lg text-slate-700 hover:bg-white hover:text-indigo-600 disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-slate-400 transition-colors cursor-pointer"
+                  title="ត្រឡប់ក្រោយ (Ctrl+Z)"
+                >
+                  <Undo2 className="w-3.5 h-3.5 mr-1 text-slate-600" />
+                  Undo
+                </button>
+                <button
+                  type="button"
+                  onClick={redo}
+                  disabled={!canRedo}
+                  className="inline-flex items-center px-2 py-1 rounded-lg text-slate-700 hover:bg-white hover:text-indigo-600 disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-slate-400 transition-colors cursor-pointer"
+                  title="ធ្វើឡើងវិញ (Ctrl+Y)"
+                >
+                  <Redo2 className="w-3.5 h-3.5 mr-1 text-slate-600" />
+                  Redo
+                </button>
+              </div>
+
               {/* Save Scores */}
               <button
                 type="button"
@@ -624,7 +655,7 @@ export const GradesPage: React.FC<GradesPageProps> = ({
           <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
             <div className="overflow-auto max-h-[72vh] table-scrollbar">
               <table className="w-full text-left border-collapse text-xs">
-                <thead className="sticky top-0 z-20 shadow-xs">
+                <thead className="sticky top-0 z-20 shadow-xs print:static print:table-header-group">
                   <tr className="bg-slate-800 text-white font-bold text-center">
                     <th className="py-2.5 px-2 border border-slate-700 w-10">ល.រ</th>
                     <th className="py-2.5 px-2 border border-slate-700 w-24">អត្តលេខ</th>
@@ -817,7 +848,29 @@ export const GradesPage: React.FC<GradesPageProps> = ({
                 Excel
               </button>
 
-              <PrintButton defaultOrientation="landscape" label="បោះពុម្ព" />
+              {/* Undo / Redo */}
+              <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs font-bold shadow-2xs">
+                <button
+                  type="button"
+                  onClick={undo}
+                  disabled={!canUndo}
+                  className="inline-flex items-center px-2 py-1 rounded-lg text-slate-700 hover:bg-white hover:text-indigo-600 disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-slate-400 transition-colors cursor-pointer"
+                  title="ត្រឡប់ក្រោយ (Ctrl+Z)"
+                >
+                  <Undo2 className="w-3.5 h-3.5 mr-1 text-slate-600" />
+                  Undo
+                </button>
+                <button
+                  type="button"
+                  onClick={redo}
+                  disabled={!canRedo}
+                  className="inline-flex items-center px-2 py-1 rounded-lg text-slate-700 hover:bg-white hover:text-indigo-600 disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-slate-400 transition-colors cursor-pointer"
+                  title="ធ្វើឡើងវិញ (Ctrl+Y)"
+                >
+                  <Redo2 className="w-3.5 h-3.5 mr-1 text-slate-600" />
+                  Redo
+                </button>
+              </div>
 
               <button
                 type="button"
@@ -834,7 +887,7 @@ export const GradesPage: React.FC<GradesPageProps> = ({
           <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
             <div className="overflow-auto max-h-[72vh] table-scrollbar">
               <table className="w-full text-left border-collapse text-xs">
-                <thead className="sticky top-0 z-20 shadow-xs">
+                <thead className="sticky top-0 z-20 shadow-xs print:static print:table-header-group">
                   <tr className="bg-slate-900 text-white font-bold text-center">
                     <th className="py-2.5 px-2 border border-slate-700 w-10">ល.រ</th>
                     <th className="py-2.5 px-2 border border-slate-700 w-24">អត្តលេខ</th>

@@ -205,10 +205,16 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
     showToast(`✨ បានផ្លាស់ទីឈ្មោះភូមិ ${toKhmerNum(corruptedAddressNamesList.length)} ទៅជួរ «ភូមិកំណើត» រួចរាល់!`);
   };
 
+  const activeEditingCellRef = useRef<string | null>(null);
+
   // Direct Inline Cell Edit Handler (Auto-Save on blur or change)
   const handleInlineChange = async (studentId: string, field: keyof Student, value: any) => {
     try {
-      await pushSnapshot('កែប្រែទិន្នន័យសិស្ស');
+      const cellKey = `${studentId}-${field}`;
+      if (activeEditingCellRef.current !== cellKey) {
+        await pushSnapshot('កែប្រែទិន្នន័យសិស្ស');
+        activeEditingCellRef.current = cellKey;
+      }
       const updateData: Partial<Student> = { [field]: value };
       // If dob is updated, also update age
       if (field === 'dob') {
@@ -759,7 +765,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
   };
 
   // Render an Excel-style interactive empty grid row (allows direct typing, selection, or paste)
-  const renderEmptyRow = (rowIdx: number) => {
+  const renderEmptyRow = (rowIdx: number, isTrailing = false) => {
     const isRowSelected = selectedRowIdx === rowIdx;
     const isCellSelected = (key: string) => selectedCell?.rowIdx === rowIdx && selectedCell?.colKey === key;
     const cellClass = (key: string) =>
@@ -771,16 +777,16 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
       <tr
         key={`empty-row-${rowIdx}`}
         className={`border-b border-slate-200 transition-colors ${
-          isRowSelected ? 'bg-blue-50/50' : 'hover:bg-slate-50/60'
-        }`}
+          isTrailing ? 'no-print print:hidden' : ''
+        } ${isRowSelected ? 'bg-blue-50/50' : 'hover:bg-slate-50/60'}`}
       >
-        {/* 1. ល.រ (Sticky left) */}
+        {/* 1. ល.រ (Sticky left on screen, static on print) */}
         <td
           onClick={() => {
             setSelectedRowIdx(rowIdx);
             setSelectedCell(null);
           }}
-          className="py-1 px-1 text-center font-bold text-slate-400 bg-slate-50/95 border-r border-slate-300 select-none sticky left-0 z-10 shadow-xs cursor-pointer hover:bg-slate-200/80 transition-colors"
+          className="py-1 px-1 text-center font-bold text-slate-400 bg-slate-50/95 border-r border-slate-300 select-none sticky left-0 z-10 shadow-xs cursor-pointer hover:bg-slate-200/80 transition-colors print:static print:bg-transparent"
           title={`ជួរដេកទី ${rowIdx + 1} (ចុចដើម្បីជ្រើសជួរដេកទាំងមូល)`}
         >
           <span className="inline-block px-2 py-0.5 rounded bg-slate-100 text-slate-500 text-xs sm:text-[13px] font-mono">
@@ -1579,10 +1585,10 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
             </colgroup>
 
             {/* Table Header: 2 Rows */}
-            <thead className="sticky top-0 z-20 shadow-xs font-kantumruy">
+            <thead className="sticky top-0 z-20 shadow-xs font-kantumruy print:static print:table-header-group">
               {/* Row 1 Header */}
               <tr className="bg-[#002060] text-white font-bold text-center border-b border-white/20 print:bg-slate-100 print:text-black text-xs sm:text-sm">
-                <th rowSpan={2} className="py-3 px-2 border border-white/30 w-12 min-w-[48px] sticky left-0 z-30 bg-[#002060]">ល.រ</th>
+                <th rowSpan={2} className="py-3 px-2 border border-white/30 w-12 min-w-[48px] sticky left-0 z-30 bg-[#002060] print:static print:bg-slate-100 print:text-black">ល.រ</th>
                 <th rowSpan={2} className="py-3 px-2.5 border border-white/30 min-w-[110px]">អត្តលេខ</th>
                 <th rowSpan={2} className="py-3 px-3 border border-white/30 min-w-[160px]">គោត្តនាម នាម</th>
                 <th rowSpan={2} className="py-3 px-2 border border-white/30 w-20 min-w-[70px]">ភេទ</th>
@@ -1648,7 +1654,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                             setSelectedRowIdx(index);
                             setSelectedCell(null);
                           }}
-                          className="py-1 px-1 text-center font-bold text-slate-700 bg-slate-50/95 border-r border-slate-300 select-none sticky left-0 z-10 shadow-xs cursor-pointer hover:bg-slate-200/80 transition-colors"
+                          className="py-1 px-1 text-center font-bold text-slate-700 bg-slate-50/95 border-r border-slate-300 select-none sticky left-0 z-10 shadow-xs cursor-pointer hover:bg-slate-200/80 transition-colors print:static print:bg-transparent"
                           title={`ជួរដេកទី ${index + 1} (ចុចដើម្បីជ្រើសជួរដេកទាំងមូល)`}
                         >
                           <span className="inline-block px-2 py-0.5 rounded bg-slate-200/90 text-slate-800 text-xs sm:text-[13px] font-black font-mono print:hidden">
@@ -2180,9 +2186,9 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                       </tr>
                     );
                   })}
-                  {/* Append 3 interactive empty rows at the bottom for quick addition */}
+                  {/* Append 3 interactive empty rows at the bottom for quick addition (Screen only, hidden on print) */}
                   {Array.from({ length: 3 }).map((_, idx) =>
-                    renderEmptyRow(filteredStudents.length + idx)
+                    renderEmptyRow(filteredStudents.length + idx, true)
                   )}
                 </>
               )}

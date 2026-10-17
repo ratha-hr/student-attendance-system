@@ -180,6 +180,7 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
   const handleSetReason = async (studentId: string, reason: string) => {
     const existing = dailyRecordMap.get(studentId);
     if (existing) {
+      await pushSnapshot('កត់មូលហេតុអវត្តមាន');
       await db.attendance.update(existing.id, { reason });
       onRefresh();
     }

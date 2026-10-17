@@ -17,6 +17,7 @@ import type { YearlyPlanItem, PlanStatus, TeacherSettings } from '../types';
 import { db } from '../db/db';
 import { Modal } from '../components/common/Modal';
 import { toKhmerNum, KHMER_MONTHS } from '../utils/dateUtils';
+import { useUndoRedo } from '../context/UndoRedoContext';
 
 interface AnnualPlanPageProps {
   yearlyPlans: YearlyPlanItem[];
@@ -29,6 +30,7 @@ export const AnnualPlanPage: React.FC<AnnualPlanPageProps> = ({
   settings,
   onRefresh,
 }) => {
+  const { pushSnapshot } = useUndoRedo();
   const [activeTerm, setActiveTerm] = useState<'all' | 'term1' | 'term2'>('all');
   const [selectedMonth, setSelectedMonth] = useState<string>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -115,6 +117,7 @@ export const AnnualPlanPage: React.FC<AnnualPlanPageProps> = ({
         : item.status === 'in_progress'
         ? 'completed'
         : 'pending';
+    await pushSnapshot(`ប្តូរស្ថានភាពមេរៀន "${item.lessonTitle}"`);
     await db.yearlyPlans.update(item.id, { status: nextStatus });
     onRefresh();
   };
@@ -124,6 +127,7 @@ export const AnnualPlanPage: React.FC<AnnualPlanPageProps> = ({
     if (!lessonTitle.trim()) return;
 
     if (editingItem) {
+      await pushSnapshot(`កែសម្រួលផែនការមេរៀន "${lessonTitle.trim()}"`);
       await db.yearlyPlans.update(editingItem.id, {
         academicYear,
         term,
@@ -141,6 +145,7 @@ export const AnnualPlanPage: React.FC<AnnualPlanPageProps> = ({
         notes: notes.trim(),
       });
     } else {
+      await pushSnapshot(`បន្ថែមផែនការមេរៀនថ្មី "${lessonTitle.trim()}"`);
       const newItem: YearlyPlanItem = {
         id: 'yp-' + Date.now(),
         academicYear,
@@ -167,6 +172,7 @@ export const AnnualPlanPage: React.FC<AnnualPlanPageProps> = ({
 
   const handleDelete = async (item: YearlyPlanItem) => {
     if (window.confirm(`តើអ្នកពិតជាចង់លុបមេរៀន "${item.lessonTitle}" ចេញពីផែនការមែនទេ?`)) {
+      await pushSnapshot(`លុបមេរៀន "${item.lessonTitle}"`);
       await db.yearlyPlans.delete(item.id);
       onRefresh();
     }

@@ -1,6 +1,16 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { db } from '../db/db';
-import type { Student, AttendanceRecord, TimetableSlot, ClassRoom, StudentGrade } from '../types';
+import type {
+  Student,
+  AttendanceRecord,
+  TimetableSlot,
+  ClassRoom,
+  StudentGrade,
+  LessonExtract,
+  OfficialLetter,
+  YearlyPlanItem,
+  TeacherSettings,
+} from '../types';
 
 interface DBSnapshot {
   description: string;
@@ -9,6 +19,10 @@ interface DBSnapshot {
   timetable: TimetableSlot[];
   classes: ClassRoom[];
   grades: StudentGrade[];
+  extracts: LessonExtract[];
+  letters: OfficialLetter[];
+  yearlyPlans: YearlyPlanItem[];
+  settings: (TeacherSettings & { id: string })[];
   timestamp: number;
 }
 
@@ -24,6 +38,13 @@ interface UndoRedoContextType {
 
 const UndoRedoContext = createContext<UndoRedoContextType | undefined>(undefined);
 
+const restoreTable = async (table: { clear: () => Promise<void>; bulkAdd: (items: any[]) => Promise<any> }, data?: any[]) => {
+  await table.clear();
+  if (data && data.length > 0) {
+    await table.bulkAdd(data);
+  }
+};
+
 export const UndoRedoProvider: React.FC<{
   children: React.ReactNode;
   onRefresh: () => void;
@@ -37,15 +58,29 @@ export const UndoRedoProvider: React.FC<{
     setTimeout(() => setToastMessage(null), 3500);
   }, []);
 
-  // Capture current state snapshot before performing modifications
+  // Capture current state snapshot across all database tables before performing modifications
   const pushSnapshot = useCallback(async (description = 'ការផ្លាស់ប្តូរទិន្នន័យ') => {
     try {
-      const [students, attendance, timetable, classes, grades] = await Promise.all([
+      const [
+        students,
+        attendance,
+        timetable,
+        classes,
+        grades,
+        extracts,
+        letters,
+        yearlyPlans,
+        settings,
+      ] = await Promise.all([
         db.students.toArray(),
         db.attendance.toArray(),
         db.timetable.toArray(),
         db.classes.toArray(),
         db.grades.toArray(),
+        db.extracts.toArray(),
+        db.letters.toArray(),
+        db.yearlyPlans.toArray(),
+        db.settings.toArray(),
       ]);
 
       const snapshot: DBSnapshot = {
@@ -55,10 +90,14 @@ export const UndoRedoProvider: React.FC<{
         timetable: JSON.parse(JSON.stringify(timetable)),
         classes: JSON.parse(JSON.stringify(classes)),
         grades: JSON.parse(JSON.stringify(grades)),
+        extracts: JSON.parse(JSON.stringify(extracts)),
+        letters: JSON.parse(JSON.stringify(letters)),
+        yearlyPlans: JSON.parse(JSON.stringify(yearlyPlans)),
+        settings: JSON.parse(JSON.stringify(settings)),
         timestamp: Date.now(),
       };
 
-      setUndoStack((prev) => [...prev.slice(-25), snapshot]);
+      setUndoStack((prev) => [...prev.slice(-50), snapshot]);
       setRedoStack([]); // Clear redo stack on new action
     } catch (err) {
       console.error('Failed to capture snapshot for undo:', err);
@@ -71,12 +110,26 @@ export const UndoRedoProvider: React.FC<{
 
     try {
       // Capture current state to push to redo
-      const [currentStudents, currentAttendance, currentTimetable, currentClasses, currentGrades] = await Promise.all([
+      const [
+        currentStudents,
+        currentAttendance,
+        currentTimetable,
+        currentClasses,
+        currentGrades,
+        currentExtracts,
+        currentLetters,
+        currentYearlyPlans,
+        currentSettings,
+      ] = await Promise.all([
         db.students.toArray(),
         db.attendance.toArray(),
         db.timetable.toArray(),
         db.classes.toArray(),
         db.grades.toArray(),
+        db.extracts.toArray(),
+        db.letters.toArray(),
+        db.yearlyPlans.toArray(),
+        db.settings.toArray(),
       ]);
 
       const currentSnapshot: DBSnapshot = {
@@ -86,22 +139,30 @@ export const UndoRedoProvider: React.FC<{
         timetable: JSON.parse(JSON.stringify(currentTimetable)),
         classes: JSON.parse(JSON.stringify(currentClasses)),
         grades: JSON.parse(JSON.stringify(currentGrades)),
+        extracts: JSON.parse(JSON.stringify(currentExtracts)),
+        letters: JSON.parse(JSON.stringify(currentLetters)),
+        yearlyPlans: JSON.parse(JSON.stringify(currentYearlyPlans)),
+        settings: JSON.parse(JSON.stringify(currentSettings)),
         timestamp: Date.now(),
       };
 
       const previous = undoStack[undoStack.length - 1];
       const newUndo = undoStack.slice(0, undoStack.length - 1);
 
-      setRedoStack((prev) => [...prev.slice(-25), currentSnapshot]);
+      setRedoStack((prev) => [...prev.slice(-50), currentSnapshot]);
       setUndoStack(newUndo);
 
       // Restore snapshot tables
       await Promise.all([
-        db.students.clear().then(() => db.students.bulkAdd(previous.students)),
-        db.attendance.clear().then(() => db.attendance.bulkAdd(previous.attendance)),
-        db.timetable.clear().then(() => db.timetable.bulkAdd(previous.timetable)),
-        db.classes.clear().then(() => db.classes.bulkAdd(previous.classes)),
-        db.grades.clear().then(() => db.grades.bulkAdd(previous.grades)),
+        restoreTable(db.students, previous.students),
+        restoreTable(db.attendance, previous.attendance),
+        restoreTable(db.timetable, previous.timetable),
+        restoreTable(db.classes, previous.classes),
+        restoreTable(db.grades, previous.grades),
+        restoreTable(db.extracts, previous.extracts),
+        restoreTable(db.letters, previous.letters),
+        restoreTable(db.yearlyPlans, previous.yearlyPlans),
+        restoreTable(db.settings, previous.settings),
       ]);
 
       onRefresh();
@@ -118,12 +179,26 @@ export const UndoRedoProvider: React.FC<{
 
     try {
       // Capture current state to push to undo
-      const [currentStudents, currentAttendance, currentTimetable, currentClasses, currentGrades] = await Promise.all([
+      const [
+        currentStudents,
+        currentAttendance,
+        currentTimetable,
+        currentClasses,
+        currentGrades,
+        currentExtracts,
+        currentLetters,
+        currentYearlyPlans,
+        currentSettings,
+      ] = await Promise.all([
         db.students.toArray(),
         db.attendance.toArray(),
         db.timetable.toArray(),
         db.classes.toArray(),
         db.grades.toArray(),
+        db.extracts.toArray(),
+        db.letters.toArray(),
+        db.yearlyPlans.toArray(),
+        db.settings.toArray(),
       ]);
 
       const currentSnapshot: DBSnapshot = {
@@ -133,22 +208,30 @@ export const UndoRedoProvider: React.FC<{
         timetable: JSON.parse(JSON.stringify(currentTimetable)),
         classes: JSON.parse(JSON.stringify(currentClasses)),
         grades: JSON.parse(JSON.stringify(currentGrades)),
+        extracts: JSON.parse(JSON.stringify(currentExtracts)),
+        letters: JSON.parse(JSON.stringify(currentLetters)),
+        yearlyPlans: JSON.parse(JSON.stringify(currentYearlyPlans)),
+        settings: JSON.parse(JSON.stringify(currentSettings)),
         timestamp: Date.now(),
       };
 
       const next = redoStack[redoStack.length - 1];
       const newRedo = redoStack.slice(0, redoStack.length - 1);
 
-      setUndoStack((prev) => [...prev.slice(-25), currentSnapshot]);
+      setUndoStack((prev) => [...prev.slice(-50), currentSnapshot]);
       setRedoStack(newRedo);
 
       // Restore snapshot tables
       await Promise.all([
-        db.students.clear().then(() => db.students.bulkAdd(next.students)),
-        db.attendance.clear().then(() => db.attendance.bulkAdd(next.attendance)),
-        db.timetable.clear().then(() => db.timetable.bulkAdd(next.timetable)),
-        db.classes.clear().then(() => db.classes.bulkAdd(next.classes)),
-        db.grades.clear().then(() => db.grades.bulkAdd(next.grades)),
+        restoreTable(db.students, next.students),
+        restoreTable(db.attendance, next.attendance),
+        restoreTable(db.timetable, next.timetable),
+        restoreTable(db.classes, next.classes),
+        restoreTable(db.grades, next.grades),
+        restoreTable(db.extracts, next.extracts),
+        restoreTable(db.letters, next.letters),
+        restoreTable(db.yearlyPlans, next.yearlyPlans),
+        restoreTable(db.settings, next.settings),
       ]);
 
       onRefresh();
@@ -162,21 +245,28 @@ export const UndoRedoProvider: React.FC<{
   // Keyboard shortcut Ctrl+Z / Ctrl+Y across the entire app
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Skip if focused inside input or textarea unless Ctrl+Z is intended
       const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
-      const isInput = tag === 'input' || tag === 'textarea' || (e.target as HTMLElement)?.isContentEditable;
+      const isTextarea = tag === 'textarea';
 
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
         if (e.shiftKey) {
           e.preventDefault();
+          (e.target as HTMLElement)?.blur?.();
           redo();
-        } else if (!isInput) {
-          e.preventDefault();
-          undo();
+        } else {
+          // If in textarea, allow default textarea undo. Anywhere else (including table inputs/cells), trigger app Undo!
+          if (!isTextarea) {
+            e.preventDefault();
+            (e.target as HTMLElement)?.blur?.();
+            undo();
+          }
         }
-      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y' && !isInput) {
-        e.preventDefault();
-        redo();
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        if (!isTextarea) {
+          e.preventDefault();
+          (e.target as HTMLElement)?.blur?.();
+          redo();
+        }
       }
     };
 

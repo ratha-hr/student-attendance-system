@@ -20,6 +20,7 @@ import type { LessonExtract, ExtractCategory } from '../types';
 import { db } from '../db/db';
 import { Modal } from '../components/common/Modal';
 import { formatKhmerDate } from '../utils/dateUtils';
+import { useUndoRedo } from '../context/UndoRedoContext';
 
 interface LessonExtractsPageProps {
   extracts: LessonExtract[];
@@ -30,6 +31,7 @@ export const LessonExtractsPage: React.FC<LessonExtractsPageProps> = ({
   extracts,
   onRefresh,
 }) => {
+  const { pushSnapshot } = useUndoRedo();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -99,6 +101,7 @@ export const LessonExtractsPage: React.FC<LessonExtractsPageProps> = ({
       .filter(Boolean);
 
     if (editingExtract) {
+      await pushSnapshot(`កែសម្រួលសម្រង់អត្ថបទ "${title.trim()}"`);
       await db.extracts.update(editingExtract.id, {
         title: title.trim(),
         subject: subject.trim(),
@@ -109,6 +112,7 @@ export const LessonExtractsPage: React.FC<LessonExtractsPageProps> = ({
         tags,
       });
     } else {
+      await pushSnapshot(`បន្ថែមសម្រង់អត្ថបទថ្មី "${title.trim()}"`);
       const newExtract: LessonExtract = {
         id: 'ext-' + Date.now(),
         title: title.trim(),
@@ -129,6 +133,7 @@ export const LessonExtractsPage: React.FC<LessonExtractsPageProps> = ({
 
   const handleDelete = async (ext: LessonExtract) => {
     if (window.confirm(`តើអ្នកពិតជាចង់លុបសម្រង់អត្ថបទ "${ext.title}" មែនទេ?`)) {
+      await pushSnapshot(`លុបសម្រង់អត្ថបទ "${ext.title}"`);
       await db.extracts.delete(ext.id);
       onRefresh();
     }

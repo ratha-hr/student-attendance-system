@@ -17,6 +17,7 @@ import {
 import type { TeacherSettings } from '../types';
 import { db } from '../db/db';
 import { toKhmerNum } from '../utils/dateUtils';
+import { useUndoRedo } from '../context/UndoRedoContext';
 
 interface SettingsPageProps {
   settings: TeacherSettings | null;
@@ -24,6 +25,7 @@ interface SettingsPageProps {
 }
 
 export const SettingsPage: React.FC<SettingsPageProps> = ({ settings, onRefresh }) => {
+  const { pushSnapshot } = useUndoRedo();
   const [teacherName, setTeacherName] = useState(settings?.teacherName || 'ហ៊ុន រដ្ឋា');
   const [specialtySubject, setSpecialtySubject] = useState(settings?.specialtySubject || 'គណិតវិទ្យា');
   const [phone, setPhone] = useState(settings?.phone || '093 486 987 / 089 230 998 / 071 741 1141');
@@ -40,6 +42,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ settings, onRefresh 
 
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
+    await pushSnapshot('កែប្រែការកំណត់ប្រព័ន្ធ');
     await db.updateSettings({
       teacherName: teacherName.trim(),
       specialtySubject: specialtySubject.trim(),
@@ -84,6 +87,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ settings, onRefresh 
     }
 
     try {
+      await pushSnapshot('ស្តារទិន្នន័យពី Backup JSON');
       const text = await file.text();
       await db.importBackupJSON(text);
       alert('បានស្តារទិន្នន័យដោយជោគជ័យ!');
@@ -98,6 +102,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ settings, onRefresh 
 
   const handleLoad200Students = async () => {
     if (window.confirm('តើអ្នកចង់ផ្ទុកទិន្នន័យសិស្សគំរូចំនួន ២០០ នាក់ (ថ្នាក់ទី ៧ ដល់ ទី ១២) មែនទេ?')) {
+      await pushSnapshot('ផ្ទុកទិន្នន័យសិស្សគំរូ ២០០ នាក់');
       await db.loadSample200Students();
       alert('បានផ្ទុកទិន្នន័យសិស្ស ២០០ នាក់ (ថ្នាក់ទី ៧ ដល់ ទី ១២) ដោយជោគជ័យ!');
       onRefresh();
@@ -106,6 +111,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ settings, onRefresh 
 
   const handleResetSampleData = async () => {
     if (window.confirm('តើអ្នកពិតជាចង់កំណត់ទិន្នន័យឡើងវិញទៅកាន់ទិន្នន័យគំរូដើមមែនទេ? ទិន្នន័យថ្មីដែលបានបញ្ចូលនឹងត្រូវបានលុប។')) {
+      await pushSnapshot('កំណត់ទិន្នន័យឡើងវិញទៅគំរូដើម');
       await db.resetToSeedData();
       alert('បានកំណត់ទិន្នន័យឡើងវិញដោយជោគជ័យ!');
       onRefresh();

@@ -88,14 +88,29 @@
     page-break-inside: auto !important;
   }
   tr {
+    break-inside: avoid !important;
     page-break-inside: avoid !important;
     page-break-after: auto !important;
   }
   thead {
     display: table-header-group !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
   }
   tfoot {
     display: table-footer-group !important;
+  }
+
+  /* CRITICAL: Overwrite ALL sticky/fixed positioning on tables in print mode.
+     Chromium incorrectly shifts sticky cells or puts sticky thead at the bottom of the page! */
+  table, thead, tbody, tfoot, tr, th, td {
+    position: static !important;
+    transform: none !important;
+    left: auto !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: auto !important;
+    z-index: auto !important;
   }
 
   /* Full column fit on A4 page */
@@ -104,6 +119,7 @@
     width: 100% !important;
     max-width: 100% !important;
     border-collapse: collapse !important;
+    margin: 0 !important;
   }
   table.print-fit-all colgroup {
     display: table-column-group !important;
@@ -112,19 +128,21 @@
   table.print-fit-all td {
     min-width: 0 !important;
     max-width: none !important;
-    padding: 2px 1px !important;
-    font-size: 5.5pt !important;
+    padding: 2.5px 1.5px !important;
+    font-size: 5.6pt !important;
     line-height: 1.15 !important;
     border: 0.5pt solid #000 !important;
     word-break: break-word !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     color: #000 !important;
+    position: static !important;
   }
   table.print-fit-all th {
     background-color: #f1f5f9 !important;
     font-weight: bold !important;
     text-align: center !important;
+    vertical-align: middle !important;
   }
   table.print-fit-all input,
   table.print-fit-all select {
