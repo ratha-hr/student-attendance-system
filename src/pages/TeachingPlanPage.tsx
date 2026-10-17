@@ -1164,32 +1164,30 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
               })}
             </div>
 
-            {/* Right: Teacher-configurable Year 1 Starting Calendar Year */}
-            <div className="flex items-center gap-1.5 bg-blue-50/90 border border-blue-300/80 px-2.5 py-1 rounded-xl text-xs font-bold text-blue-950 shrink-0 shadow-2xs self-start md:self-auto">
-              <span className="flex items-center gap-1 text-blue-900">
+            {/* Right: Teacher-configurable Year 1 Starting Calendar Year - Single unified dropdown */}
+            <div className="flex items-center gap-2 bg-blue-50/90 border border-blue-300/80 px-3 py-1.5 rounded-xl text-xs font-bold text-blue-950 shrink-0 shadow-2xs self-start md:self-auto">
+              <span className="flex items-center gap-1.5 text-blue-900 font-semibold">
                 <span>📅</span>
-                <span>ឆ្នាំទី១ (ចាប់ផ្ដើម)៖</span>
+                <span>ឆ្នាំទី១ (ចាប់ផ្ដើម) ៖</span>
               </span>
-              <input
-                type="number"
-                min={2000}
-                max={2099}
-                value={modelSchoolStartYear}
-                onChange={(e) => handleStartYearChange(parseInt(e.target.value, 10))}
-                className="w-16 px-1.5 py-0.5 text-xs font-black text-center text-blue-700 bg-white border border-blue-300 rounded-lg shadow-2xs focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono"
-                title="កំណត់ឆ្នាំប្រតិទិនសម្រាប់ ឆ្នាំទី១ (សាលានឹងគណនាឆ្នាំទី២ ដល់ ទី៦ ដោយស្វ័យប្រវត្តិ)"
-              />
               <select
                 value={modelSchoolStartYear}
                 onChange={(e) => handleStartYearChange(parseInt(e.target.value, 10))}
-                className="text-xs font-bold text-blue-800 bg-white border border-blue-300 rounded-lg px-1.5 py-0.5 cursor-pointer shadow-2xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                title="ជ្រើសរើសឆ្នាំរហ័ស"
+                className="text-xs font-black text-blue-800 bg-white border border-blue-300 rounded-lg px-2.5 py-1 cursor-pointer shadow-2xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                title="ជ្រើសរើសឆ្នាំប្រតិទិនសម្រាប់ ឆ្នាំទី១ (សាលានឹងគណនាឆ្នាំទី២ ដល់ ទី៦ ដោយស្វ័យប្រវត្តិ)"
               >
-                {[2020, 2021, 2022, 2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030].map((y) => (
-                  <option key={y} value={y}>
-                    {y} ({toKhmerNum(y)})
-                  </option>
-                ))}
+                {(() => {
+                  const years = Array.from({ length: 21 }, (_, i) => 2020 + i);
+                  if (!years.includes(modelSchoolStartYear)) {
+                    years.push(modelSchoolStartYear);
+                    years.sort((a, b) => a - b);
+                  }
+                  return years.map((y) => (
+                    <option key={y} value={y}>
+                      {y} ({toKhmerNum(y)})
+                    </option>
+                  ));
+                })()}
               </select>
             </div>
           </div>
