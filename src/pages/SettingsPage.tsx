@@ -41,7 +41,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ settings, onRefresh 
   const [absenceWarningThreshold, setAbsenceWarningThreshold] = useState(settings?.absenceWarningThreshold || 3);
   const [studentAttendancePin, setStudentAttendancePin] = useState(settings?.studentAttendancePin || '1234');
   const [pinMode, setPinMode] = useState<PinMode>(settings?.pinMode || 'daily');
-  const [copiedTodayPin, setCopiedTodayPin] = useState(false);
 
   const todayStr = React.useMemo(() => {
     const now = new Date();
@@ -315,45 +314,17 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ settings, onRefresh 
             </span>
           </div>
 
-          {/* Today's Active PIN Highlight Display Banner */}
-          <div className="bg-linear-to-r from-indigo-600 via-indigo-700 to-purple-700 text-white rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <p className="text-xs text-indigo-200 font-bold flex items-center">
-                <Key className="w-3.5 h-3.5 mr-1 text-yellow-300" />
-                លេខកូដសម្ងាត់ដោះសោថ្ងៃនេះ ({formatKhmerDate(todayStr, true)})៖
-              </p>
-              <div className="flex items-center space-x-3 mt-2">
-                <span className="text-3xl sm:text-4xl font-mono font-black tracking-widest bg-white/20 px-4 py-1 rounded-xl border border-white/30 text-white shadow-inner">
-                  {currentEffectivePin}
-                </span>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      await navigator.clipboard.writeText(currentEffectivePin);
-                      setCopiedTodayPin(true);
-                      setTimeout(() => setCopiedTodayPin(false), 2000);
-                    } catch {}
-                  }}
-                  className="px-3 py-2 bg-white hover:bg-indigo-50 text-indigo-900 active:scale-95 text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer flex items-center"
-                >
-                  {copiedTodayPin ? (
-                    <>
-                      <Check className="w-3.5 h-3.5 mr-1 text-emerald-600" />
-                      <span className="text-emerald-700 font-black">ចម្លងរួច!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3.5 h-3.5 mr-1 text-indigo-600" />
-                      <span>ចម្លងកូដថ្ងៃនេះ</span>
-                    </>
-                  )}
-                </button>
-              </div>
+          {/* Location Note: PIN display is moved directly to Share Modal */}
+          <div className="bg-indigo-50/60 border border-indigo-200/70 rounded-2xl p-3.5 text-xs text-indigo-900 flex items-center justify-between gap-3">
+            <div className="flex items-center space-x-2.5">
+              <Key className="w-4 h-4 text-indigo-600 shrink-0" />
+              <span className="font-normal text-slate-700">
+                លេខកូដសម្ងាត់ដោះសោថ្ងៃនេះ ត្រូវបានផ្លាស់ប្តូរទីតាំងទៅបង្ហាញដោយផ្ទាល់នៅក្នុង <strong>«ផ្ទាំងចែករំលែកទៅសិស្ស (ស្រង់វត្តមាន)»</strong> ដើម្បីងាយស្រួលចម្លងផ្ញើទៅប្រធានថ្នាក់។
+              </span>
             </div>
-            <div className="text-xs text-indigo-100 max-w-xs leading-relaxed bg-white/10 p-3 rounded-xl border border-white/15">
-              🛡️ <strong>សុវត្ថិភាពខ្ពស់៖</strong> ផ្ញើកូដនេះទៅប្រធានថ្នាក់សម្រាប់ស្រង់វត្តមានថ្ងៃនេះ។ នៅពេលដល់ថ្ងៃស្អែក ប្រព័ន្ធនឹងប្តូរលេខកូដថ្មីស្វ័យប្រវត្តិ សិស្សមិនអាចចាំកូដចាស់មកលួចកែបានឡើយ។
-            </div>
+            <span className="text-[11px] font-mono font-normal text-indigo-700 bg-white px-2 py-0.5 rounded-lg border border-indigo-200 shrink-0">
+              កូដថ្ងៃនេះ៖ {currentEffectivePin}
+            </span>
           </div>
 
           {/* PIN Mode Selection Cards */}

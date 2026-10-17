@@ -54,6 +54,7 @@ export const StudentAttendanceShareModal: React.FC<StudentAttendanceShareModalPr
   const [copiedText, setCopiedText] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedPin, setCopiedPin] = useState(false);
+  const [includeStudentList, setIncludeStudentList] = useState(false);
 
   const activePinForSelectedDate = useMemo(() => {
     return getPinForDate(selectedDate, settings);
@@ -102,60 +103,6 @@ export const StudentAttendanceShareModal: React.FC<StudentAttendanceShareModalPr
 
   const sessionLabel = selectedSession === 'morning' ? 'វេនព្រឹក' : 'វេនរសៀល';
 
-  // Generate clean daily attendance text specifically formatted for students/monitor
-  const studentAttendanceText = useMemo(() => {
-    const lines: string[] = [];
-    lines.push(`📋 តារាងស្រង់វត្តមានប្រចាំថ្ងៃ`);
-    lines.push(`🏫 ${settings?.schoolName || 'វិទ្យាល័យ ហ៊ុន សែន កំពង់ត្រឡាច'}`);
-    lines.push(`📚 ថ្នាក់៖ ${currentClass?.name || 'ថ្នាក់រៀន'}`);
-    lines.push(`📅 កាលបរិច្ឆេទ៖ ${formatKhmerDate(selectedDate, true)}`);
-    lines.push(`⏰ វេន៖ ${sessionLabel} (ម៉ោង ${checkInTime} - ${checkOutTime})`);
-    lines.push(`👨‍🏫 គ្រូបង្រៀន៖ ${settings?.teacherName || 'គ្រូបន្ទុកថ្នាក់'}${settings?.specialtySubject ? ` (${settings?.specialtySubject})` : ''}`);
-    lines.push(`━━━━━━━━━━━━━━━━━━━━`);
-    lines.push(`✍️ បញ្ជីស្រង់វត្តមានសិស្សប្រចាំថ្ងៃ៖`);
-
-    classStudents.forEach((stu, idx) => {
-      const rec = todayRecords.find((r) => r.studentId === stu.id);
-      let statusMark = '⏳ មិនទាន់ស្រង់';
-      if (rec?.status === 'present') statusMark = 'មក ✅';
-      else if (rec?.status === 'permission') statusMark = `ច្បាប់ 🟡${rec.reason ? ` (${rec.reason})` : ''}`;
-      else if (rec?.status === 'absent') statusMark = `អវត្តមាន ❌${rec.reason ? ` (${rec.reason})` : ''}`;
-      else if (rec?.status === 'late') statusMark = 'មកយឺត 🔵';
-
-      const roll = idx + 1;
-      const code = fromKhmerNum(stu.studentCode);
-      lines.push(`${roll}. [${code}] ${stu.nameKh} (${stu.gender}): [ ${statusMark} ]`);
-    });
-
-    lines.push(`━━━━━━━━━━━━━━━━━━━━`);
-    lines.push(`📊 សរុបវត្តមានថ្ងៃនេះ៖`);
-    lines.push(`• សរុបសិស្ស៖ ${total} នាក់`);
-    lines.push(`• វត្តមាន (មក)៖ ${presentCount} នាក់`);
-    lines.push(`• មានច្បាប់៖ ${permissionCount} នាក់`);
-    lines.push(`• អវត្តមានឥតច្បាប់៖ ${absentCount} នាក់`);
-    if (lateCount > 0) lines.push(`• មកយឺត៖ ${lateCount} នាក់`);
-    if (unmarkedCount > 0) lines.push(`• មិនទាន់ស្រង់៖ ${unmarkedCount} នាក់`);
-    lines.push(`━━━━━━━━━━━━━━━━━━━━`);
-    lines.push(`📢 សូមប្រធានថ្នាក់ ឬសិស្សក្នុងថ្នាក់ផ្ទៀងផ្ទាត់វត្តមានឱ្យបានច្បាស់លាស់!`);
-
-    return lines.join('\n');
-  }, [
-    settings,
-    currentClass,
-    selectedDate,
-    sessionLabel,
-    checkInTime,
-    checkOutTime,
-    classStudents,
-    todayRecords,
-    total,
-    presentCount,
-    permissionCount,
-    absentCount,
-    lateCount,
-    unmarkedCount,
-  ]);
-
   // Generate compact attendance payload for sharing
   const attPayload = useMemo(() => {
     return encodeAttendanceForUrl(classStudents, todayRecords, selectedDate, selectedSession);
@@ -170,6 +117,70 @@ export const StudentAttendanceShareModal: React.FC<StudentAttendanceShareModalPr
     const pinTokenParam = `&pinToken=${encodeURIComponent(hashPin(activePinForSelectedDate))}`;
     return `${origin}${path}?mode=student&class=${classParam}&date=${selectedDate}&session=${selectedSession}&view=readonly${pinTokenParam}${payloadParam}`;
   }, [currentClass, selectedDate, selectedSession, attPayload, activePinForSelectedDate]);
+
+  // Generate clean daily attendance text specifically formatted for students/monitor (without cluttering student names)
+  const studentAttendanceText = useMemo(() => {
+    const lines: string[] = [];
+    lines.push(`📋 តារាងស្រង់វត្តមានប្រចាំថ្ងៃ`);
+    lines.push(`🏫 ${settings?.schoolName || 'វិទ្យាល័យ ហ៊ុន សែន កំពង់ត្រឡាច'}`);
+    lines.push(`📚 ថ្នាក់៖ ${currentClass?.name || 'ថ្នាក់រៀន'}`);
+    lines.push(`📅 កាលបរិច្ឆេទ៖ ${formatKhmerDate(selectedDate, true)}`);
+    lines.push(`⏰ វេន៖ ${sessionLabel} (ម៉ោង ${checkInTime} - ${checkOutTime})`);
+    lines.push(`👨‍🏫 គ្រូបង្រៀន៖ ${settings?.teacherName || 'គ្រូបន្ទុកថ្នាក់'}${settings?.specialtySubject ? ` (${settings?.specialtySubject})` : ''}`);
+    lines.push(`━━━━━━━━━━━━━━━━━━━━`);
+
+    if (includeStudentList) {
+      lines.push(`✍️ បញ្ជីស្រង់វត្តមានសិស្សប្រចាំថ្ងៃ៖`);
+      classStudents.forEach((stu, idx) => {
+        const rec = todayRecords.find((r) => r.studentId === stu.id);
+        let statusMark = '⏳ មិនទាន់ស្រង់';
+        if (rec?.status === 'present') statusMark = 'មក ✅';
+        else if (rec?.status === 'permission') statusMark = `ច្បាប់ 🟡${rec.reason ? ` (${rec.reason})` : ''}`;
+        else if (rec?.status === 'absent') statusMark = `អវត្តមាន ❌${rec.reason ? ` (${rec.reason})` : ''}`;
+        else if (rec?.status === 'late') statusMark = 'មកយឺត 🔵';
+
+        const roll = idx + 1;
+        const code = fromKhmerNum(stu.studentCode);
+        lines.push(`${roll}. [${code}] ${stu.nameKh} (${stu.gender}): [ ${statusMark} ]`);
+      });
+      lines.push(`━━━━━━━━━━━━━━━━━━━━`);
+    }
+
+    lines.push(`📊 សរុបវត្តមានថ្ងៃនេះ៖`);
+    lines.push(`• សរុបសិស្ស៖ ${total} នាក់`);
+    lines.push(`• វត្តមាន (មក)៖ ${presentCount} នាក់`);
+    lines.push(`• មានច្បាប់៖ ${permissionCount} នាក់`);
+    lines.push(`• អវត្តមានឥតច្បាប់៖ ${absentCount} នាក់`);
+    if (lateCount > 0) lines.push(`• មកយឺត៖ ${lateCount} នាក់`);
+    if (unmarkedCount > 0) lines.push(`• មិនទាន់ស្រង់៖ ${unmarkedCount} នាក់`);
+    lines.push(`━━━━━━━━━━━━━━━━━━━━`);
+    lines.push(`🔒 បញ្ជីវត្តមានត្រូវបានចាក់សោសុវត្ថិភាព`);
+    lines.push(`🔑 លេខកូដដោះសោស្រង់វត្តមានថ្ងៃនេះ៖ ${activePinForSelectedDate} (ប្តូររៀងរាល់ថ្ងៃ)`);
+    lines.push(`👉 តំណភ្ជាប់ស្រង់វត្តមាន៖`);
+    lines.push(`${studentReadOnlyUrl}`);
+    lines.push(`━━━━━━━━━━━━━━━━━━━━`);
+    lines.push(`📢 សូមប្រធានថ្នាក់ ឬសិស្សក្នុងថ្នាក់ចុចតំណភ្ជាប់ខាងលើដើម្បីស្រង់ និងផ្ទៀងផ្ទាត់វត្តមាន!`);
+
+    return lines.join('\n');
+  }, [
+    settings,
+    currentClass,
+    selectedDate,
+    sessionLabel,
+    checkInTime,
+    checkOutTime,
+    includeStudentList,
+    classStudents,
+    todayRecords,
+    total,
+    presentCount,
+    permissionCount,
+    absentCount,
+    lateCount,
+    unmarkedCount,
+    activePinForSelectedDate,
+    studentReadOnlyUrl,
+  ]);
 
   const handleCopyText = async () => {
     try {
@@ -292,6 +303,56 @@ export const StudentAttendanceShareModal: React.FC<StudentAttendanceShareModalPr
           </div>
         </div>
 
+        {/* Daily PIN Security Code Display (Placed here in Share Modal per user request, Clean Regular Font - No Bold) */}
+        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 sm:p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-700">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-indigo-600 shrink-0 shadow-2xs">
+              <Key className="w-4 h-4 text-indigo-600" />
+            </div>
+            <div>
+              <div className="flex items-center flex-wrap gap-2">
+                <span className="text-slate-600 font-normal">
+                  លេខកូដសម្ងាត់ដោះសោថ្ងៃនេះ ({formatKhmerDate(selectedDate, false)})៖
+                </span>
+                <span className="font-mono text-indigo-900 text-base sm:text-lg tracking-widest font-normal bg-white px-2.5 py-0.5 rounded-lg border border-slate-300 shadow-2xs">
+                  {activePinForSelectedDate}
+                </span>
+                <span className="text-[11px] text-emerald-700 font-normal bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                  ប្តូររៀងរាល់ថ្ងៃ
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 font-normal mt-0.5">
+                ផ្តល់ជូនតែប្រធានថ្នាក់ ឬសិស្សសម្រាប់ដោះសោស្រង់វត្តមានថ្ងៃនេះ (ដល់ថ្ងៃស្អែក ប្រព័ន្ធនឹងប្តូរលេខកូដថ្មីស្វ័យប្រវត្តិ)
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(activePinForSelectedDate);
+                setCopiedPin(true);
+                setTimeout(() => setCopiedPin(false), 2000);
+              } catch {}
+            }}
+            className="inline-flex items-center justify-center px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 font-normal border border-slate-300 transition-all shrink-0 cursor-pointer text-xs shadow-2xs active:scale-95"
+            title="ចម្លងលេខកូដសម្ងាត់ ៤ ខ្ទង់"
+          >
+            {copiedPin ? (
+              <>
+                <Check className="w-3.5 h-3.5 text-emerald-600 mr-1" />
+                <span className="text-emerald-700 font-normal">ចម្លងកូដរួច!</span>
+              </>
+            ) : (
+              <>
+                <Copy className="w-3.5 h-3.5 mr-1 text-slate-600" />
+                <span className="font-normal">ចម្លងលេខកូដ</span>
+              </>
+            )}
+          </button>
+        </div>
+
         {/* View Mode Tabs */}
         <div className="flex items-center space-x-2 border-b border-slate-200 pb-2">
           <button
@@ -337,27 +398,39 @@ export const StudentAttendanceShareModal: React.FC<StudentAttendanceShareModalPr
         {/* TAB 1: Telegram Message Preview */}
         {activeTab === 'message' && (
           <div className="space-y-3">
-            <div className="flex items-center justify-between text-xs text-slate-500">
-              <span className="font-semibold">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-500">
+              <span className="font-normal text-slate-600">
                 អត្ថបទរៀបចំរួចជាស្រេច អាចចម្លង ឬចុចផ្ញើទៅគ្រុបតេឡេក្រាមសិស្សភ្លាមៗ៖
               </span>
-              <button
-                type="button"
-                onClick={handleCopyText}
-                className="inline-flex items-center px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition-colors cursor-pointer"
-              >
-                {copiedText ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 text-emerald-600 mr-1" />
-                    <span className="text-emerald-700">ចម្លងរួចរាល់!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5 mr-1" />
-                    <span>ចម្លងអត្ថបទ</span>
-                  </>
-                )}
-              </button>
+              <div className="flex items-center space-x-3">
+                <label className="inline-flex items-center space-x-1.5 cursor-pointer text-xs text-slate-500 font-normal hover:text-slate-700 select-none">
+                  <input
+                    type="checkbox"
+                    checked={includeStudentList}
+                    onChange={(e) => setIncludeStudentList(e.target.checked)}
+                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5 cursor-pointer"
+                  />
+                  <span>បង្ហាញបញ្ជីឈ្មោះសិស្សក្នុងសារ</span>
+                </label>
+
+                <button
+                  type="button"
+                  onClick={handleCopyText}
+                  className="inline-flex items-center px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-normal transition-colors cursor-pointer"
+                >
+                  {copiedText ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-600 mr-1" />
+                      <span className="text-emerald-700">ចម្លងរួចរាល់!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5 mr-1 text-slate-600" />
+                      <span>ចម្លងអត្ថបទ</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
 
             <textarea
@@ -486,76 +559,30 @@ export const StudentAttendanceShareModal: React.FC<StudentAttendanceShareModalPr
           </div>
         )}
 
-        {/* Direct Link sharing & PIN Security Box */}
-        <div className="space-y-2.5">
-          <div className="bg-slate-100 p-3 rounded-xl flex items-center justify-between gap-2 text-xs">
-            <div className="flex items-center space-x-2 truncate min-w-0">
-              <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span className="text-slate-700 shrink-0 font-bold">តំណភ្ជាប់សិស្សមើល (Read-Only)៖</span>
-              <span className="font-mono text-indigo-700 truncate select-all">{studentReadOnlyUrl}</span>
-            </div>
-            <button
-              type="button"
-              onClick={handleCopyLink}
-              className="inline-flex items-center px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-700 font-bold border border-slate-300 transition-colors shrink-0 cursor-pointer"
-            >
-              {copiedLink ? (
-                <>
-                  <Check className="w-3.5 h-3.5 text-emerald-600 mr-1" />
-                  <span className="text-emerald-700">ចម្លងរួច!</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="w-3.5 h-3.5 mr-1" />
-                  <span>ចម្លង Link សិស្ស</span>
-                </>
-              )}
-            </button>
+        {/* Direct Link sharing */}
+        <div className="bg-slate-100 p-3 rounded-xl flex items-center justify-between gap-2 text-xs">
+          <div className="flex items-center space-x-2 truncate min-w-0">
+            <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span className="text-slate-700 shrink-0 font-normal">តំណភ្ជាប់សិស្សមើល (Read-Only)៖</span>
+            <span className="font-mono text-indigo-700 truncate select-all">{studentReadOnlyUrl}</span>
           </div>
-
-          <div className="bg-indigo-50/95 border border-indigo-200 rounded-2xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs text-indigo-950">
-            <div className="flex items-center space-x-2.5">
-              <Key className="w-5 h-5 text-indigo-600 shrink-0" />
-              <div>
-                <p className="font-bold flex items-center flex-wrap gap-1.5">
-                  <span>លេខកូដសម្ងាត់ដោះសោថ្ងៃនេះ ({formatKhmerDate(selectedDate, false)})៖</span>
-                  <span className="font-mono text-indigo-800 text-base sm:text-lg tracking-widest font-black bg-white px-2.5 py-0.5 rounded-lg border border-indigo-300 shadow-2xs">
-                    {activePinForSelectedDate}
-                  </span>
-                  <span className="text-[10px] text-emerald-700 font-bold bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-300">
-                    ✨ ប្តូររាល់ថ្ងៃ
-                  </span>
-                </p>
-                <p className="text-[11px] text-indigo-600 font-medium mt-0.5">
-                  (ផ្តល់ជូនតែប្រធានថ្នាក់ប៉ុណ្ណោះ។ ដល់ថ្ងៃស្អែក ប្រព័ន្ធនឹងប្តូរលេខកូដថ្មីស្វ័យប្រវត្តិ)
-                </p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(activePinForSelectedDate);
-                  setCopiedPin(true);
-                  setTimeout(() => setCopiedPin(false), 2000);
-                } catch {}
-              }}
-              className="inline-flex items-center px-3 py-1.5 rounded-xl bg-white hover:bg-indigo-100/70 text-indigo-800 font-bold border border-indigo-300 transition-all shrink-0 cursor-pointer text-xs shadow-2xs"
-            >
-              {copiedPin ? (
-                <>
-                  <Check className="w-3.5 h-3.5 text-emerald-600 mr-1" />
-                  <span className="text-emerald-700 font-black">ចម្លងកូដរួច!</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="w-3.5 h-3.5 mr-1 text-indigo-600" />
-                  <span>ចម្លងលេខកូដ</span>
-                </>
-              )}
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handleCopyLink}
+            className="inline-flex items-center px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-700 font-normal border border-slate-300 transition-colors shrink-0 cursor-pointer"
+          >
+            {copiedLink ? (
+              <>
+                <Check className="w-3.5 h-3.5 text-emerald-600 mr-1" />
+                <span className="text-emerald-700 font-normal">ចម្លងរួច!</span>
+              </>
+            ) : (
+              <>
+                <Copy className="w-3.5 h-3.5 mr-1" />
+                <span className="font-normal">ចម្លង Link សិស្ស</span>
+              </>
+            )}
+          </button>
         </div>
 
         {/* Modal Action Footer */}
