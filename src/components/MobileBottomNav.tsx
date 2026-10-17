@@ -70,7 +70,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             >
               <Icon className="w-5 h-5" />
             </div>
-            <span className="text-[10px] mt-0.5">{tab.label}</span>
+            <span className="text-xs font-bold mt-0.5">{tab.label}</span>
           </button>
         );
       })}
@@ -83,7 +83,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         <div className="p-1 rounded-xl text-slate-500 hover:bg-slate-100">
           <Menu className="w-5 h-5" />
         </div>
-        <span className="text-[10px] mt-0.5">មីនុយ</span>
+        <span className="text-xs font-bold mt-0.5">មីនុយ</span>
       </button>
     </div>
   );

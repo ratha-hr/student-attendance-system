@@ -160,7 +160,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <h1 className="font-bold text-sm text-white truncate tracking-wide">
               គ្រប់គ្រងសិស្ស
             </h1>
-            <p className="text-[11px] text-blue-400 truncate font-medium">
+            <p className="text-xs text-blue-300 truncate font-semibold">
               {activeClass ? `ថ្នាក់ ${activeClass.name}` : 'គ្រប់ថ្នាក់ទាំងអស់'}
             </p>
           </div>
@@ -171,7 +171,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {menuSections.map((section, sIdx) => (
             <div key={sIdx} className="space-y-1">
               {section.title && (
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 pt-2 pb-1">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider px-3 pt-2 pb-1">
                   {section.title}
                 </p>
               )}

@@ -298,7 +298,7 @@ export const MonthlyAttendancePage: React.FC<MonthlyAttendancePageProps> = ({
       {/* Main Monthly Attendance Matrix Table */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
         <div className="overflow-auto max-h-[72vh] table-scrollbar">
-          <table className="w-full text-left border-collapse text-[11px] sm:text-xs">
+          <table className="w-full text-left border-collapse text-xs sm:text-[13px]">
             <thead className="sticky top-0 z-20 bg-slate-100 shadow-xs">
               <tr className="border-b border-slate-300 text-slate-700 font-bold">
                 <th className="py-2.5 px-2 text-center w-10 border-r border-slate-200 sticky left-0 bg-slate-100 z-30">ល.រ</th>
@@ -329,11 +329,11 @@ export const MonthlyAttendancePage: React.FC<MonthlyAttendancePageProps> = ({
                       title={holiday ? `ថ្ងៃទី ${toKhmerNum(day)}៖ ${holiday}` : isSun ? `ថ្ងៃអាទិត្យ ទី ${toKhmerNum(day)}` : `ថ្ងៃទី ${toKhmerNum(day)}`}
                     >
                       <div className="flex flex-col items-center">
-                        <span className="text-[11px] leading-tight">{toKhmerNum(day)}</span>
+                        <span className="text-xs font-bold leading-tight">{toKhmerNum(day)}</span>
                         {holiday && !isSun ? (
-                          <span className="text-[8px] text-rose-600 truncate max-w-[28px] font-black">ឈប់</span>
+                          <span className="text-[10px] text-rose-600 truncate max-w-[28px] font-black">ឈប់</span>
                         ) : isSun ? (
-                          <span className="text-[8px] text-amber-700 font-bold">អា</span>
+                          <span className="text-[10px] text-amber-700 font-bold">អា</span>
                         ) : null}
                       </div>
                     </th>

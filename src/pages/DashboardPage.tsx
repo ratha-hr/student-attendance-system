@@ -255,21 +255,21 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             {/* KPI 1: សិស្សសរុប */}
             <div
               onClick={() => onNavigateTab('students')}
-              className="flex items-center space-x-2.5 px-3 py-2 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-2xl border border-white/15 transition-all cursor-pointer group"
+              className="flex items-center space-x-2.5 px-3 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-2xl border border-white/15 transition-all cursor-pointer group"
               title="ចុចដើម្បីមើលបញ្ជីសិស្ស"
             >
-              <div className="w-8 h-8 rounded-xl bg-blue-500/30 text-blue-200 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <div className="w-9 h-9 rounded-xl bg-blue-500/30 text-blue-200 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                 <Users className="w-4 h-4 text-blue-200" />
               </div>
-              <div className="min-w-0">
-                <div className="flex items-baseline space-x-1">
-                  <span className="text-[11px] font-bold text-blue-200 whitespace-nowrap">សិស្សសរុប៖</span>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline space-x-1.5 flex-wrap">
+                  <span className="text-xs font-bold text-blue-200 whitespace-nowrap">សិស្សសរុប៖</span>
                   <span className="text-base sm:text-lg font-black text-white">
                     {toKhmerNum(stats.totalStudents)}
                   </span>
-                  <span className="text-[10px] text-blue-300">នាក់</span>
+                  <span className="text-xs text-blue-300">នាក់</span>
                 </div>
-                <p className="text-[10px] text-blue-200/90 truncate">
+                <p className="text-xs text-blue-100 font-medium">
                   ស្រី <strong className="text-pink-300">{toKhmerNum(stats.femaleStudents)}</strong> • ប្រុស <strong className="text-blue-300">{toKhmerNum(stats.maleStudents)}</strong>
                 </p>
               </div>
@@ -278,21 +278,21 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             {/* KPI 2: ថ្នាក់រៀន */}
             <div
               onClick={() => onNavigateTab('timetable-class')}
-              className="flex items-center space-x-2.5 px-3 py-2 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-2xl border border-white/15 transition-all cursor-pointer group"
+              className="flex items-center space-x-2.5 px-3 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-2xl border border-white/15 transition-all cursor-pointer group"
               title="ចុចដើម្បីមើលថ្នាក់រៀន"
             >
-              <div className="w-8 h-8 rounded-xl bg-purple-500/30 text-purple-200 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <div className="w-9 h-9 rounded-xl bg-purple-500/30 text-purple-200 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                 <GraduationCap className="w-4 h-4 text-purple-200" />
               </div>
-              <div className="min-w-0">
-                <div className="flex items-baseline space-x-1">
-                  <span className="text-[11px] font-bold text-blue-200 whitespace-nowrap">ថ្នាក់រៀន៖</span>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline space-x-1.5 flex-wrap">
+                  <span className="text-xs font-bold text-blue-200 whitespace-nowrap">ថ្នាក់រៀន៖</span>
                   <span className="text-base sm:text-lg font-black text-purple-200">
                     {toKhmerNum(activeClasses.length)}
                   </span>
-                  <span className="text-[10px] text-blue-300">ថ្នាក់</span>
+                  <span className="text-xs text-blue-300">ថ្នាក់</span>
                 </div>
-                <p className="text-[10px] text-purple-200/80 truncate">
+                <p className="text-xs text-purple-100 font-medium truncate">
                   {activeClass ? activeClass.name : 'ថ្នាក់ទី ៧ ដល់ ទី ១២'}
                 </p>
               </div>
@@ -301,23 +301,23 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             {/* KPI 3: វត្តមានថ្ងៃនេះ */}
             <div
               onClick={() => onNavigateTab('attendance')}
-              className="flex items-center space-x-2.5 px-3 py-2 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-2xl border border-white/15 transition-all cursor-pointer group"
+              className="flex items-center space-x-2.5 px-3 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-2xl border border-white/15 transition-all cursor-pointer group"
               title="ចុចដើម្បីកត់វត្តមាន"
             >
-              <div className="w-8 h-8 rounded-xl bg-emerald-500/30 text-emerald-200 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <div className="w-9 h-9 rounded-xl bg-emerald-500/30 text-emerald-200 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                 <CheckCircle2 className="w-4 h-4 text-emerald-300" />
               </div>
-              <div className="min-w-0">
-                <div className="flex items-baseline space-x-1">
-                  <span className="text-[11px] font-bold text-emerald-200 whitespace-nowrap">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline space-x-1.5 flex-wrap">
+                  <span className="text-xs font-bold text-emerald-200 whitespace-nowrap">
                     {selectedDate === today ? 'វត្តមានថ្ងៃនេះ៖' : 'វត្តមានសរុប៖'}
                   </span>
                   <span className="text-base sm:text-lg font-black text-emerald-300">
                     {toKhmerNum(stats.presentToday + stats.lateToday)}
                   </span>
-                  <span className="text-[10px] text-emerald-200/80">នាក់</span>
+                  <span className="text-xs text-emerald-200/80">នាក់</span>
                 </div>
-                <p className="text-[10px] text-emerald-200/90 truncate">
+                <p className="text-xs text-emerald-100 font-medium">
                   ច្បាប់ <strong className="text-amber-300">{toKhmerNum(stats.permissionToday)}</strong> • យឺត <strong className="text-blue-300">{toKhmerNum(stats.lateToday)}</strong>
                 </p>
               </div>
@@ -326,21 +326,21 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             {/* KPI 4: អវត្តមានឥតច្បាប់ */}
             <div
               onClick={() => onNavigateTab('attendance')}
-              className="flex items-center space-x-2.5 px-3 py-2 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-2xl border border-white/15 transition-all cursor-pointer group"
+              className="flex items-center space-x-2.5 px-3 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-2xl border border-white/15 transition-all cursor-pointer group"
               title="ចុចដើម្បីពិនិត្យអវត្តមាន"
             >
-              <div className="w-8 h-8 rounded-xl bg-rose-500/30 text-rose-200 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <div className="w-9 h-9 rounded-xl bg-rose-500/30 text-rose-200 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                 <AlertTriangle className="w-4 h-4 text-rose-300" />
               </div>
-              <div className="min-w-0">
-                <div className="flex items-baseline space-x-1">
-                  <span className="text-[11px] font-bold text-rose-200 whitespace-nowrap">អវត្តមានឥតច្បាប់៖</span>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline space-x-1.5 flex-wrap">
+                  <span className="text-xs font-bold text-rose-200 whitespace-nowrap">អវត្តមានឥតច្បាប់៖</span>
                   <span className="text-base sm:text-lg font-black text-rose-300">
                     {toKhmerNum(stats.absentToday)}
                   </span>
-                  <span className="text-[10px] text-rose-200/80">នាក់</span>
+                  <span className="text-xs text-rose-200/80">នាក់</span>
                 </div>
-                <p className="text-[10px] text-rose-300/80 truncate">
+                <p className="text-xs text-rose-100 font-medium truncate">
                   {stats.absentToday > 0 ? 'ទាមទារតាមដានមូលហេតុ' : 'គ្មានសិស្សអវត្តមាន'}
                 </p>
               </div>
@@ -446,10 +446,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
 
           {/* Progress Breakdown Bars with percentages */}
-          <div className="space-y-2.5">
+          <div className="space-y-3">
             {/* 1. មក */}
             <div className="space-y-1">
-              <div className="flex items-center justify-between text-xs font-bold">
+              <div className="flex items-center justify-between text-xs sm:text-sm font-bold">
                 <span className="flex items-center text-emerald-700">
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 mr-1.5" />
                   មកទាន់ពេល
@@ -458,14 +458,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   <strong>{toKhmerNum(stats.presentToday)}</strong> នាក់ ({toKhmerNum(presentPct)}%)
                 </span>
               </div>
-              <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+              <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
                 <div style={{ width: `${presentPct}%` }} className="h-full bg-emerald-500 rounded-full transition-all duration-500" />
               </div>
             </div>
 
             {/* 2. ច្បាប់ */}
             <div className="space-y-1">
-              <div className="flex items-center justify-between text-xs font-bold">
+              <div className="flex items-center justify-between text-xs sm:text-sm font-bold">
                 <span className="flex items-center text-amber-700">
                   <span className="w-2.5 h-2.5 rounded-full bg-amber-400 mr-1.5" />
                   មានច្បាប់
@@ -474,14 +474,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   <strong>{toKhmerNum(stats.permissionToday)}</strong> នាក់ ({toKhmerNum(permPct)}%)
                 </span>
               </div>
-              <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+              <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
                 <div style={{ width: `${permPct}%` }} className="h-full bg-amber-400 rounded-full transition-all duration-500" />
               </div>
             </div>
 
             {/* 3. យឺត */}
             <div className="space-y-1">
-              <div className="flex items-center justify-between text-xs font-bold">
+              <div className="flex items-center justify-between text-xs sm:text-sm font-bold">
                 <span className="flex items-center text-blue-700">
                   <span className="w-2.5 h-2.5 rounded-full bg-blue-500 mr-1.5" />
                   មកយឺត
@@ -490,14 +490,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   <strong>{toKhmerNum(stats.lateToday)}</strong> នាក់ ({toKhmerNum(latePct)}%)
                 </span>
               </div>
-              <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+              <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
                 <div style={{ width: `${latePct}%` }} className="h-full bg-blue-500 rounded-full transition-all duration-500" />
               </div>
             </div>
 
             {/* 4. ឥតច្បាប់ */}
             <div className="space-y-1">
-              <div className="flex items-center justify-between text-xs font-bold">
+              <div className="flex items-center justify-between text-xs sm:text-sm font-bold">
                 <span className="flex items-center text-rose-700">
                   <span className="w-2.5 h-2.5 rounded-full bg-rose-500 mr-1.5" />
                   អវត្តមានឥតច្បាប់
@@ -506,7 +506,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   <strong>{toKhmerNum(stats.absentToday)}</strong> នាក់ ({toKhmerNum(absentPct)}%)
                 </span>
               </div>
-              <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+              <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
                 <div style={{ width: `${absentPct}%` }} className="h-full bg-rose-500 rounded-full transition-all duration-500" />
               </div>
             </div>
@@ -521,10 +521,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 <Users className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
               <div>
-                <h3 className="font-bold text-sm text-slate-800">
+                <h3 className="font-bold text-sm sm:text-base text-slate-800">
                   យេនឌ័រសិស្ស
                 </h3>
-                <p className="text-[11px] text-slate-400">
+                <p className="text-xs text-slate-500">
                   សរុប {toKhmerNum(stats.totalStudents)} នាក់
                 </p>
               </div>
@@ -532,41 +532,41 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
 
           {/* Dual Segment Visual Bar */}
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <div className="h-3.5 w-full bg-slate-100 rounded-full overflow-hidden flex shadow-inner">
               <div style={{ width: `${femalePct}%` }} className="bg-pink-500 h-full transition-all" />
               <div style={{ width: `${malePct}%` }} className="bg-blue-600 h-full transition-all" />
             </div>
-            <div className="flex justify-between text-[10px] font-bold text-slate-400 px-0.5">
+            <div className="flex justify-between text-xs font-bold text-slate-500 px-0.5">
               <span>ស្រី {toKhmerNum(femalePct)}%</span>
               <span>ប្រុស {toKhmerNum(malePct)}%</span>
             </div>
           </div>
 
           {/* Cards for Female and Male */}
-          <div className="space-y-2">
-            <div className="p-2.5 bg-pink-50/80 border border-pink-200 rounded-xl flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <span className="text-base">👩</span>
+          <div className="space-y-2.5">
+            <div className="p-3 bg-pink-50/90 border border-pink-200 rounded-xl flex items-center justify-between">
+              <div className="flex items-center space-x-2.5">
+                <span className="text-xl">👩</span>
                 <div>
-                  <p className="text-xs font-bold text-pink-800">សិស្សស្រី</p>
-                  <p className="text-[11px] text-pink-600 font-semibold">{toKhmerNum(stats.femaleStudents)} នាក់</p>
+                  <p className="text-xs sm:text-sm font-bold text-pink-800">សិស្សស្រី</p>
+                  <p className="text-xs text-pink-600 font-semibold">{toKhmerNum(stats.femaleStudents)} នាក់</p>
                 </div>
               </div>
-              <span className="text-base font-black text-pink-700">
+              <span className="text-base sm:text-lg font-black text-pink-700">
                 {toKhmerNum(femalePct)}%
               </span>
             </div>
 
-            <div className="p-2.5 bg-blue-50/80 border border-blue-200 rounded-xl flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <span className="text-base">👨</span>
+            <div className="p-3 bg-blue-50/90 border border-blue-200 rounded-xl flex items-center justify-between">
+              <div className="flex items-center space-x-2.5">
+                <span className="text-xl">👨</span>
                 <div>
-                  <p className="text-xs font-bold text-blue-800">សិស្សប្រុស</p>
-                  <p className="text-[11px] text-blue-600 font-semibold">{toKhmerNum(stats.maleStudents)} នាក់</p>
+                  <p className="text-xs sm:text-sm font-bold text-blue-800">សិស្សប្រុស</p>
+                  <p className="text-xs text-blue-600 font-semibold">{toKhmerNum(stats.maleStudents)} នាក់</p>
                 </div>
               </div>
-              <span className="text-base font-black text-blue-700">
+              <span className="text-base sm:text-lg font-black text-blue-700">
                 {toKhmerNum(malePct)}%
               </span>
             </div>
@@ -581,10 +581,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
               <div>
-                <h3 className="font-bold text-sm text-slate-800">
+                <h3 className="font-bold text-sm sm:text-base text-slate-800">
                   សិស្សតាមកម្រិតថ្នាក់
                 </h3>
-                <p className="text-[11px] text-slate-400">
+                <p className="text-xs text-slate-500">
                   {toKhmerNum(activeClasses.length)} ថ្នាក់រៀន
                 </p>
               </div>
@@ -592,17 +592,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
 
           {/* Clean Horizontal Bars for each Grade (7 to 12) */}
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             {gradeDistribution.map((item) => (
               <div key={item.grade} className="space-y-1">
-                <div className="flex items-center justify-between text-xs font-bold">
+                <div className="flex items-center justify-between text-xs sm:text-sm font-bold">
                   <span className="text-slate-700">ថ្នាក់ទី {toKhmerNum(item.grade)}</span>
                   <span className="text-slate-900">
                     <strong className="text-indigo-700">{toKhmerNum(item.count)}</strong> នាក់
-                    <span className="text-[10px] text-slate-400 font-normal ml-1">({toKhmerNum(item.classesCount)} ថ្នាក់)</span>
+                    <span className="text-xs text-slate-400 font-normal ml-1">({toKhmerNum(item.classesCount)} ថ្នាក់)</span>
                   </span>
                 </div>
-                <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
                   <div
                     style={{ width: `${item.heightPct}%` }}
                     className="h-full bg-linear-to-r from-indigo-500 to-blue-500 rounded-full transition-all"
@@ -636,9 +636,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-left text-xs sm:text-sm">
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 font-bold">
+                <tr className="border-b border-slate-200 text-slate-600 font-bold bg-slate-50/60">
                   <th className="py-2.5 px-3">ថ្នាក់រៀន</th>
                   <th className="py-2.5 px-3 text-center">សិស្សសរុប</th>
                   <th className="py-2.5 px-3 text-center">ស្រី</th>
@@ -652,39 +652,39 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               <tbody className="divide-y divide-slate-100">
                 {stats.classStats.map((c) => (
                   <tr key={c.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="py-2.5 px-3 font-bold text-slate-800 whitespace-nowrap">
+                    <td className="py-2.5 px-3 font-bold text-slate-800 whitespace-nowrap text-xs sm:text-sm">
                       📚 {c.name}
                     </td>
-                    <td className="py-2.5 px-3 text-center font-semibold text-slate-700">
+                    <td className="py-2.5 px-3 text-center font-bold text-slate-700 text-xs sm:text-sm">
                       {toKhmerNum(c.count)}
                     </td>
-                    <td className="py-2.5 px-3 text-center font-bold text-pink-600">
+                    <td className="py-2.5 px-3 text-center font-bold text-pink-600 text-xs sm:text-sm">
                       {toKhmerNum(c.femaleCount)}
                     </td>
-                    <td className="py-2.5 px-3 text-center font-bold text-emerald-600">
+                    <td className="py-2.5 px-3 text-center font-bold text-emerald-600 text-xs sm:text-sm">
                       {toKhmerNum(c.present)}
                     </td>
-                    <td className="py-2.5 px-3 text-center font-bold text-blue-600">
+                    <td className="py-2.5 px-3 text-center font-bold text-blue-600 text-xs sm:text-sm">
                       {c.late > 0 ? (
-                        <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-md font-bold text-[11px] border border-blue-200">
+                        <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-md font-bold text-xs border border-blue-200">
                           {toKhmerNum(c.late)}
                         </span>
                       ) : (
                         <span className="text-slate-300">-</span>
                       )}
                     </td>
-                    <td className="py-2.5 px-3 text-center font-bold text-amber-600">
+                    <td className="py-2.5 px-3 text-center font-bold text-amber-600 text-xs sm:text-sm">
                       {c.permission > 0 ? (
-                        <span className="px-2 py-0.5 bg-amber-50 text-amber-700 rounded-md font-bold text-[11px] border border-amber-200">
+                        <span className="px-2 py-0.5 bg-amber-50 text-amber-700 rounded-md font-bold text-xs border border-amber-200">
                           {toKhmerNum(c.permission)}
                         </span>
                       ) : (
                         <span className="text-slate-300">-</span>
                       )}
                     </td>
-                    <td className="py-2.5 px-3 text-center font-bold text-rose-600">
+                    <td className="py-2.5 px-3 text-center font-bold text-rose-600 text-xs sm:text-sm">
                       {c.absent > 0 ? (
-                        <span className="px-2 py-0.5 bg-rose-50 text-rose-700 rounded-md font-bold text-[11px] border border-rose-200">
+                        <span className="px-2 py-0.5 bg-rose-50 text-rose-700 rounded-md font-bold text-xs border border-rose-200">
                           {toKhmerNum(c.absent)}
                         </span>
                       ) : (
@@ -697,7 +697,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                           onSelectClass(c.id);
                           onNavigateTab('attendance');
                         }}
-                        className="px-2.5 py-1 bg-blue-50 text-blue-700 font-bold rounded-lg hover:bg-blue-100 transition-colors cursor-pointer text-[11px] whitespace-nowrap"
+                        className="px-3 py-1 bg-blue-50 text-blue-700 font-bold rounded-lg hover:bg-blue-100 transition-colors cursor-pointer text-xs whitespace-nowrap border border-blue-200"
                       >
                         កត់វត្តមាន
                       </button>
@@ -717,11 +717,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 <div className="p-1.5 bg-rose-50 text-rose-600 rounded-lg">
                   <MailWarning className="w-4 h-4" />
                 </div>
-                <h3 className="font-bold text-sm text-slate-800">
+                <h3 className="font-bold text-sm sm:text-base text-slate-800">
                   សិស្សអវត្តមានច្រើន (ត្រៀមព្រមាន)
                 </h3>
               </div>
-              <span className="text-[11px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full">
+              <span className="text-xs font-bold text-rose-700 bg-rose-50 px-2.5 py-0.5 rounded-full border border-rose-200">
                 {toKhmerNum(stats.atRiskList.length)} នាក់
               </span>
             </div>

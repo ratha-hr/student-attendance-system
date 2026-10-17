@@ -4,12 +4,14 @@
   html {
     font-size: 16px;
     -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    scroll-behavior: smooth;
   }
 
   body {
-    font-family: 'Kantumruy Pro', 'Battambang', system-ui, -apple-system, sans-serif;
-    font-size: 15px;
-    line-height: 1.6;
+    font-family: 'Kantumruy Pro', 'Battambang', 'Noto Sans Khmer', 'Khmer Sangam MN', 'Khmer UI', 'Leelawadee UI', system-ui, -apple-system, sans-serif;
+    font-size: 15.5px;
+    line-height: 1.65;
     letter-spacing: 0.015em;
     color: #1e293b;
     -webkit-font-smoothing: antialiased;
@@ -19,8 +21,35 @@
 
   /* Global form control typography & sizing */
   input, select, textarea, button {
-    font-family: 'Kantumruy Pro', 'Battambang', system-ui, sans-serif;
+    font-family: 'Kantumruy Pro', 'Battambang', 'Noto Sans Khmer', 'Khmer Sangam MN', 'Khmer UI', 'Leelawadee UI', system-ui, sans-serif;
   }
+
+  /* Prevent unwanted iOS Safari auto-zoom on mobile (<16px forces auto-zoom on iOS) */
+  @media screen and (max-width: 768px) {
+    input:not([type="checkbox"]):not([type="radio"]), select, textarea {
+      font-size: 16px !important;
+    }
+  }
+}
+
+/* Global text readability enhancement for Khmer script */
+.text-\[8px\], .text-\[9px\] {
+  font-size: 0.6875rem !important; /* 11px */
+  line-height: 1.35 !important;
+}
+.text-\[10px\] {
+  font-size: 0.75rem !important; /* 12px min */
+  line-height: 1.4 !important;
+}
+.text-\[11px\] {
+  font-size: 0.8125rem !important; /* 13px min */
+  line-height: 1.45 !important;
+}
+
+/* Smooth Touch Scrolling across mobile & tablets */
+.overflow-x-auto, .overflow-y-auto, .overflow-auto, .table-scrollbar {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
 }
 
 .font-moul {
