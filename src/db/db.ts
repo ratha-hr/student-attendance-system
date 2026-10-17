@@ -37,6 +37,9 @@ export class TeacherDatabase extends Dexie {
   settings!: Table<TeacherSettings & { id: string }, string>;
   teachingPlans!: Table<TeachingPlan, string>;
 
+  public isImporting: boolean = false;
+  private changeListeners: Array<() => void> = [];
+
   constructor() {
     super('TeacherManagementDB');
     this.version(1).stores({
@@ -52,6 +55,53 @@ export class TeacherDatabase extends Dexie {
     });
     this.version(2).stores({
       teachingPlans: 'id, classId, subject, academicYear, updatedAt',
+    });
+
+    this.setupMutationHooks();
+  }
+
+  public onDatabaseChange(cb: () => void) {
+    this.changeListeners.push(cb);
+  }
+
+  private notifyChange() {
+    if (this.isImporting) return;
+    this.changeListeners.forEach((cb) => {
+      try {
+        cb();
+      } catch (err) {
+        console.error('Error in database change listener:', err);
+      }
+    });
+  }
+
+  private setupMutationHooks() {
+    const tableNames: Array<keyof this> = [
+      'classes',
+      'students',
+      'attendance',
+      'extracts',
+      'letters',
+      'yearlyPlans',
+      'grades',
+      'timetable',
+      'settings',
+      'teachingPlans',
+    ];
+
+    tableNames.forEach((tblKey) => {
+      const tbl = this[tblKey] as Table<any, any> | undefined;
+      if (tbl && typeof tbl.hook === 'function') {
+        tbl.hook('creating', () => {
+          setTimeout(() => this.notifyChange(), 150);
+        });
+        tbl.hook('updating', () => {
+          setTimeout(() => this.notifyChange(), 150);
+        });
+        tbl.hook('deleting', () => {
+          setTimeout(() => this.notifyChange(), 150);
+        });
+      }
     });
   }
 
@@ -373,38 +423,45 @@ export class TeacherDatabase extends Dexie {
   }
 
   async importBackupJSON(jsonStr: string) {
-    const backup = JSON.parse(jsonStr);
-    if (!backup.classes) {
-      throw new Error('ឯកសារ Backup មិនត្រឹមត្រូវ!');
-    }
+    this.isImporting = true;
+    try {
+      const backup = JSON.parse(jsonStr);
+      if (!backup.classes) {
+        throw new Error('ឯកសារ Backup មិនត្រឹមត្រូវ!');
+      }
 
-    await this.classes.clear();
-    await this.students.clear();
-    await this.attendance.clear();
-    await this.extracts.clear();
-    await this.letters.clear();
-    await this.yearlyPlans.clear();
-    await this.grades.clear();
-    await this.timetable.clear();
-    await this.teachingPlans.clear();
+      await this.classes.clear();
+      await this.students.clear();
+      await this.attendance.clear();
+      await this.extracts.clear();
+      await this.letters.clear();
+      await this.yearlyPlans.clear();
+      await this.grades.clear();
+      await this.timetable.clear();
+      await this.teachingPlans.clear();
 
-    if (backup.classes?.length) await this.classes.bulkAdd(backup.classes);
-    if (backup.students?.length) await this.students.bulkAdd(backup.students);
-    if (backup.attendance?.length) await this.attendance.bulkAdd(backup.attendance);
-    if (backup.extracts?.length) await this.extracts.bulkAdd(backup.extracts);
-    if (backup.letters?.length) await this.letters.bulkAdd(backup.letters);
-    if (backup.yearlyPlans?.length) await this.yearlyPlans.bulkAdd(backup.yearlyPlans);
-    if (backup.grades?.length) await this.grades.bulkAdd(backup.grades);
-    if (backup.timetable?.length) await this.timetable.bulkAdd(backup.timetable);
-    if (backup.teachingPlans?.length) await this.teachingPlans.bulkAdd(backup.teachingPlans);
-    if (backup.settings) await this.settings.put({ ...backup.settings, id: 'current_settings' });
+      if (backup.classes?.length) await this.classes.bulkAdd(backup.classes);
+      if (backup.students?.length) await this.students.bulkAdd(backup.students);
+      if (backup.attendance?.length) await this.attendance.bulkAdd(backup.attendance);
+      if (backup.extracts?.length) await this.extracts.bulkAdd(backup.extracts);
+      if (backup.letters?.length) await this.letters.bulkAdd(backup.letters);
+      if (backup.yearlyPlans?.length) await this.yearlyPlans.bulkAdd(backup.yearlyPlans);
+      if (backup.grades?.length) await this.grades.bulkAdd(backup.grades);
+      if (backup.timetable?.length) await this.timetable.bulkAdd(backup.timetable);
+      if (backup.teachingPlans?.length) await this.teachingPlans.bulkAdd(backup.teachingPlans);
+      if (backup.settings) await this.settings.put({ ...backup.settings, id: 'current_settings' });
 
-    if (backup.localStorageData) {
-      Object.entries(backup.localStorageData).forEach(([k, v]) => {
-        if (v !== null && v !== undefined) {
-          localStorage.setItem(k, String(v));
-        }
-      });
+      if (backup.localStorageData) {
+        Object.entries(backup.localStorageData).forEach(([k, v]) => {
+          if (v !== null && v !== undefined) {
+            localStorage.setItem(k, String(v));
+          }
+        });
+      }
+    } finally {
+      setTimeout(() => {
+        this.isImporting = false;
+      }, 1500);
     }
   }
 }

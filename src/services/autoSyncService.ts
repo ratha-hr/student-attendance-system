@@ -31,6 +31,13 @@ export function setAutoSyncEnabled(enabled: boolean) {
   localStorage.setItem(AUTO_SYNC_ENABLED_KEY, String(enabled));
 }
 
+// Subscribe to any local database change automatically
+if (typeof window !== 'undefined') {
+  db.onDatabaseChange(() => {
+    notifyLocalDataChanged(true);
+  });
+}
+
 /**
  * Mark that local data has changed (calls debounced background cloud push)
  */
@@ -44,7 +51,7 @@ export function notifyLocalDataChanged(triggerDebouncedUpload = true) {
     if (debouncePushTimer) clearTimeout(debouncePushTimer);
     debouncePushTimer = setTimeout(() => {
       autoPushToCloud().catch(console.error);
-    }, 4000);
+    }, 1200);
   }
 }
 
@@ -190,6 +197,11 @@ export async function performAutoSync(forcePush = false): Promise<AutoSyncResult
         localStorage.setItem(LAST_LOCAL_UPDATE_KEY, cloudData.exportDate);
         localStorage.setItem(LAST_CLOUD_SYNC_KEY, new Date().toISOString());
 
+        // Dispatch app-data-synced so all components update immediately
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('app-data-synced', { detail: cloudData }));
+        }
+
         return {
           action: 'pulled',
           success: true,
@@ -245,24 +257,60 @@ export async function performAutoSync(forcePush = false): Promise<AutoSyncResult
 }
 
 /**
- * Setup background listeners for seamless automatic synchronization:
- * - On app boot (runs immediately)
- * - On visibilitychange / window focus (e.g. user opens phone or switches tabs)
- * - Periodic light heartbeat (every 2 minutes)
+ * Setup background listeners for 100% Zero-Touch seamless automatic synchronization:
+ * - On app boot (runs immediately after 1s)
+ * - Real-Time Server-Sent Events (SSE) listener from ntfy topic (instant push from other device)
+ * - On visibilitychange / window focus (user unlocks phone or switches tabs)
+ * - On network 'online' event (reconnects and syncs immediately)
+ * - Periodic background heartbeat (every 25 seconds when visible)
  */
 export function initAutoSyncEngine(onSyncSuccess?: () => void): () => void {
   if (typeof window === 'undefined') return () => {};
 
-  // 1. Initial boot sync
+  // 1. Initial boot sync (1000ms after load)
   setTimeout(() => {
     performAutoSync().then((res) => {
       if (res.action === 'pulled' && res.success) {
         onSyncSuccess?.();
       }
     }).catch(console.error);
-  }, 1500);
+  }, 1000);
 
-  // 2. Sync on focus or phone screen unlock
+  // 2. Real-Time Live SSE Listener from ntfy Cloud topic
+  let eventSource: EventSource | null = null;
+  const setupSSE = () => {
+    if (typeof window === 'undefined' || typeof window.EventSource === 'undefined') return;
+    try {
+      if (eventSource) {
+        eventSource.close();
+      }
+      const topic = getSyncTopic();
+      eventSource = new EventSource(`https://ntfy.sh/${topic}/sse`);
+      eventSource.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.event === 'message') {
+            performAutoSync().then((res) => {
+              if (res.action === 'pulled' && res.success) {
+                onSyncSuccess?.();
+              }
+            }).catch(console.error);
+          }
+        } catch {
+          // ignore parsing error
+        }
+      };
+      eventSource.onerror = () => {
+        // SSE disconnected, fallback interval & focus handle reconnection
+      };
+    } catch (err) {
+      console.warn('SSE connection skipped:', err);
+    }
+  };
+
+  setupSSE();
+
+  // 3. Sync on focus or phone screen unlock
   const handleVisibilityOrFocus = () => {
     if (document.visibilityState === 'visible') {
       performAutoSync().then((res) => {
@@ -270,13 +318,28 @@ export function initAutoSyncEngine(onSyncSuccess?: () => void): () => void {
           onSyncSuccess?.();
         }
       }).catch(console.error);
+
+      // Reconnect SSE if closed
+      if (!eventSource || eventSource.readyState === EventSource.CLOSED) {
+        setupSSE();
+      }
     }
+  };
+
+  const handleOnline = () => {
+    performAutoSync().then((res) => {
+      if (res.action === 'pulled' && res.success) {
+        onSyncSuccess?.();
+      }
+    }).catch(console.error);
+    setupSSE();
   };
 
   window.addEventListener('visibilitychange', handleVisibilityOrFocus);
   window.addEventListener('focus', handleVisibilityOrFocus);
+  window.addEventListener('online', handleOnline);
 
-  // 3. Periodic light background poll (every 2.5 minutes)
+  // 4. Periodic light background poll (every 25 seconds when visible)
   const intervalId = setInterval(() => {
     if (document.visibilityState === 'visible') {
       performAutoSync().then((res) => {
@@ -285,11 +348,16 @@ export function initAutoSyncEngine(onSyncSuccess?: () => void): () => void {
         }
       }).catch(console.error);
     }
-  }, 150000);
+  }, 25000);
 
   return () => {
     window.removeEventListener('visibilitychange', handleVisibilityOrFocus);
     window.removeEventListener('focus', handleVisibilityOrFocus);
+    window.removeEventListener('online', handleOnline);
     clearInterval(intervalId);
+    if (eventSource) {
+      eventSource.close();
+      eventSource = null;
+    }
   };
 }

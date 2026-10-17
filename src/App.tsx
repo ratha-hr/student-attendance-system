@@ -99,6 +99,11 @@ export function App() {
       handleRefresh();
     });
 
+    const onDataSynced = () => {
+      handleRefresh();
+    };
+    window.addEventListener('app-data-synced', onDataSynced);
+
     // Auto-detect & import sync_code from legacy link if present
     if (typeof window !== 'undefined') {
       const p = new URLSearchParams(window.location.search);
@@ -148,6 +153,7 @@ export function App() {
 
     return () => {
       cleanupAutoSync();
+      window.removeEventListener('app-data-synced', onDataSynced);
     };
   }, []);
 
@@ -174,7 +180,6 @@ export function App() {
   const handleRefresh = () => {
     setRefreshKey((k) => k + 1);
     db.getSettings().then(setSettings).catch(console.error);
-    notifyLocalDataChanged(true);
   };
 
   const activeClass = selectedClassId === 'ALL'

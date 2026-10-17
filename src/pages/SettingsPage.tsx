@@ -853,42 +853,52 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ settings, onRefresh 
               </div>
             </div>
 
-            {/* Cross-Device Sync Card */}
-            <div className="p-5 rounded-2xl bg-gradient-to-r from-blue-50/90 to-indigo-50/90 border border-blue-200/90 text-xs text-slate-700 space-y-3 shadow-2xs">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-blue-100 pb-3">
-                <div className="flex items-center space-x-2 text-blue-900 font-black text-sm">
-                  <Smartphone className="w-5 h-5 text-blue-600" />
-                  <span>សមកាលកម្មឆ្លងឧបករណ៍ (កុំព្យូទ័រ ↔ ទូរស័ព្ទដៃ / Tablet) ៖</span>
+            {/* Cross-Device Auto-Sync (100% Automatic Zero-Touch) */}
+            <div className="p-5 rounded-2xl bg-gradient-to-r from-emerald-50/90 via-teal-50/80 to-blue-50/90 border border-emerald-200/90 text-xs text-slate-700 space-y-3 shadow-2xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-emerald-100 pb-3">
+                <div className="flex items-center space-x-2 text-emerald-950 font-black text-sm">
+                  <Smartphone className="w-5 h-5 text-emerald-600" />
+                  <span>សមកាលកម្មស្វ័យប្រវត្តិ ១០០% (កុំព្យូទ័រ ⇄ ទូរស័ព្ទដៃ) ៖</span>
+                  <span className="text-[10px] bg-emerald-500 text-white font-black px-2 py-0.5 rounded-full uppercase">
+                    AUTO 100%
+                  </span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setIsSyncOpen(true)}
-                  className="px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2 self-start sm:self-auto active:scale-95"
-                >
-                  <RefreshCw className="w-4 h-4 text-amber-300" />
-                  <span>បើកផ្ទាំង Sync ទូរស័ព្ទ</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-100 text-emerald-800 text-[11px] font-bold rounded-xl border border-emerald-300">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                    ដំណើរការអូតូជាប្រចាំ (Zero-Touch)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsSyncOpen(true)}
+                    className="px-3 py-1 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                    title="ពិនិត្យស្ថានភាព Auto-Sync"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5 text-amber-300" />
+                    <span>ពិនិត្យស្ថានភាព</span>
+                  </button>
+                </div>
               </div>
-              <ul className="space-y-2 text-slate-600 text-[11px] sm:text-xs leading-relaxed pt-1">
-                <li className="flex items-start space-x-2">
-                  <span className="text-blue-600 font-black">✓</span>
-                  <span>
-                    <strong>ស្កេន QR កូដ ៖</strong> នៅលើកុំព្យូទ័រ ចុច «បើកផ្ទាំង Sync ទូរស័ព្ទ» បង្ហាញ QR Code រួចយកទូរស័ព្ទមកស្កេន ទិន្នន័យចូលភ្លាមៗ ១០០%។
-                  </span>
-                </li>
-                <li className="flex items-start space-x-2">
-                  <span className="text-blue-600 font-black">✓</span>
-                  <span>
-                    <strong>កូដ Cloud ៦ ខ្ទង់ ៖</strong> ផ្ញើទិន្នន័យពីកុំព្យូទ័រ រួចយកលេខកូដ ៦ ខ្ទង់ទៅវាយលើទូរស័ព្ទ ដើម្បីទាញយកទិន្នន័យមកវិញ។
-                  </span>
-                </li>
-                <li className="flex items-start space-x-2">
-                  <span className="text-blue-600 font-black">✓</span>
-                  <span>
-                    <strong>ផ្ទេរទិន្នន័យតាម Telegram ៖</strong> ចុច «ទាញយក Backup (.json)» ផ្ញើឯកសារនោះចូល Telegram រួចបើកលើទូរស័ព្ទហើយចុច «ស្តារទិន្នន័យពី Backup» ជាការស្រេច។
-                  </span>
-                </li>
-              </ul>
+              <div className="space-y-2 text-slate-700 text-[11px] sm:text-xs leading-relaxed pt-1">
+                <p className="font-bold text-emerald-900 flex items-center gap-1.5">
+                  <span>✨</span>
+                  <span><strong>លោកគ្រូមិនបាច់ចុចប៊ូតុងអ្វីឡើយ ប្រព័ន្ធដំណើរការអូតូ ១០០%៖</strong></span>
+                </p>
+                <ul className="space-y-1.5 pl-2 text-slate-600">
+                  <li className="flex items-start space-x-2">
+                    <span className="text-emerald-600 font-black">✓</span>
+                    <span><strong>កត់វត្តមាន ឬកែពិន្ទុលើទូរស័ព្ទ ៖</strong> ទិន្នន័យរត់ចូលកុំព្យូទ័រដោយស្វ័យប្រវត្តិភ្លាមៗ មិនបាច់ចុចអ្វីទាំងអស់។</span>
+                  </li>
+                  <li className="flex items-start space-x-2">
+                    <span className="text-emerald-600 font-black">✓</span>
+                    <span><strong>រៀបចំកាលវិភាគ ឬសិស្សលើកុំព្យូទ័រ ៖</strong> ទិន្នន័យរត់ចូលទូរស័ព្ទដៃដោយស្វ័យប្រវត្តិ ១០០%។</span>
+                  </li>
+                  <li className="flex items-start space-x-2">
+                    <span className="text-emerald-600 font-black">✓</span>
+                    <span><strong>ពេលដោះសោទូរស័ព្ទ ឬបើកកម្មវិធី ៖</strong> ប្រព័ន្ធនឹងឆែកទិន្នន័យថ្មីពី Cloud Master ដោយស្វ័យប្រវត្តិភ្លាមៗ។</span>
+                  </li>
+                </ul>
+              </div>
             </div>
 
             {/* Danger Zone */}
