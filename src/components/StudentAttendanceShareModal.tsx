@@ -182,8 +182,9 @@ export const StudentAttendanceShareModal: React.FC<StudentAttendanceShareModalPr
     const pinTokenParam = `&pinToken=${encodeURIComponent(hashPin(activePinForSelectedDate))}`;
     const rosterEncoded = encodeRosterForUrl(classStudents);
     const rosterParam = rosterEncoded ? `&roster=${encodeURIComponent(rosterEncoded)}` : '';
-    return `${origin}${path}?mode=student&class=${classParam}${classNameParam}&date=${selectedDate}&session=${selectedSession}&view=readonly${pinTokenParam}${payloadParam}${rosterParam}`;
-  }, [currentClass, selectedDate, selectedSession, attPayload, activePinForSelectedDate, classStudents]);
+    const timeParam = checkInTime && checkOutTime ? `&time=${encodeURIComponent(`${checkInTime} - ${checkOutTime}`)}` : '';
+    return `${origin}${path}?mode=student&class=${classParam}${classNameParam}&date=${selectedDate}&session=${selectedSession}${timeParam}&view=readonly${pinTokenParam}${payloadParam}${rosterParam}`;
+  }, [currentClass, selectedDate, selectedSession, checkInTime, checkOutTime, attPayload, activePinForSelectedDate, classStudents]);
 
   // Generate clean daily attendance text specifically formatted for students/monitor (without cluttering student names)
   const studentAttendanceText = useMemo(() => {

@@ -74,6 +74,12 @@ export class TeacherDatabase extends Dexie {
       await this.settings.put({ ...initialSettings, id: 'current_settings' });
     }
 
+    // Ensure timetable data exists for all devices
+    const ttCount = await this.timetable.count();
+    if (ttCount === 0) {
+      await this.timetable.bulkAdd(initialTimetable);
+    }
+
     // Auto-align sample classes if device is still holding old dummy teachers (សុខ សារឿន, ជា ស្រីពៅ, ចាន់ សុផល)
     await this.alignLegacySampleClasses();
   }

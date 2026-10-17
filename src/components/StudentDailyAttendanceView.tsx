@@ -24,7 +24,8 @@ import {
   Timer,
   Calendar,
 } from 'lucide-react';
-import type { Student, ClassRoom, AttendanceRecord, AttendanceStatus, TeacherSettings } from '../types';
+import { useLiveQuery } from 'dexie-react-hooks';
+import type { Student, ClassRoom, AttendanceRecord, AttendanceStatus, TeacherSettings, TimetableSlot } from '../types';
 import { db } from '../db/db';
 import { fromKhmerNum, formatKhmerDate, getTodayDateString } from '../utils/dateUtils';
 import { soundEffects } from '../utils/soundEffects';
@@ -35,30 +36,20 @@ import {
   rotateActiveShareOtp,
   formatKhmerCountdown,
 } from '../utils/pinUtils';
+import {
+  getClassTimetableForDate,
+  buildTimetablePeriodOptions,
+  getDayOfWeekFromDate,
+  KHMER_DAY_NAMES,
+  type TimetablePeriodOption,
+} from '../utils/timetableAttendance';
 import { Modal } from './common/Modal';
-
-const MORNING_TIME_SLOTS = [
-  { value: '7:00 - 11:00', label: 'ពេញមួយព្រឹក (07:00 - 11:00)' },
-  { value: '7:00 - 7:50', label: 'ម៉ោងទី ១ (07:00 - 07:50)' },
-  { value: '7:55 - 8:45', label: 'ម៉ោងទី ២ (07:55 - 08:45)' },
-  { value: '8:55 - 9:45', label: 'ម៉ោងទី ៣ (08:55 - 09:45)' },
-  { value: '9:50 - 10:40', label: 'ម៉ោងទី ៤ (09:50 - 10:40)' },
-  { value: '10:45 - 11:35', label: 'ម៉ោងទី ៥ (10:45 - 11:35)' },
-];
-
-const AFTERNOON_TIME_SLOTS = [
-  { value: '13:00 - 17:00', label: 'ពេញមួយរសៀល (13:00 - 17:00)' },
-  { value: '13:00 - 13:50', label: 'ម៉ោងទី ១ (13:00 - 13:50)' },
-  { value: '13:55 - 14:45', label: 'ម៉ោងទី ២ (13:55 - 14:45)' },
-  { value: '14:55 - 15:45', label: 'ម៉ោងទី ៣ (14:55 - 15:45)' },
-  { value: '15:50 - 16:40', label: 'ម៉ោងទី ៤ (15:50 - 16:40)' },
-  { value: '16:45 - 17:35', label: 'ម៉ោងទី ៥ (16:45 - 17:35)' },
-];
 
 interface StudentDailyAttendanceViewProps {
   classes: ClassRoom[];
   students: Student[];
   attendanceRecords: AttendanceRecord[];
+  timetableSlots?: TimetableSlot[];
   settings: TeacherSettings | null;
   initialClassId?: string;
   initialDate?: string;
@@ -75,6 +66,7 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
   classes,
   students,
   attendanceRecords,
+  timetableSlots,
   settings,
   initialClassId,
   initialDate,
@@ -94,20 +86,54 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
   const [selectedSession, setSelectedSession] = useState<'morning' | 'afternoon'>(
     initialSession || 'morning'
   );
+
+  // Live timetable slots from IndexedDB as reliable fallback
+  const liveTimetableSlots = useLiveQuery(() => db.timetable.toArray(), []) || [];
+  const allTimetableSlots = timetableSlots && timetableSlots.length > 0 ? timetableSlots : liveTimetableSlots;
+
+  const dayOfWeek = useMemo(() => getDayOfWeekFromDate(selectedDate), [selectedDate]);
+  const khmerDayName = KHMER_DAY_NAMES[dayOfWeek] || '';
+
+  // Get dynamic timetable slots for selected class on selected date and session
+  const todayClassTimetable = useMemo(() => {
+    return getClassTimetableForDate(
+      allTimetableSlots,
+      selectedClassId,
+      selectedDate,
+      selectedSession,
+      classes
+    );
+  }, [allTimetableSlots, selectedClassId, selectedDate, selectedSession, classes]);
+
+  const currentTimeSlotOptions = useMemo(() => {
+    return buildTimetablePeriodOptions(todayClassTimetable, selectedSession);
+  }, [todayClassTimetable, selectedSession]);
+
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>(() => {
     if (initialTimeSlot) return initialTimeSlot;
     return initialSession === 'afternoon' ? '13:00 - 17:00' : '7:00 - 11:00';
   });
 
-  const currentTimeSlotOptions = selectedSession === 'morning' ? MORNING_TIME_SLOTS : AFTERNOON_TIME_SLOTS;
+  const activePeriodOption = useMemo<TimetablePeriodOption>(() => {
+    const found = currentTimeSlotOptions.find((o) => o.value === selectedTimeSlot);
+    return found || currentTimeSlotOptions[0];
+  }, [currentTimeSlotOptions, selectedTimeSlot]);
+
+  // Auto-sync selectedTimeSlot when period options change or date/class/session changes
+  useEffect(() => {
+    if (currentTimeSlotOptions.length > 0) {
+      const exists = currentTimeSlotOptions.some((o) => o.value === selectedTimeSlot);
+      if (!exists) {
+        setSelectedTimeSlot(currentTimeSlotOptions[0].value);
+      }
+    }
+  }, [currentTimeSlotOptions, selectedTimeSlot]);
 
   const handleSessionChange = (session: 'morning' | 'afternoon') => {
     setSelectedSession(session);
-    if (session === 'morning') {
-      setSelectedTimeSlot('7:00 - 11:00');
-    } else {
-      setSelectedTimeSlot('13:00 - 17:00');
-    }
+    const slots = getClassTimetableForDate(allTimetableSlots, selectedClassId, selectedDate, session, classes);
+    const opts = buildTimetablePeriodOptions(slots, session);
+    setSelectedTimeSlot(opts[0]?.value || (session === 'morning' ? '7:00 - 11:00' : '13:00 - 17:00'));
     if (typeof window !== 'undefined' && window.history) {
       const url = new URL(window.location.href);
       url.searchParams.set('session', session);
@@ -477,6 +503,7 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
     }
 
     const existing = dailyRecordMap.get(studentId);
+    const currentSubject = activePeriodOption?.subject || existing?.subject || '';
     if (existing && !existing.id.startsWith('payload-')) {
       if (existing.status === status) {
         await db.attendance.delete(existing.id);
@@ -484,6 +511,7 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
         await db.attendance.update(existing.id, {
           status,
           timeSlot: selectedTimeSlot || existing.timeSlot,
+          subject: currentSubject,
         });
       }
     } else {
@@ -494,6 +522,7 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
         date: selectedDate,
         session: selectedSession,
         timeSlot: selectedTimeSlot,
+        subject: currentSubject,
         status,
         reason: existing?.reason || '',
         createdAt: new Date().toISOString(),
@@ -509,10 +538,12 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
     if (!currentClass || !isEditUnlocked) return;
 
     const existing = dailyRecordMap.get(studentId);
+    const currentSubject = activePeriodOption?.subject || existing?.subject || '';
     if (existing && !existing.id.startsWith('payload-')) {
       await db.attendance.update(existing.id, {
         reason,
         timeSlot: selectedTimeSlot || existing.timeSlot,
+        subject: currentSubject,
       });
     } else {
       const newRec: AttendanceRecord = {
@@ -522,6 +553,7 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
         date: selectedDate,
         session: selectedSession,
         timeSlot: selectedTimeSlot,
+        subject: currentSubject,
         status: existing?.status || 'absent',
         reason,
         createdAt: new Date().toISOString(),
@@ -537,12 +569,14 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
     if (!currentClass || classStudents.length === 0 || !isEditUnlocked) return;
     if (soundOn) soundEffects.playAllPresentChime();
 
+    const currentSubject = activePeriodOption?.subject || '';
     for (const stu of classStudents) {
       const existing = dailyRecordMap.get(stu.id);
       if (existing && !existing.id.startsWith('payload-')) {
         await db.attendance.update(existing.id, {
           status: 'present',
           timeSlot: selectedTimeSlot || existing.timeSlot,
+          subject: currentSubject || existing.subject || '',
         });
       } else {
         const newRec: AttendanceRecord = {
@@ -552,6 +586,7 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
           date: selectedDate,
           session: selectedSession,
           timeSlot: selectedTimeSlot,
+          subject: currentSubject,
           status: 'present',
           createdAt: new Date().toISOString(),
         };
@@ -768,14 +803,14 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
                 </button>
               </div>
 
-              {/* 3. Time / Period Selector (ប្តូរម៉ោង) */}
+              {/* 3. Time / Period Selector (ប្តូរម៉ោងតាមកាលវិភាគ) */}
               <div className="flex items-center gap-1.5 bg-purple-50/90 border border-purple-200 hover:border-purple-300 rounded-xl px-2.5 py-1 shadow-2xs transition-colors">
                 <Clock className="w-3.5 h-3.5 text-purple-600 shrink-0" />
                 <select
                   value={selectedTimeSlot}
                   onChange={(e) => setSelectedTimeSlot(e.target.value)}
-                  className="bg-transparent font-bold text-purple-950 text-xs cursor-pointer focus:outline-none"
-                  title="ចុចដើម្បីប្តូរម៉ោងបង្រៀន / ម៉ោងស្រង់វត្តមាន"
+                  className="bg-transparent font-bold text-purple-950 text-xs cursor-pointer focus:outline-none max-w-[190px] sm:max-w-xs truncate"
+                  title="ចុចដើម្បីប្តូរម៉ោងបង្រៀន / ម៉ោងស្រង់វត្តមានតាមកាលវិភាគ"
                 >
                   {currentTimeSlotOptions.map((opt) => (
                     <option key={opt.value} value={opt.value}>
@@ -784,6 +819,15 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
                   ))}
                 </select>
               </div>
+
+              {/* ម៉ោងចូល និង ម៉ោងចេញ */}
+              {activePeriodOption && (
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold shadow-2xs">
+                  <span className="text-emerald-700 font-black">🚪 ចូល៖ {activePeriodOption.checkIn}</span>
+                  <span className="text-slate-400">➔</span>
+                  <span className="text-blue-700 font-black">🏁 ចេញ៖ {activePeriodOption.checkOut}</span>
+                </div>
+              )}
 
               {/* 4. Date Picker (ប្តូរកាលបរិច្ឆេទ) */}
               <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-xl px-2.5 py-1 shadow-2xs transition-colors">
@@ -830,6 +874,37 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
               )}
             </button>
           </div>
+
+          {/* Row 1.5: Timetable Period Quick Presets (ជ្រើសរើសម៉ោងតាមកាលវិភាគថ្នាក់ជាក់ស្ដែង) */}
+          {todayClassTimetable.length > 0 && (
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 text-xs no-scrollbar border-t border-slate-100 pt-1.5">
+              <span className="text-[11px] font-bold text-slate-500 whitespace-nowrap flex items-center gap-1 shrink-0">
+                <span>🗓️ កាលវិភាគ ({khmerDayName})៖</span>
+              </span>
+              {currentTimeSlotOptions.map((opt, idx) => {
+                const isSelected = selectedTimeSlot === opt.value;
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setSelectedTimeSlot(opt.value)}
+                    className={`px-2.5 py-1 rounded-lg font-bold whitespace-nowrap transition-all text-xs cursor-pointer border shrink-0 flex items-center gap-1 ${
+                      isSelected
+                        ? 'bg-purple-600 text-white border-purple-700 shadow-2xs scale-102 font-black'
+                        : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200 hover:border-slate-300'
+                    }`}
+                    title={`${opt.label} (ចូល៖ ${opt.checkIn} - ចេញ៖ ${opt.checkOut})`}
+                  >
+                    {opt.isFullSession ? <span>🕒</span> : <span>📚</span>}
+                    <span>{opt.shortLabel}</span>
+                    <span className={`text-[10px] ${isSelected ? 'text-purple-200' : 'text-slate-400'}`}>
+                      ({opt.checkIn}-{opt.checkOut})
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {/* Row 2: Unified Interactive Stats Chips (Replaces 5 bulky boxes AND filter buttons!) */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 text-xs font-bold scrollbar-none">

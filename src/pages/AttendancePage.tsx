@@ -20,7 +20,8 @@ import {
   Volume2,
   VolumeX,
 } from 'lucide-react';
-import type { Student, ClassRoom, AttendanceRecord, AttendanceStatus, TeacherSettings } from '../types';
+import { useLiveQuery } from 'dexie-react-hooks';
+import type { Student, ClassRoom, AttendanceRecord, AttendanceStatus, TeacherSettings, TimetableSlot } from '../types';
 import { db } from '../db/db';
 import {
   toKhmerNum,
@@ -31,32 +32,25 @@ import {
   isDateDeclaredHoliday,
   setCustomHoliday,
 } from '../utils/dateUtils';
+import {
+  getClassTimetableForDate,
+  buildTimetablePeriodOptions,
+  getTimetableHoursOptions,
+  getDayOfWeekFromDate,
+  KHMER_DAY_NAMES,
+  type TimetablePeriodOption,
+} from '../utils/timetableAttendance';
 import { TelegramShareModal } from '../components/TelegramShareModal';
 import { StudentAttendanceShareModal } from '../components/StudentAttendanceShareModal';
 import { soundEffects } from '../utils/soundEffects';
 import { PrintButton } from '../components/common/PrintButton';
 import { useUndoRedo } from '../context/UndoRedoContext';
 
-// ម៉ោងចេញចូលសម្រាប់មុខវិជ្ជា វេនព្រឹក និងវេនរសៀល
-const MORNING_HOURS = [
-  { value: '7:00', label: '7:00' },
-  { value: '8:00', label: '8:00' },
-  { value: '9:00', label: '9:00' },
-  { value: '10:00', label: '10:00' },
-  { value: '11:00', label: '11:00' },
-];
-
-const AFTERNOON_HOURS = [
-  { value: '14:00', label: '14:00' },
-  { value: '15:00', label: '15:00' },
-  { value: '16:00', label: '16:00' },
-  { value: '17:00', label: '17:00' },
-];
-
 interface AttendancePageProps {
   students: Student[];
   classes: ClassRoom[];
   attendanceRecords: AttendanceRecord[];
+  timetableSlots?: TimetableSlot[];
   settings: TeacherSettings | null;
   selectedClassId: string;
   onSelectClass: (id: string) => void;
@@ -69,6 +63,7 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
   students,
   classes,
   attendanceRecords,
+  timetableSlots,
   settings,
   selectedClassId,
   onRefresh,
@@ -130,22 +125,65 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
   const activeClassId = isAllClasses ? (classes[0]?.id || '') : selectedClassId;
   const currentClass = isAllClasses ? null : classes.find((c) => c.id === selectedClassId);
 
-  // When session switches, update default check-in/out times
+  // Live timetable slots from IndexedDB as reliable fallback
+  const liveTimetableSlots = useLiveQuery(() => db.timetable.toArray(), []) || [];
+  const allTimetableSlots = timetableSlots && timetableSlots.length > 0 ? timetableSlots : liveTimetableSlots;
+
+  const dayOfWeek = useMemo(() => getDayOfWeekFromDate(selectedDate), [selectedDate]);
+  const khmerDayName = KHMER_DAY_NAMES[dayOfWeek] || '';
+
+  // Get class timetable for today and session
+  const todayClassTimetable = useMemo(() => {
+    return getClassTimetableForDate(allTimetableSlots, activeClassId, selectedDate, selectedSession, classes);
+  }, [allTimetableSlots, activeClassId, selectedDate, selectedSession, classes]);
+
+  const periodOptions = useMemo(() => {
+    return buildTimetablePeriodOptions(todayClassTimetable, selectedSession);
+  }, [todayClassTimetable, selectedSession]);
+
+  const currentHoursOptions = useMemo(() => {
+    return getTimetableHoursOptions(todayClassTimetable, selectedSession);
+  }, [todayClassTimetable, selectedSession]);
+
+  // Selected period preset (if matching checkIn and checkOut)
+  const activePeriodOption = useMemo(() => {
+    return periodOptions.find(
+      (opt) => opt.checkIn === checkInTime && opt.checkOut === checkOutTime
+    );
+  }, [periodOptions, checkInTime, checkOutTime]);
+
+  // When class, date, or session switches, auto-sync check-in/out times from class timetable
+  useEffect(() => {
+    if (periodOptions.length > 0) {
+      const defaultOption = periodOptions[0]; // Full session or first slot
+      setCheckInTime(defaultOption.checkIn);
+      setCheckOutTime(defaultOption.checkOut);
+    }
+  }, [activeClassId, selectedDate, selectedSession]);
+
+  // When session switches, update default check-in/out times from timetable
   const handleSessionChange = (session: 'morning' | 'afternoon') => {
     setSelectedSession(session);
-    if (session === 'morning') {
-      setCheckInTime('7:00');
-      setCheckOutTime('11:00');
+    const slots = getClassTimetableForDate(allTimetableSlots, activeClassId, selectedDate, session, classes);
+    const opts = buildTimetablePeriodOptions(slots, session);
+    if (opts.length > 0) {
+      setCheckInTime(opts[0].checkIn);
+      setCheckOutTime(opts[0].checkOut);
     } else {
-      setCheckInTime('14:00');
-      setCheckOutTime('17:00');
+      if (session === 'morning') {
+        setCheckInTime('7:00');
+        setCheckOutTime('11:00');
+      } else {
+        setCheckInTime('13:00');
+        setCheckOutTime('17:00');
+      }
     }
   };
 
-  // Available selectable hour options based on active shift (Morning or Afternoon)
-  const currentHoursOptions = useMemo(() => {
-    return selectedSession === 'morning' ? MORNING_HOURS : AFTERNOON_HOURS;
-  }, [selectedSession]);
+  const handleSelectPeriod = (opt: TimetablePeriodOption) => {
+    setCheckInTime(opt.checkIn);
+    setCheckOutTime(opt.checkOut);
+  };
 
   // Students for the active class or ALL classes
   const classStudents = useMemo(() => {
@@ -192,11 +230,13 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
     const timeSlotStr = `${checkInTime} - ${checkOutTime}`;
     const targetStudent = students.find((s) => s.id === studentId);
     const targetClassId = existing?.classId || targetStudent?.classId || activeClassId;
+    const currentSubject = activePeriodOption?.subject || existing?.subject || '';
     if (existing) {
       await db.attendance.update(existing.id, {
         status,
         reason: reason || existing.reason || '',
         timeSlot: timeSlotStr,
+        subject: currentSubject,
       });
     } else {
       const newRec: AttendanceRecord = {
@@ -206,6 +246,7 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
         date: selectedDate,
         session: selectedSession,
         timeSlot: timeSlotStr,
+        subject: currentSubject,
         status,
         reason,
         createdAt: new Date().toISOString(),
@@ -234,6 +275,7 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
     );
     if (soundOn) soundEffects.playSuccess();
     const timeSlotStr = `${checkInTime} - ${checkOutTime}`;
+    const currentSubject = activePeriodOption?.subject || '';
     const recordsToPut: AttendanceRecord[] = classStudents.map((s) => {
       const existing = dailyRecordMap.get(s.id);
       return {
@@ -243,6 +285,7 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
         date: selectedDate,
         session: selectedSession,
         timeSlot: timeSlotStr,
+        subject: currentSubject || existing?.subject || '',
         status: 'present' as AttendanceStatus,
         reason: '',
         createdAt: existing?.createdAt || new Date().toISOString(),
@@ -289,6 +332,7 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
     );
 
     const timeSlotStr = `${checkInTime} - ${checkOutTime}`;
+    const currentSubject = activePeriodOption?.subject || '';
     const recordsToPut: AttendanceRecord[] = [];
 
     classStudents.forEach((s) => {
@@ -297,6 +341,7 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
         recordsToPut.push({
           ...existing,
           timeSlot: timeSlotStr,
+          subject: currentSubject || existing.subject || '',
         });
       }
     });
@@ -475,7 +520,7 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
           {/* Right: In/Out Selector with Quick Options + Holiday Checkbox */}
           <div className="flex flex-wrap items-center gap-2.5">
             {/* ម៉ោងចេញចូលសម្រាប់មុខវិជ្ជា (កត់វត្តមានតែម្តងគត់) */}
-            <div className="flex items-center space-x-2 bg-slate-100 p-1.5 rounded-xl text-xs sm:text-sm font-bold border border-slate-200/80 shadow-2xs">
+            <div className="flex flex-wrap items-center gap-2 bg-slate-100 p-1.5 rounded-xl text-xs sm:text-sm font-bold border border-slate-200/80 shadow-2xs">
               {/* ម៉ោងចូល */}
               <div className="flex items-center space-x-1.5 pl-2 pr-2 py-1 rounded-lg bg-white border border-slate-200 shadow-2xs">
                 <span className="text-emerald-700 font-bold whitespace-nowrap flex items-center">
@@ -513,6 +558,17 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
                   ))}
                 </select>
               </div>
+
+              {/* Dynamic Subject & Period Badge if slot matches timetable */}
+              {activePeriodOption?.subject && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-900 text-xs font-black shadow-2xs">
+                  <span>📖</span>
+                  <span>{activePeriodOption.subject}</span>
+                  {activePeriodOption.teacherName && (
+                    <span className="text-indigo-600 font-medium hidden lg:inline">({activePeriodOption.teacherName})</span>
+                  )}
+                </span>
+              )}
             </div>
 
             {/* Holiday Toggle */}
@@ -539,6 +595,37 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
               )}
             </div>
           </div>
+
+          {/* Timetable Period Quick Presets */}
+          {todayClassTimetable.length > 0 && (
+            <div className="w-full flex items-center gap-1.5 overflow-x-auto pb-1 text-xs no-scrollbar border-t border-slate-200/60 pt-2">
+              <span className="text-[11px] font-bold text-slate-500 whitespace-nowrap flex items-center gap-1 shrink-0">
+                <span>🗓️ កាលវិភាគថ្នាក់ ({khmerDayName})៖</span>
+              </span>
+              {periodOptions.map((opt, idx) => {
+                const isSelected = checkInTime === opt.checkIn && checkOutTime === opt.checkOut;
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleSelectPeriod(opt)}
+                    className={`px-2.5 py-1 rounded-lg font-bold whitespace-nowrap transition-all text-xs cursor-pointer border shrink-0 flex items-center gap-1 ${
+                      isSelected
+                        ? 'bg-purple-600 text-white border-purple-700 shadow-2xs scale-102 font-black'
+                        : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-300'
+                    }`}
+                    title={`${opt.label} (ចូល៖ ${opt.checkIn} - ចេញ៖ ${opt.checkOut})`}
+                  >
+                    {opt.isFullSession ? <span>🕒</span> : <span>📚</span>}
+                    <span>{opt.shortLabel}</span>
+                    <span className={`text-[10px] ${isSelected ? 'text-purple-200' : 'text-slate-400'}`}>
+                      ({opt.checkIn}-{opt.checkOut})
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 

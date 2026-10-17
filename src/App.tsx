@@ -192,6 +192,7 @@ export function App() {
         classes={classes}
         students={students}
         attendanceRecords={attendanceRecords}
+        timetableSlots={timetableSlots}
         settings={settings}
         initialClassId={studentModeParams.classId || (selectedClassId !== 'ALL' ? selectedClassId : undefined)}
         initialDate={studentModeParams.date}
@@ -266,6 +267,7 @@ export function App() {
               students={students}
               classes={classes}
               attendanceRecords={attendanceRecords}
+              timetableSlots={timetableSlots}
               settings={settings}
               selectedClassId={selectedClassId}
               onSelectClass={setSelectedClassId}
