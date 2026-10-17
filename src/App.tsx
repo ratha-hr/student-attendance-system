@@ -237,6 +237,7 @@ export function App() {
               attendanceRecords={attendanceRecords}
               settings={settings}
               selectedClassId={selectedClassId}
+              onSelectClass={setSelectedClassId}
               onRefresh={handleRefresh}
               onNavigateTab={setCurrentTab}
               onOpenManageClasses={() => setIsManageClassesOpen(true)}

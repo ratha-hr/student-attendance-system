@@ -288,10 +288,13 @@ export const UndoRedoProvider: React.FC<{
     >
       {children}
 
-      {/* Floating Global Toast Notification */}
+      {/* Centered Global Toast Notification (លោតចំកណ្តាលអេក្រង់) */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-slate-900/95 text-white px-4 py-2.5 rounded-2xl shadow-2xl border border-slate-700/80 flex items-center space-x-2 text-xs sm:text-sm font-bold backdrop-blur-md animate-fade-in no-print">
-          <span>{toastMessage}</span>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none no-print">
+          <div className="bg-slate-900/95 text-white px-6 py-4 rounded-2xl shadow-2xl border-2 border-slate-600/80 flex items-center space-x-3 text-sm sm:text-base font-bold backdrop-blur-md animate-scale-up pointer-events-auto max-w-md text-center">
+            <span className="text-xl shrink-0">✨</span>
+            <span className="leading-snug">{toastMessage}</span>
+          </div>
         </div>
       )}
     </UndoRedoContext.Provider>

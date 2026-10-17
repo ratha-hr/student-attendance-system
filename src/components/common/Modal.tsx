@@ -52,7 +52,7 @@ export const Modal: React.FC<ModalProps> = ({
         aria-hidden="true"
       />
       <div
-        className={`relative w-full ${maxWidthClasses} bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden transform transition-all my-8 z-10`}
+        className={`relative w-full ${maxWidthClasses} bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden transform transition-all my-8 z-10 animate-scale-up`}
       >
         {/* Modal Header */}
         <div className="flex items-center justify-between px-6 py-4 bg-linear-to-r from-slate-50 to-blue-50/50 border-b border-slate-100">

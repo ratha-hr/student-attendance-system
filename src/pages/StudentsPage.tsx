@@ -22,6 +22,7 @@ import {
   Clipboard,
   Sparkles,
   BookOpenCheck,
+  AlertTriangle,
 } from 'lucide-react';
 import type { Student, ClassRoom, AttendanceRecord, Gender, TeacherSettings } from '../types';
 import type { NavTab } from '../components/Sidebar';
@@ -49,6 +50,7 @@ interface StudentsPageProps {
   attendanceRecords?: AttendanceRecord[];
   settings: TeacherSettings | null;
   selectedClassId: string;
+  onSelectClass?: (classId: string) => void;
   onRefresh: () => void;
   onNavigateTab?: (tab: NavTab) => void;
   onOpenManageClasses?: () => void;
@@ -60,6 +62,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
   attendanceRecords,
   settings,
   selectedClassId,
+  onSelectClass,
   onRefresh,
   onNavigateTab,
   onOpenManageClasses,
@@ -72,6 +75,28 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isPasteModalOpen, setIsPasteModalOpen] = useState(false);
+  const [isSelectClassPromptOpen, setIsSelectClassPromptOpen] = useState(false);
+  const [pendingActionName, setPendingActionName] = useState<string>('ចម្លង ឬបញ្ចូលទិន្នន័យសិស្ស');
+
+  // Guard: Strictly disallow adding, pasting, or importing data when "All Classes" is active
+  const requireSpecificClass = (actionName: string = 'ចម្លង ឬបញ្ចូលទិន្នន័យសិស្ស'): boolean => {
+    if (classes.length === 0) {
+      if (onOpenManageClasses) {
+        onOpenManageClasses();
+      } else {
+        showToast('⚠️ មិនទាន់មានថ្នាក់រៀនទេ! សូមបង្កើតថ្នាក់រៀនជាមុនសិន។');
+      }
+      return false;
+    }
+
+    if (selectedClassId === 'ALL') {
+      setPendingActionName(actionName);
+      setIsSelectClassPromptOpen(true);
+      return false;
+    }
+
+    return true;
+  };
   const [selectedCell, setSelectedCell] = useState<{ rowIdx: number; colKey: string; colName: string } | null>(null);
   const [selectedRowIdx, setSelectedRowIdx] = useState<number | null>(null);
   const [emptyRowCount, setEmptyRowCount] = useState<number>(15);
@@ -234,8 +259,9 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
   // Handle typing into an empty spreadsheet row cell (creates student automatically)
   const handleEmptyRowCellChange = async (rowIdx: number, field: keyof Student, value: any) => {
     if (!value || (typeof value === 'string' && !value.trim())) return;
+    if (!requireSpecificClass('បញ្ចូលសិស្សថ្មីក្នុងតារាង')) return;
     try {
-      const targetClassId = selectedClassId === 'ALL' ? (classes[0]?.id || '') : selectedClassId;
+      const targetClassId = selectedClassId;
       const targetRollNo = rowIdx + 1;
       await pushSnapshot('បញ្ចូលសិស្សពីក្រឡាទទេ');
       const newStudent: Student = {
@@ -270,16 +296,10 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
     if (!selectedCell && !text.includes('\t') && !text.includes('\n')) {
       return false;
     }
-    const targetClassId = selectedClassId === 'ALL' ? (classes[0]?.id || '') : selectedClassId;
-    if (!targetClassId) {
-      if (classes.length === 0 && onOpenManageClasses) {
-        alert('មិនទាន់មានថ្នាក់រៀនទេ! សូមបង្កើតថ្នាក់រៀនជាមុនសិន។');
-        onOpenManageClasses();
-        return false;
-      }
-      alert('សូមជ្រើសរើសថ្នាក់រៀនជាមុនសិន!');
+    if (!requireSpecificClass('បិទភ្ជាប់ទិន្នន័យពី Excel')) {
       return false;
     }
+    const targetClassId = selectedClassId;
 
     const startRowIdx = selectedCell ? selectedCell.rowIdx : 0;
     const startColKey = selectedCell ? (selectedCell.colKey as keyof Student) : undefined;
@@ -453,6 +473,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
 
   // Direct 1-Click Clipboard paste or fallback to modal
   const handleDirectClipboardPasteClick = async () => {
+    if (!requireSpecificClass('បិទភ្ជាប់ទិន្នន័យពី Excel')) return;
     try {
       if (navigator.clipboard && navigator.clipboard.readText) {
         const text = await navigator.clipboard.readText();
@@ -683,7 +704,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
       );
     } catch (err) {
       console.error('Error deduplicating students:', err);
-      alert('មានបញ្ហាក្នុងការសម្អាតឈ្មោះជាន់គ្នា!');
+      showToast('⚠️ មានបញ្ហាក្នុងការសម្អាតឈ្មោះជាន់គ្នា!');
     }
   };
 
@@ -692,21 +713,16 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const targetClassId = selectedClassId === 'ALL' ? (classes[0]?.id || '') : selectedClassId;
-    if (!targetClassId) {
-      if (classes.length === 0 && onOpenManageClasses) {
-        alert('មិនទាន់មានថ្នាក់រៀនទេ! សូមបង្កើតថ្នាក់រៀនជាមុនសិន មុនពេលនាំចូល Excel។');
-        onOpenManageClasses();
-        return;
-      }
-      alert('សូមជ្រើសរើសថ្នាក់រៀនជាមុនសិន មុនពេលនាំចូល Excel!');
+    if (!requireSpecificClass('នាំចូលទិន្នន័យពី Excel')) {
+      if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
+    const targetClassId = selectedClassId;
 
     try {
       const parsed = await parseExcelStudents(file, targetClassId);
       if (parsed.length === 0) {
-        alert('មិនមានទិន្នន័យសិស្សនៅក្នុងឯកសារទេ!');
+        showToast('⚠️ មិនមានទិន្នន័យសិស្សនៅក្នុងឯកសារទេ!');
         return;
       }
 
@@ -765,12 +781,12 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
       }
 
       onRefresh();
-      alert(
-        `បាននាំចូលជោគជ័យ! (កែប្រែសិស្សចាស់ ${toKhmerNum(toUpdate.length)} នាក់, បន្ថែមសិស្សថ្មី ${toKhmerNum(toAdd.length)} នាក់ - គ្មានឈ្មោះជាន់គ្នាទេ)`
+      showToast(
+        `✨ បាននាំចូលជោគជ័យ! (កែប្រែសិស្សចាស់ ${toKhmerNum(toUpdate.length)} នាក់, បន្ថែមសិស្សថ្មី ${toKhmerNum(toAdd.length)} នាក់)`
       );
     } catch (err) {
       console.error(err);
-      alert('មានបញ្ហាក្នុងការអានឯកសារ Excel! សូមពិនិត្យទម្រង់ឯកសារឡើងវិញ។');
+      showToast('❌ មានបញ្ហាក្នុងការអានឯកសារ Excel! សូមពិនិត្យទម្រង់ឯកសារឡើងវិញ។');
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
@@ -788,9 +804,26 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
     return (
       <tr
         key={`empty-row-${rowIdx}`}
+        onFocusCapture={(e) => {
+          if (selectedClassId === 'ALL') {
+            e.preventDefault();
+            e.stopPropagation();
+            (e.target as HTMLElement)?.blur?.();
+            requireSpecificClass('បញ្ចូលសិស្សថ្មីក្នុងតារាង');
+          }
+        }}
+        onClickCapture={(e) => {
+          if (selectedClassId === 'ALL') {
+            e.preventDefault();
+            e.stopPropagation();
+            requireSpecificClass('បញ្ចូលសិស្សថ្មីក្នុងតារាង');
+          }
+        }}
         className={`border-b border-slate-200 transition-colors ${
           isTrailing ? 'no-print print:hidden' : ''
-        } ${isRowSelected ? 'bg-blue-50/50' : 'hover:bg-slate-50/60'}`}
+        } ${isRowSelected ? 'bg-blue-50/50' : 'hover:bg-slate-50/60'} ${
+          selectedClassId === 'ALL' ? 'cursor-not-allowed opacity-80' : ''
+        }`}
       >
         {/* 1. ល.រ (Sticky left on screen, static on print) */}
         <td
@@ -1231,7 +1264,11 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
             {/* Primary Action: Add Student with Dedicated Form Modal */}
             <button
               type="button"
-              onClick={() => setIsAddModalOpen(true)}
+              onClick={() => {
+                if (requireSpecificClass('បន្ថែមសិស្សថ្មី')) {
+                  setIsAddModalOpen(true);
+                }
+              }}
               className="inline-flex items-center px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer shrink-0"
               title="បើកផ្ទាំង Form ដើម្បីបញ្ចូលសិស្សថ្មី"
             >
@@ -1676,7 +1713,33 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
             {/* Table Body: Editable Rows with Enhanced Legible Font Sizes */}
             <tbody className="divide-y divide-slate-200 text-slate-800">
               {filteredStudents.length === 0 ? (
-                Array.from({ length: emptyRowCount }).map((_, idx) => renderEmptyRow(idx))
+                selectedClassId === 'ALL' ? (
+                  <tr className="bg-amber-50/90 border-b border-amber-300 no-print">
+                    <td colSpan={24} className="py-8 px-4 text-center">
+                      <div className="flex flex-col items-center justify-center gap-3 max-w-lg mx-auto text-amber-950 font-bold">
+                        <AlertTriangle className="w-8 h-8 text-amber-600" />
+                        <h4 className="text-base font-black">លោកគ្រូ-អ្នកគ្រូកំពុងស្ថិតក្នុងផ្ទាំង «ថ្នាក់ទាំងអស់»</h4>
+                        <p className="text-xs text-amber-850 font-medium">
+                          ផ្ទាំងនេះសម្រាប់តែពិនិត្យទិន្នន័យសរុប។ ដើម្បីចម្លង (Paste) នាំចូលពី Excel ឬបន្ថែមសិស្សថ្មី សូមចុចជ្រើសរើសថ្នាក់រៀនជាក់លាក់៖
+                        </p>
+                        <div className="flex flex-wrap items-center gap-2 justify-center pt-2">
+                          {classes.map((cls) => (
+                            <button
+                              key={cls.id}
+                              type="button"
+                              onClick={() => onSelectClass && onSelectClass(cls.id)}
+                              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-xs transition-all cursor-pointer text-xs flex items-center space-x-1"
+                            >
+                              <span>👉 ចូលថ្នាក់ {cls.name}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  Array.from({ length: emptyRowCount }).map((_, idx) => renderEmptyRow(idx))
+                )
               ) : (
                 <>
                   {filteredStudents.map((stu, index) => {
@@ -2233,8 +2296,34 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                     );
                   })}
                   {/* Append 3 interactive empty rows at the bottom for quick addition (Screen only, hidden on print) */}
-                  {Array.from({ length: 3 }).map((_, idx) =>
-                    renderEmptyRow(filteredStudents.length + idx, true)
+                  {selectedClassId !== 'ALL' ? (
+                    Array.from({ length: 3 }).map((_, idx) =>
+                      renderEmptyRow(filteredStudents.length + idx, true)
+                    )
+                  ) : (
+                    <tr className="bg-amber-50/90 border-t-2 border-amber-300 no-print">
+                      <td colSpan={24} className="py-3 px-4 text-center">
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 text-xs sm:text-sm text-amber-900 font-bold">
+                          <div className="flex items-center space-x-2">
+                            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
+                            <span>លោកគ្រូ-អ្នកគ្រូកំពុងស្ថិតក្នុងផ្ទាំង «ថ្នាក់ទាំងអស់» (សម្រាប់មើលទិន្នន័យសរុប)។ ដើម្បីចម្លង (Paste) ឬបន្ថែមសិស្ស សូមជ្រើសរើសថ្នាក់ជាក់លាក់៖</span>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-1.5 justify-center">
+                            {classes.map((cls) => (
+                              <button
+                                key={cls.id}
+                                type="button"
+                                onClick={() => onSelectClass && onSelectClass(cls.id)}
+                                className="px-3 py-1 bg-white hover:bg-emerald-600 hover:text-white text-emerald-800 font-black rounded-lg border border-emerald-300 shadow-xs transition-all cursor-pointer text-xs flex items-center space-x-1"
+                              >
+                                <span>👉</span>
+                                <span>ថ្នាក់ {cls.name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
                   )}
                 </>
               )}
@@ -2563,6 +2652,62 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
           showToast(`📋 បានបញ្ចូលសិស្សចំនួន ${count} នាក់ពី Excel ដោយជោគជ័យ!`);
         }}
       />
+
+      {/* Centered Select Class Required Modal Dialog (លោតចំកណ្តាលអេក្រង់) */}
+      <Modal
+        isOpen={isSelectClassPromptOpen}
+        onClose={() => setIsSelectClassPromptOpen(false)}
+        title="⚠️ សូមជ្រើសរើសថ្នាក់រៀនជាមុនសិន"
+        subtitle={`ដើម្បី${pendingActionName} លោកគ្រូ-អ្នកគ្រូត្រូវជ្រើសរើសថ្នាក់រៀនជាក់លាក់ (មិនអាចចម្លង ឬបន្ថែមចូល «ថ្នាក់ទាំងអស់» បានឡើយ)`}
+        maxWidth="md"
+      >
+        <div className="space-y-4">
+          <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl flex items-start space-x-3 text-xs text-amber-900">
+            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="font-bold">មិនអាចបញ្ចូលទិន្នន័យចូល «ថ្នាក់ទាំងអស់» បានទេ!</p>
+              <p className="text-amber-800 text-[11.5px] leading-relaxed">
+                ផ្ទាំង «ថ្នាក់ទាំងអស់» គឺសម្រាប់តែមើលទិន្នន័យរួម និងបោះពុម្ពប៉ុណ្ណោះ។ ដើម្បីធានាភាពត្រឹមត្រូវនៃបញ្ជីឈ្មោះសិស្ស សូមជ្រើសរើសថ្នាក់ដែលត្រូវបញ្ចូល៖
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-2">
+              ចុចជ្រើសរើសថ្នាក់រៀនដែលត្រូវ{pendingActionName}៖
+            </label>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {classes.map((cls) => (
+                <button
+                  key={cls.id}
+                  type="button"
+                  onClick={() => {
+                    setIsSelectClassPromptOpen(false);
+                    if (onSelectClass) {
+                      onSelectClass(cls.id);
+                    }
+                    showToast(`✨ បានជ្រើសរើស «ថ្នាក់ ${cls.name}» រួចរាល់! លោកគ្រូអាច ${pendingActionName} បានហើយ។`);
+                  }}
+                  className="p-3 rounded-xl border-2 border-emerald-200 hover:border-emerald-500 bg-emerald-50/50 hover:bg-emerald-600 hover:text-white text-emerald-900 font-black text-sm flex flex-col items-center justify-center transition-all cursor-pointer shadow-xs active:scale-95 group"
+                >
+                  <span className="text-base group-hover:scale-110 transition-transform">📚</span>
+                  <span className="mt-1">ថ្នាក់ {cls.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end pt-2 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setIsSelectClassPromptOpen(false)}
+              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+            >
+              បិទផ្ទាំង
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

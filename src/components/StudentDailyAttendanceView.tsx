@@ -673,13 +673,13 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
           </div>
         </div>
 
-        {/* Live Feedback Toast */}
+        {/* Live Feedback Toast (ចំកណ្តាលអេក្រង់) */}
         {toastMessage && (
-          <div className="bg-slate-900 text-white text-xs sm:text-sm font-bold px-3.5 py-2 rounded-xl shadow-lg flex items-center justify-between animate-fade-in border border-slate-700">
-            <span className="flex items-center">
-              <Check className="w-4 h-4 mr-2 text-emerald-400 shrink-0" />
-              {toastMessage}
-            </span>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none no-print">
+            <div className="bg-slate-900/95 text-white text-xs sm:text-sm font-bold px-5 py-3.5 rounded-2xl shadow-2xl flex items-center space-x-2.5 border-2 border-slate-700 pointer-events-auto max-w-md text-center animate-scale-up">
+              <Check className="w-5 h-5 text-emerald-400 shrink-0" />
+              <span>{toastMessage}</span>
+            </div>
           </div>
         )}
 

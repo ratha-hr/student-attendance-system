@@ -299,7 +299,7 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
       <div className="fixed inset-0" onClick={onClose} aria-hidden="true" />
 
-      <div className="relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-6 z-10 animate-fade-in flex flex-col max-h-[92vh]">
+      <div className="relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-6 z-10 animate-scale-up flex flex-col max-h-[92vh]">
         {/* Modal Header */}
         <div className="px-6 py-4 bg-gradient-to-r from-[#002060] via-[#0b3c7b] to-[#002060] text-white flex items-center justify-between shrink-0 shadow-sm">
           <div className="flex items-center space-x-3">
