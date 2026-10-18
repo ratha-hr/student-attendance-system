@@ -40,6 +40,7 @@ import {
   calculateTotals,
   calculateBalancedPercentages,
   exportTeachingPlanToExcel,
+  getTableBaseline,
   type MonthColDef,
   KHMER_MONTH_LIST,
   getNextKhmerMonth,
@@ -414,6 +415,57 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
       handleSave(updated);
       return updated;
     });
+  };
+
+  // Cell change handler for Baseline of any table (Table 1 updates baselineCount, Tables 2-4 update preceding quarter's end actuals)
+  const handleTableBaselineCountChange = (
+    tableKey: 'table1' | 'table2' | 'table3' | 'table4',
+    grade: string,
+    count: number
+  ) => {
+    if (tableKey === 'table1') {
+      handleBaselineCountChange(grade, count);
+      return;
+    }
+
+    let prevCols: MonthColDef[] = [];
+    if (tableKey === 'table2') {
+      prevCols = plan.monthCols?.table1 || TABLE_1_MONTHS;
+    } else if (tableKey === 'table3') {
+      prevCols = plan.monthCols?.table2 || TABLE_2_MONTHS;
+    } else if (tableKey === 'table4') {
+      prevCols = plan.monthCols?.table3 || TABLE_3_MONTHS;
+    }
+
+    if (prevCols.length > 0) {
+      const lastColKey = prevCols[prevCols.length - 1].key;
+      handleMonthCellChange(grade, lastColKey, 'actualCount', count);
+    }
+  };
+
+  const handleTableBaselinePctChange = (
+    tableKey: 'table1' | 'table2' | 'table3' | 'table4',
+    grade: string,
+    pct: number
+  ) => {
+    if (tableKey === 'table1') {
+      handleBaselinePctChange(grade, pct);
+      return;
+    }
+
+    let prevCols: MonthColDef[] = [];
+    if (tableKey === 'table2') {
+      prevCols = plan.monthCols?.table1 || TABLE_1_MONTHS;
+    } else if (tableKey === 'table3') {
+      prevCols = plan.monthCols?.table2 || TABLE_2_MONTHS;
+    } else if (tableKey === 'table4') {
+      prevCols = plan.monthCols?.table3 || TABLE_3_MONTHS;
+    }
+
+    if (prevCols.length > 0) {
+      const lastColKey = prevCols[prevCols.length - 1].key;
+      handleMonthCellChange(grade, lastColKey, 'actualPct', pct);
+    }
   };
 
   // Cell change handler for Year-End Target Percentage
@@ -1073,9 +1125,23 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
   ) => {
     const baselineTotals = calculateTotals(
       plan.rows,
-      (r) => r.baselineCount,
-      (r) => r.baselinePct
+      (r) => getTableBaseline(plan, tableKey, r).count,
+      (r) => getTableBaseline(plan, tableKey, r).pct
     );
+
+    const prevQuarterLabel =
+      tableKey === 'table2'
+        ? 'ត្រីមាសទី១'
+        : tableKey === 'table3'
+        ? 'ត្រីមាសទី២'
+        : tableKey === 'table4'
+        ? 'ត្រីមាសទី៣'
+        : '';
+
+    const baselineTitle =
+      tableKey === 'table1'
+        ? 'ទិន្នន័យមូលដ្ឋានដើមឆ្នាំ (តេស្តដើមឆ្នាំ)'
+        : `ទិន្នន័យមូលដ្ឋានគិតបន្តពីចុង${prevQuarterLabel}`;
 
     const yearTargetTotal = plan.rows.reduce((sum, r) => sum + (r.yearEndTargetPct || 0), 0);
     const totalCols = 1 + 2 + months.length * 4 + 1;
@@ -1122,9 +1188,19 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
               <th rowSpan={3} className="border border-black px-1 py-1 align-middle text-center print:px-0.5 print:py-0.5">
                 និទ្ទេស
               </th>
-              <th colSpan={2} rowSpan={2} className="border border-black px-1 py-0.5 align-middle text-center leading-tight print:px-0.5 print:py-0.5">
+              <th
+                colSpan={2}
+                rowSpan={2}
+                className="border border-black px-1 py-0.5 align-middle text-center leading-tight print:px-0.5 print:py-0.5"
+                title={baselineTitle}
+              >
                 <div>ទិន្នន័យ</div>
                 <div>មូលដ្ឋាន</div>
+                {tableKey !== 'table1' && (
+                  <div className="text-[9px] text-blue-700 font-semibold print:text-[7.5px] print:text-black">
+                    (បន្តពី {prevQuarterLabel})
+                  </div>
+                )}
               </th>
               {months.map((m) => (
                 <th key={m.key} colSpan={4} className="border border-black px-1 py-0.5 align-middle text-center print:px-0.5 print:py-0.5">
@@ -1203,22 +1279,22 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
 
                 {/* Baseline Count (Black) - Col 0 */}
                 {renderCountCell(
-                  row.baselineCount,
+                  getTableBaseline(plan, tableKey, row).count,
                   tableKey,
                   rowIdx,
                   0,
                   maxCols,
-                  (val) => handleBaselineCountChange(row.grade, val)
+                  (val) => handleTableBaselineCountChange(tableKey, row.grade, val)
                 )}
 
                 {/* Baseline % (Red) - Col 1 */}
                 {renderPercentCell(
-                  row.baselinePct,
+                  getTableBaseline(plan, tableKey, row).pct,
                   tableKey,
                   rowIdx,
                   1,
                   maxCols,
-                  (val) => handleBaselinePctChange(row.grade, val)
+                  (val) => handleTableBaselinePctChange(tableKey, row.grade, val)
                 )}
 
                 {/* Months Data */}

@@ -370,6 +370,72 @@ export function createDefaultTeachingPlan(
 }
 
 /**
+ * Calculates continuous baseline for a specific table block:
+ * - Table 1 (ត្រីមាសទី១): Initial diagnostic baseline (row.baselineCount, row.baselinePct) from Beginning of Year test.
+ * - Table 2 (ត្រីមាសទី២): Continuous baseline carried over from Table 1's last month (actual count & pct, or plan).
+ * - Table 3 (ត្រីមាសទី៣): Continuous baseline carried over from Table 2's last month (actual count & pct, or plan).
+ * - Table 4 (ត្រីមាសទី៤): Continuous baseline carried over from Table 3's last month (actual count & pct, or plan).
+ */
+export function getTableBaseline(
+  plan: TeachingPlan,
+  tableKey: 'table1' | 'table2' | 'table3' | 'table4',
+  row: TeachingPlanGradeRow
+): { count: number; pct: number } {
+  if (tableKey === 'table1') {
+    return {
+      count: row.baselineCount ?? 0,
+      pct: row.baselinePct ?? 0,
+    };
+  }
+
+  // Preceding table's month columns
+  let prevCols: MonthColDef[] = [];
+  if (tableKey === 'table2') {
+    prevCols = plan.monthCols?.table1 || TABLE_1_MONTHS;
+  } else if (tableKey === 'table3') {
+    prevCols = plan.monthCols?.table2 || TABLE_2_MONTHS;
+  } else if (tableKey === 'table4') {
+    prevCols = plan.monthCols?.table3 || TABLE_3_MONTHS;
+  }
+
+  if (!prevCols || prevCols.length === 0) {
+    return { count: 0, pct: 0 };
+  }
+
+  const lastCol = prevCols[prevCols.length - 1];
+  const lastColKey = lastCol.key;
+
+  // 1. Prefer actual results from the last month of the preceding quarter
+  const actualSum = plan.rows.reduce(
+    (sum, r) => sum + (r.monthly?.[lastColKey]?.actualCount || 0),
+    0
+  );
+  if (actualSum > 0) {
+    return {
+      count: row.monthly?.[lastColKey]?.actualCount ?? 0,
+      pct: row.monthly?.[lastColKey]?.actualPct ?? 0,
+    };
+  }
+
+  // 2. Fall back to plan targets of that last month if entered
+  const planSum = plan.rows.reduce(
+    (sum, r) => sum + (r.monthly?.[lastColKey]?.planCount || 0),
+    0
+  );
+  if (planSum > 0) {
+    return {
+      count: row.monthly?.[lastColKey]?.planCount ?? 0,
+      pct: row.monthly?.[lastColKey]?.planPct ?? 0,
+    };
+  }
+
+  // 3. If preceding quarter has no data yet in its last month, fall back to preceding table's baseline
+  const prevTableKey =
+    tableKey === 'table2' ? 'table1' : tableKey === 'table3' ? 'table2' : 'table3';
+  return getTableBaseline(plan, prevTableKey, row);
+}
+
+/**
  * Calculates sum and percentage for a column of counts
  */
 export function calculateTotals(
@@ -456,7 +522,11 @@ export function exportTeachingPlanToExcel(plan: TeachingPlan) {
   aoa.push([]);
 
   // Helper to append a table with exact 3-tier headers and cell merges
-  const appendTable = (title: string, months: MonthColDef[]) => {
+  const appendTable = (
+    title: string,
+    months: MonthColDef[],
+    tableKey: 'table1' | 'table2' | 'table3' | 'table4'
+  ) => {
     const startRow = aoa.length;
     // Standard 16 columns across all tables: Grade(1) + Baseline(2) + 3 Months(12) + Target(1) = 16
     const totalCols = 16;
@@ -471,7 +541,15 @@ export function exportTeachingPlanToExcel(plan: TeachingPlan) {
     // Row 1 of table: Tier 1
     const r1 = new Array(totalCols).fill('');
     r1[0] = 'និទ្ទេស';
-    r1[1] = 'ទិន្នន័យ មូលដ្ឋាន';
+    const prevQuarterLabel =
+      tableKey === 'table2'
+        ? ' (បន្តពីត្រីមាសទី១)'
+        : tableKey === 'table3'
+        ? ' (បន្តពីត្រីមាសទី២)'
+        : tableKey === 'table4'
+        ? ' (បន្តពីត្រីមាសទី៣)'
+        : '';
+    r1[1] = `ទិន្នន័យ មូលដ្ឋាន${prevQuarterLabel}`;
     months.forEach((m, mi) => {
       r1[3 + mi * 4] = m.monthName;
     });
@@ -529,8 +607,9 @@ export function exportTeachingPlanToExcel(plan: TeachingPlan) {
     plan.rows.forEach((r) => {
       const dataRow = new Array(totalCols).fill('');
       dataRow[0] = r.grade;
-      dataRow[1] = r.baselineCount;
-      dataRow[2] = `${r.baselinePct}%`;
+      const base = getTableBaseline(plan, tableKey, r);
+      dataRow[1] = base.count;
+      dataRow[2] = `${base.pct}%`;
       months.forEach((m, mi) => {
         const d = r.monthly[m.key] || { planCount: 0, planPct: 0, actualCount: 0, actualPct: 0 };
         dataRow[3 + mi * 4] = d.planCount;
@@ -548,8 +627,9 @@ export function exportTeachingPlanToExcel(plan: TeachingPlan) {
     let baseCountSum = 0;
     let basePctSum = 0;
     plan.rows.forEach((r) => {
-      baseCountSum += r.baselineCount;
-      basePctSum += r.baselinePct;
+      const base = getTableBaseline(plan, tableKey, r);
+      baseCountSum += base.count;
+      basePctSum += base.pct;
     });
     sumRow[1] = baseCountSum;
     sumRow[2] = `${basePctSum}%`;
@@ -582,13 +662,13 @@ export function exportTeachingPlanToExcel(plan: TeachingPlan) {
   };
 
   // Table 1
-  appendTable('តារាងទី ១', plan.monthCols?.table1 || TABLE_1_MONTHS);
+  appendTable('តារាងទី ១', plan.monthCols?.table1 || TABLE_1_MONTHS, 'table1');
   // Table 2
-  appendTable('តារាងទី ២', plan.monthCols?.table2 || TABLE_2_MONTHS);
+  appendTable('តារាងទី ២', plan.monthCols?.table2 || TABLE_2_MONTHS, 'table2');
   // Table 3
-  appendTable('តារាងទី ៣', plan.monthCols?.table3 || TABLE_3_MONTHS);
+  appendTable('តារាងទី ៣', plan.monthCols?.table3 || TABLE_3_MONTHS, 'table3');
   // Table 4
-  appendTable('តារាងទី ៤', plan.monthCols?.table4 || TABLE_4_MONTHS);
+  appendTable('តារាងទី ៤', plan.monthCols?.table4 || TABLE_4_MONTHS, 'table4');
 
   // Bottom signatures
   aoa.push([]);
