@@ -536,6 +536,9 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
                       {opt.label}
                     </option>
                   ))}
+                  {!currentHoursOptions.some((o) => o.value === checkInTime) && (
+                    <option value={checkInTime}>{checkInTime}</option>
+                  )}
                 </select>
               </div>
 
@@ -556,6 +559,9 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
                       {opt.label}
                     </option>
                   ))}
+                  {!currentHoursOptions.some((o) => o.value === checkOutTime) && (
+                    <option value={checkOutTime}>{checkOutTime}</option>
+                  )}
                 </select>
               </div>
 

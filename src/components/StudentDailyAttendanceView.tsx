@@ -847,6 +847,9 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
                         {opt.label}
                       </option>
                     ))}
+                    {!currentHoursOptions.some((o) => o.value === checkInTime) && (
+                      <option value={checkInTime}>{checkInTime}</option>
+                    )}
                   </select>
                 </div>
 
@@ -866,6 +869,9 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
                         {opt.label}
                       </option>
                     ))}
+                    {!currentHoursOptions.some((o) => o.value === checkOutTime) && (
+                      <option value={checkOutTime}>{checkOutTime}</option>
+                    )}
                   </select>
                 </div>
 

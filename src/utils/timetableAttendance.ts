@@ -144,62 +144,33 @@ export function getClassTimetableForDate(
 }
 
 /**
- * បង្កើតជម្រើសម៉ោងចេញចូល (checkIn/checkOut options) ដោយបូកបញ្ចូលម៉ោងក្នុងកាលវិភាគ
+ * បង្កើតជម្រើសម៉ោងចេញចូល (checkIn/checkOut options) - យកតែម៉ោងគត់សុទ្ធសាធ (7:00, 8:00, ...)
  */
 export function getTimetableHoursOptions(
-  slots: TimetableSlot[],
+  _slots: TimetableSlot[],
   session: 'morning' | 'afternoon'
 ): { value: string; label: string }[] {
+  // ម៉ោងគត់សុទ្ធសាធតាមការស្នើសុំ 7:00, 8:00, ...
   const baseMorning = [
     '7:00',
-    '7:50',
     '8:00',
-    '8:45',
-    '8:55',
     '9:00',
-    '9:45',
-    '9:50',
     '10:00',
-    '10:40',
-    '10:45',
     '11:00',
-    '11:35',
     '12:00',
   ];
 
   const baseAfternoon = [
     '13:00',
-    '13:50',
-    '13:55',
     '14:00',
-    '14:45',
-    '14:55',
     '15:00',
-    '15:45',
-    '15:50',
     '16:00',
-    '16:40',
-    '16:45',
     '17:00',
-    '17:35',
+    '18:00',
   ];
 
-  const set = new Set<string>(session === 'morning' ? baseMorning : baseAfternoon);
-
-  // បន្ថែម start/end ពីកាលវិភាគជាក់ស្ដែង
-  slots.forEach((s) => {
-    const parsed = parseSlotTimes(s.timeSlot, session);
-    if (parsed.start) set.add(parsed.start);
-    if (parsed.end) set.add(parsed.end);
-  });
-
-  const timeToMinutes = (t: string) => {
-    const [h, m] = t.split(':').map((v) => parseInt(v, 10));
-    return (h || 0) * 60 + (m || 0);
-  };
-
-  const sorted = Array.from(set).sort((a, b) => timeToMinutes(a) - timeToMinutes(b));
-  return sorted.map((v) => ({ value: v, label: v }));
+  const hours = session === 'morning' ? baseMorning : baseAfternoon;
+  return hours.map((v) => ({ value: v, label: v }));
 }
 
 /**
