@@ -230,7 +230,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
           {/* KPI 2: ថ្នាក់រៀន */}
           <div
-            onClick={() => onNavigateTab('timetable-class')}
+            onClick={() => onNavigateTab('timetable-teacher')}
             className="flex items-center space-x-2.5 px-3 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-2xl border border-white/15 transition-all cursor-pointer group"
             title="ចុចដើម្បីមើលថ្នាក់រៀន"
           >
@@ -821,7 +821,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </button>
 
           <button
-            onClick={() => onNavigateTab('timetable-class')}
+            onClick={() => onNavigateTab('timetable-teacher')}
             className="p-3 bg-white hover:bg-blue-50 text-slate-800 rounded-2xl border border-slate-200 shadow-2xs text-left transition-all cursor-pointer flex items-center space-x-2.5"
           >
             <div className="p-2 rounded-xl bg-amber-100 text-amber-700">
@@ -829,7 +829,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             </div>
             <div>
               <p className="font-bold text-xs">កាលវិភាគបង្រៀន</p>
-              <p className="text-[10px] text-slate-400">តាមគ្រូ & តាមថ្នាក់</p>
+              <p className="text-[10px] text-slate-400">កាលវិភាគគ្រូបង្រៀន</p>
             </div>
           </button>
         </div>

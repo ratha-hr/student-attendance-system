@@ -356,18 +356,7 @@ export function App() {
             />
           )}
 
-          {currentTab === 'timetable-class' && (
-            <TimetablePage
-              classes={classes}
-              timetableSlots={timetableSlots}
-              settings={settings}
-              selectedClassId={selectedClassId}
-              onRefresh={handleRefresh}
-              defaultMode="class"
-            />
-          )}
-
-          {currentTab === 'timetable-teacher' && (
+          {((currentTab as string) === 'timetable-teacher' || (currentTab as string) === 'timetable-class') && (
             <TimetablePage
               classes={classes}
               timetableSlots={timetableSlots}

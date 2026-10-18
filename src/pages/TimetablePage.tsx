@@ -223,10 +223,10 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
   settings,
   selectedClassId,
   onRefresh,
-  defaultMode = 'class',
+  defaultMode = 'teacher',
 }) => {
   const { pushSnapshot, showToast } = useUndoRedo();
-  const [activeTab, setActiveTab] = useState<'class' | 'teacher'>(defaultMode);
+  const [activeTab, setActiveTab] = useState<'class' | 'teacher'>('teacher');
   // Default to 'all' to render full official weekly sheet as shown in Image 4
   const [selectedSession, setSelectedSession] = useState<'morning' | 'afternoon' | 'all'>('all');
   const [editingSlot, setEditingSlot] = useState<TimetableSlot | null>(null);
@@ -837,16 +837,10 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
           <div className="flex items-center space-x-3">
             <h2 className="text-xl font-black text-slate-800 flex items-center">
               <Calendar className="w-6 h-6 text-blue-600 mr-2" />
-              {activeTab === 'class'
-                ? (isAllClasses
-                    ? `កាលវិភាគប្រចាំសប្តាហ៍ (គ្រប់ថ្នាក់ទាំងអស់ - ${classes.length} ថ្នាក់)`
-                    : `កាលវិភាគប្រចាំសប្តាហ៍ (${formatClassLabel(currentClassName)})`)
-                : `កាលវិភាគបង្រៀនរបស់លោកគ្រូ (${teacherName})`}
+              កាលវិភាគបង្រៀនរបស់លោកគ្រូ ({teacherName})
             </h2>
             <span className="inline-flex items-center px-2.5 py-0.5 bg-blue-50 text-blue-700 text-xs font-bold rounded-full border border-blue-200 whitespace-nowrap">
-              {activeTab === 'class'
-                ? (isAllClasses ? `🌟 គ្រប់ថ្នាក់ទាំងអស់ (${classes.length} ថ្នាក់)` : formatClassLabel(currentClassName))
-                : `ឯកទេស៖ ${settings?.specialtySubject || 'គណិតវិទ្យា'}`}
+              ឯកទេស៖ {settings?.specialtySubject || 'គណិតវិទ្យា'}
             </span>
           </div>
           <p className="text-xs sm:text-sm text-slate-500">
@@ -856,31 +850,6 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
 
         {/* Tab & Session Switcher + Print Button */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* Class vs Teacher Tab */}
-          <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs font-bold">
-            <button
-              onClick={() => setActiveTab('class')}
-              className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer flex items-center space-x-1.5 ${
-                activeTab === 'class'
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <BookOpen className="w-3.5 h-3.5" />
-              <span>កាលវិភាគតាមថ្នាក់</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('teacher')}
-              className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer flex items-center space-x-1.5 ${
-                activeTab === 'teacher'
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <User className="w-3.5 h-3.5" />
-              <span>កាលវិភាគគ្រូ ({teacherName})</span>
-            </button>
-          </div>
 
           {/* Session Switcher (ព្រឹក / រសៀល / ពេញមួយថ្ងៃ) */}
           <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs font-bold">
@@ -951,44 +920,8 @@ export const TimetablePage: React.FC<TimetablePageProps> = ({
           <PrintButton defaultOrientation="landscape" label="បោះពុម្ព" />
         </div>
       </div>
-
-      {/* Quick Jump Bar when All Classes is selected (no-print) */}
-      {isAllClasses && activeTab === 'class' && classes.length > 1 && (
-        <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-blue-200/80 shadow-xs flex flex-wrap items-center gap-2 no-print">
-          <span className="text-xs font-black text-blue-900 flex items-center mr-1">
-            <span className="w-2.5 h-2.5 rounded-full bg-blue-600 mr-2 inline-block animate-pulse"></span>
-            រំលងទៅកាលវិភាគថ្នាក់៖
-          </span>
-          {classes.map((cls) => (
-            <a
-              key={cls.id}
-              href={`#timetable-class-${cls.id}`}
-              className="px-3 py-1.5 text-xs font-bold bg-slate-50 hover:bg-blue-600 hover:text-white text-slate-700 rounded-xl border border-slate-200 transition-colors shadow-2xs"
-            >
-              {formatClassLabel(cls.name)}
-            </a>
-          ))}
-        </div>
-      )}
-
-      {/* Render Timetable Sheet(s) */}
-      {activeTab === 'teacher' ? (
-        renderTimetableSheet(null, true)
-      ) : isAllClasses ? (
-        classes.length === 0 ? (
-          <div className="bg-white p-12 text-center rounded-3xl border border-slate-200 text-slate-500">
-            <BookOpen className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <p className="font-bold text-sm">មិនទាន់មានថ្នាក់រៀននៅឡើយទេ</p>
-            <p className="text-xs text-slate-400 mt-1">សូមបង្កើតថ្នាក់រៀនជាមុនសិនដើម្បីរៀបចំកាលវិភាគ</p>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {classes.map((cls) => renderTimetableSheet(cls, false))}
-          </div>
-        )
-      ) : (
-        renderTimetableSheet(currentClass || classes[0] || null, false)
-      )}
+      {/* Render Teacher Timetable Sheet */}
+      {renderTimetableSheet(null, true)}
 
       {/* Edit Slot Modal */}
       <Modal

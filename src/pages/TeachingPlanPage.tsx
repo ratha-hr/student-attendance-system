@@ -543,52 +543,6 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
     showToast('បានថ្លឹងភាគរយគ្រប់ជួរឈរឱ្យស្មើ ១០០% គត់ដោយជោគជ័យ!');
   };
 
-  // Detect all columns where percentage sum > 100%
-  const warningColumns = useMemo(() => {
-    const list: { name: string; sum: number }[] = [];
-    const basePctSum = plan.rows.reduce((sum, r) => sum + (r.baselinePct || 0), 0);
-    if (basePctSum > 100) {
-      list.push({ name: 'ទិន្នន័យមូលដ្ឋាន', sum: basePctSum });
-    }
-
-    const monthList = [
-      ...(plan.monthCols?.table1 || TABLE_1_MONTHS),
-      ...(plan.monthCols?.table2 || TABLE_2_MONTHS),
-      ...(plan.monthCols?.table3 || TABLE_3_MONTHS),
-    ];
-    monthList.forEach((m) => {
-      const ppSum = plan.rows.reduce((sum, r) => sum + (r.monthly[m.key]?.planPct || 0), 0);
-      if (ppSum > 100) {
-        list.push({ name: `ផែនការ ${m.monthName}`, sum: ppSum });
-      }
-      const apSum = plan.rows.reduce((sum, r) => sum + (r.monthly[m.key]?.actualPct || 0), 0);
-      if (apSum > 100) {
-        list.push({ name: `ជាក់ស្តែង ${m.actualName}`, sum: apSum });
-      }
-    });
-
-    const ytSum = plan.rows.reduce((sum, r) => sum + (r.yearEndTargetPct || 0), 0);
-    if (ytSum > 100) {
-      list.push({ name: 'ភាគរយចុងឆ្នាំ', sum: ytSum });
-    }
-
-    return list;
-  }, [plan.rows, plan.monthCols]);
-
-  // Centered Warning Notification Modal State
-  const [showWarningModal, setShowWarningModal] = useState<boolean>(false);
-  const prevWarningNamesRef = useRef<string>('');
-
-  useEffect(() => {
-    const currentNames = warningColumns.map((c) => `${c.name}:${c.sum}`).sort().join(',');
-    // Automatically pop up centered notification modal when column percentage > 100%
-    if (warningColumns.length > 0 && currentNames !== prevWarningNamesRef.current) {
-      setShowWarningModal(true);
-    } else if (warningColumns.length === 0) {
-      setShowWarningModal(false);
-    }
-    prevWarningNamesRef.current = currentNames;
-  }, [warningColumns]);
 
   // Auto-fill from actual student grades in db.grades (including beginning-of-year diagnostic test for baseline)
   const handleAutoFillFromGrades = async () => {
@@ -1257,18 +1211,6 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
               <span>បោះពុម្ព ({printOrientation === 'portrait' ? 'ទម្រង់បញ្ឈរ' : 'ទម្រង់ផ្ដេក'})</span>
             </button>
 
-            {warningColumns.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setShowWarningModal(true)}
-                className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer animate-pulse shadow-2xs"
-                title="ចុចដើម្បីពិនិត្យសញ្ញាព្រមានភាគរយលើស ១០០%"
-              >
-                <span>⚠️</span>
-                <span>លើស ១០០% ({warningColumns.length})</span>
-              </button>
-            )}
-
             <button
               type="button"
               onClick={handleResetToDefault}
@@ -1289,8 +1231,8 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
           </div>
         </div>
 
-        {/* Filter Controls Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-3 border-t border-slate-100">
+        {/* Filter Controls Row (4 Columns - ឆ្នាំសិក្សា removed as requested) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-3 border-t border-slate-100">
           {/* Class Select */}
           <div>
             <label className="block text-xs font-bold text-slate-600 mb-1">ជ្រើសរើសថ្នាក់រៀន</label>
@@ -1324,19 +1266,6 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
                 </option>
               ))}
             </select>
-          </div>
-
-          {/* Academic Year */}
-          <div>
-            <label className="block text-xs font-bold text-slate-600 mb-1">ឆ្នាំសិក្សា</label>
-            <input
-              type="text"
-              value={plan.academicYear}
-              onChange={(e) => {
-                setPlan((p) => ({ ...p, academicYear: e.target.value }));
-              }}
-              className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 text-xs focus:bg-white focus:ring-2 focus:ring-blue-500"
-            />
           </div>
 
           {/* Month Sequence Preset */}
@@ -1373,33 +1302,48 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
           </div>
         </div>
 
-        {/* Model Standard School (សាលារៀនគំរូ) Benchmark Control Row */}
-        <div className="bg-gradient-to-r from-blue-50/90 via-indigo-50/90 to-blue-50/90 border border-blue-200 rounded-2xl p-4 space-y-3.5 shadow-xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        {/* Model Standard School (សាលារៀនគំរូ) Benchmark Control - Modernized, Clean & Non-redundant */}
+        <div className="bg-gradient-to-r from-blue-50/80 via-indigo-50/70 to-blue-50/80 border border-blue-200/90 rounded-2xl p-4 space-y-3 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                <Award className="w-5 h-5 text-amber-300" />
+              <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                <Award className="w-4 h-4 text-amber-300" />
               </div>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-black text-sm sm:text-base text-blue-950">
+                  <span className="font-black text-sm text-blue-950">
                     គោលដៅសាលាស្តង់ដារគំរូ (Model School Target Benchmarks)
                   </span>
-                  <span className="text-[10px] bg-blue-200/90 text-blue-900 px-2.5 py-0.5 rounded-full font-bold">
+                  <span className="text-[10px] bg-blue-200/90 text-blue-900 px-2 py-0.5 rounded-full font-bold">
                     ក្រសួងអប់រំ យុវជន និងកីឡា
                   </span>
                 </div>
                 <p className="text-[11px] text-blue-700 mt-0.5">
-                  ផែនការបែងចែកភាគរយតាមកម្រិតនិទ្ទេស A, B, C, D, E, F សម្រាប់ឆ្នាំទី១ ដល់ ឆ្នាំទី៦ ({toKhmerNum(modelSchoolStartYear)} - {toKhmerNum(modelSchoolStartYear + 5)})
+                  ផែនការបែងចែកភាគរយតាមកម្រិតនិទ្ទេស A, B, C, D, E, F សម្រាប់ ៦ ឆ្នាំ ({modelSchoolStartYear} - {modelSchoolStartYear + 5})
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+              {/* Year 1 User-Configurable Input without Khmer numbers */}
+              <div className="flex items-center gap-1.5 text-xs font-bold text-blue-950 bg-white px-2.5 py-1 rounded-xl border border-blue-200 shadow-2xs">
+                <span>📅 ឆ្នាំទី១ ៖</span>
+                <input
+                  type="number"
+                  min="2000"
+                  max="2100"
+                  value={modelSchoolStartYear}
+                  onChange={(e) => handleStartYearChange(parseInt(e.target.value, 10) || 2026)}
+                  className="w-16 px-1.5 py-0.5 font-bold font-mono text-center text-blue-800 bg-blue-50 border border-blue-300 rounded-lg outline-none focus:ring-1 focus:ring-blue-500 text-xs"
+                  title="លោកគ្រូ-អ្នកគ្រូអាចកំណត់ឆ្នាំទី១ បានដោយសេរី"
+                />
+              </div>
+
+              {/* Toggle Table Collapse */}
               <button
                 type="button"
                 onClick={() => setShowBenchmarkMatrix(!showBenchmarkMatrix)}
-                className="px-3 py-1.5 bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs flex items-center gap-1.5 hover:scale-105 active:scale-95"
+                className="px-3 py-1.5 bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs flex items-center gap-1.5"
                 title="បង្ហាញ ឬលាក់ តារាងស្តង់ដាក្រសួងអប់រំ ៦ ឆ្នាំ"
               >
                 <Table className="w-3.5 h-3.5 text-blue-600" />
@@ -1409,112 +1353,7 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
             </div>
           </div>
 
-          {/* Quick Year Selector and Year 1 Configuration Bar */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5 p-2 bg-white/80 rounded-xl border border-blue-200/80">
-            {/* Left: Quick Year Selector Buttons: ឆ្នាំទី១ ... ឆ្នាំទី៦ */}
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-xs font-bold text-slate-700 px-1">ជ្រើសរើសឆ្នាំ៖</span>
-              {MODEL_SCHOOL_YEAR_KEYS.map((yKey) => {
-                const b = benchmarks[yKey];
-                const isSelected = benchmarkYear === yKey;
-                return (
-                  <button
-                    key={yKey}
-                    type="button"
-                    onClick={() => handleSelectBenchmarkYear(yKey)}
-                    className={`px-2.5 py-1.5 rounded-lg text-xs transition-all cursor-pointer flex items-center gap-1.5 ${
-                      isSelected
-                        ? 'bg-blue-600 text-white shadow-xs font-black'
-                        : 'bg-white hover:bg-slate-100 text-slate-700 font-bold border border-slate-200'
-                    }`}
-                  >
-                    <span>{b.yearName} ({b.calendarYear})</span>
-                    <span
-                      className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                        isSelected ? 'bg-blue-700 text-blue-100' : 'bg-slate-100 text-slate-600'
-                      }`}
-                    >
-                      ABC {b.targetABC}%
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Right: Teacher-configurable Year 1 Starting Calendar Year - Single unified dropdown */}
-            <div className="flex items-center gap-2 bg-blue-50/90 border border-blue-300/80 px-3 py-1.5 rounded-xl text-xs font-bold text-blue-950 shrink-0 shadow-2xs self-start md:self-auto">
-              <span className="flex items-center gap-1.5 text-blue-900 font-semibold">
-                <span>📅</span>
-                <span>ឆ្នាំទី១ (ចាប់ផ្ដើម) ៖</span>
-              </span>
-              <select
-                value={modelSchoolStartYear}
-                onChange={(e) => handleStartYearChange(parseInt(e.target.value, 10))}
-                className="text-xs font-black text-blue-800 bg-white border border-blue-300 rounded-lg px-2.5 py-1 cursor-pointer shadow-2xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                title="ជ្រើសរើសឆ្នាំប្រតិទិនសម្រាប់ ឆ្នាំទី១ (សាលានឹងគណនាឆ្នាំទី២ ដល់ ទី៦ ដោយស្វ័យប្រវត្តិ)"
-              >
-                {(() => {
-                  const years = Array.from({ length: 21 }, (_, i) => 2020 + i);
-                  if (!years.includes(modelSchoolStartYear)) {
-                    years.push(modelSchoolStartYear);
-                    years.sort((a, b) => a - b);
-                  }
-                  return years.map((y) => (
-                    <option key={y} value={y}>
-                      {y} ({toKhmerNum(y)})
-                    </option>
-                  ));
-                })()}
-              </select>
-            </div>
-          </div>
-
-          {/* Active Year Highlights & Apply Bar */}
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-2 text-xs text-blue-900 bg-white/70 p-3 rounded-xl border border-blue-100">
-            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-              <span className="font-bold text-slate-800">
-                ភាគរយគោលដៅ {benchmarks[benchmarkYear].yearName} ({benchmarks[benchmarkYear].calendarYear})៖
-              </span>
-              <span className="bg-amber-100 text-amber-900 px-2 py-0.5 rounded-md font-bold text-xs border border-amber-300">
-                ក្រុមគោលដៅ ABC: {benchmarks[benchmarkYear].targetABC}%
-              </span>
-              <span className="bg-white px-2 py-0.5 rounded-md border border-blue-200 font-mono font-bold text-blue-800">
-                A: {benchmarks[benchmarkYear].targets.A}%
-              </span>
-              <span className="bg-white px-2 py-0.5 rounded-md border border-blue-200 font-mono font-bold text-blue-800">
-                B: {benchmarks[benchmarkYear].targets.B}%
-              </span>
-              <span className="bg-white px-2 py-0.5 rounded-md border border-blue-200 font-mono font-bold text-blue-800">
-                C: {benchmarks[benchmarkYear].targets.C}%
-              </span>
-              <span className="bg-white px-2 py-0.5 rounded-md border border-blue-200 font-mono font-bold text-blue-800">
-                D: {benchmarks[benchmarkYear].targets.D}%
-              </span>
-              <span className="bg-white px-2 py-0.5 rounded-md border border-blue-200 font-mono font-bold text-blue-800">
-                E: {benchmarks[benchmarkYear].targets.E}%
-              </span>
-              <span className="bg-white px-2 py-0.5 rounded-md border border-blue-200 font-mono font-bold text-blue-800">
-                F: {benchmarks[benchmarkYear].targets.F}%
-              </span>
-              <span className="text-[11px] text-emerald-700 font-black">
-                (សរុប = ១០០%)
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => handleApplyModelSchoolBenchmark(benchmarkYear)}
-                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm flex items-center gap-2 hover:scale-[1.02] active:scale-95 shrink-0"
-                title="អនុវត្តភាគរយគោលដៅតាមសាលារៀនគំរូ សម្រាប់ឆ្នាំនេះ"
-              >
-                <Sparkles className="w-4 h-4 text-amber-300" />
-                <span>អនុវត្តភាគរយគោលដៅ ({benchmarks[benchmarkYear].yearName})</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Full Official MoEYS Standard Matrix Table (Matches user's uploaded screenshot) */}
+          {/* Full Official MoEYS Standard Matrix Reference Table (Clean & Modern) */}
           {showBenchmarkMatrix && (
             <div className="overflow-x-auto bg-white rounded-xl border border-slate-300 shadow-xs">
               <table className="w-full text-center border-collapse text-xs">
@@ -1525,14 +1364,10 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
                     </th>
                     {MODEL_SCHOOL_YEAR_KEYS.map((yKey) => {
                       const b = benchmarks[yKey];
-                      const isSelected = benchmarkYear === yKey;
                       return (
                         <th
                           key={yKey}
-                          className={`border-r border-slate-300 px-2 py-1.5 font-bold text-[#8B2500] cursor-pointer transition-colors ${
-                            isSelected ? 'bg-amber-50/90 font-black' : 'hover:bg-slate-100'
-                          }`}
-                          onClick={() => handleSelectBenchmarkYear(yKey)}
+                          className="border-r border-slate-300 px-2 py-1.5 font-bold text-[#8B2500]"
                         >
                           {b.yearName} ({b.calendarYear})
                         </th>
@@ -1542,14 +1377,10 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
                   <tr className="bg-slate-50/80 border-b border-slate-300 text-slate-700 font-bold">
                     {MODEL_SCHOOL_YEAR_KEYS.map((yKey) => {
                       const b = benchmarks[yKey];
-                      const isSelected = benchmarkYear === yKey;
                       return (
                         <th
                           key={yKey}
-                          className={`border-r border-slate-300 px-2 py-1 text-[11px] text-[#8B2500] font-normal cursor-pointer ${
-                            isSelected ? 'bg-amber-50/90 font-bold' : ''
-                          }`}
-                          onClick={() => handleSelectBenchmarkYear(yKey)}
+                          className="border-r border-slate-300 px-2 py-1 text-[11px] text-[#8B2500] font-normal"
                         >
                           <div>ក្រុមគោលដៅ</div>
                           <div className="font-bold">ABC( {b.targetABC}% )</div>
@@ -1566,8 +1397,6 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
                       </td>
                       {MODEL_SCHOOL_YEAR_KEYS.map((yKey) => {
                         const val = benchmarks[yKey].targets[grade];
-                        const isSelected = benchmarkYear === yKey;
-                        // In the MoEYS screenshot, D, E, F for Year 4, 5, 6 are colored red
                         const isRed =
                           (yKey === 'year4' && (grade === 'D' || grade === 'E' || grade === 'F')) ||
                           (yKey === 'year5' && (grade === 'D' || grade === 'E' || grade === 'F')) ||
@@ -1575,10 +1404,9 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
                         return (
                           <td
                             key={yKey}
-                            className={`border-r border-slate-300 px-2 py-1.5 font-mono text-xs cursor-pointer ${
-                              isSelected ? 'bg-amber-50/70 font-black' : ''
-                            } ${isRed ? 'text-red-600 font-bold' : 'text-slate-800 font-medium'}`}
-                            onClick={() => handleSelectBenchmarkYear(yKey)}
+                            className={`border-r border-slate-300 px-2 py-1.5 font-mono text-xs ${
+                              isRed ? 'text-red-600 font-bold' : 'text-slate-800 font-medium'
+                            }`}
                           >
                             {val}%
                           </td>
@@ -1592,45 +1420,15 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
                       សរុប
                     </td>
                     {MODEL_SCHOOL_YEAR_KEYS.map((yKey) => {
-                      const isSelected = benchmarkYear === yKey;
                       const isRed = yKey === 'year4' || yKey === 'year5' || yKey === 'year6';
                       return (
                         <td
                           key={yKey}
                           className={`border-r border-slate-300 px-2 py-1.5 font-mono font-bold text-xs ${
-                            isSelected ? 'bg-amber-50/90' : ''
-                          } ${isRed ? 'text-red-600' : 'text-slate-900'}`}
+                            isRed ? 'text-red-600' : 'text-slate-900'
+                          }`}
                         >
                           100%
-                        </td>
-                      );
-                    })}
-                  </tr>
-                  {/* Action Row */}
-                  <tr className="bg-slate-50 no-print">
-                    <td className="border-r border-slate-300 px-2 py-1.5 text-[10px] text-slate-500 font-bold">
-                      សកម្មភាព
-                    </td>
-                    {MODEL_SCHOOL_YEAR_KEYS.map((yKey) => {
-                      const b = benchmarks[yKey];
-                      const isSelected = benchmarkYear === yKey;
-                      return (
-                        <td
-                          key={yKey}
-                          className={`border-r border-slate-300 p-1 ${isSelected ? 'bg-amber-50/90' : ''}`}
-                        >
-                          <button
-                            type="button"
-                            onClick={() => handleApplyModelSchoolBenchmark(yKey)}
-                            className={`w-full py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
-                              isSelected
-                                ? 'bg-blue-600 text-white shadow-2xs hover:bg-blue-700'
-                                : 'bg-slate-200 hover:bg-blue-600 hover:text-white text-slate-700'
-                            }`}
-                            title={`អនុវត្តភាគរយគោលដៅ ${b.yearName} (${b.calendarYear}) ភ្លាមៗ`}
-                          >
-                            អនុវត្ត
-                          </button>
                         </td>
                       );
                     })}
@@ -1642,61 +1440,6 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
         </div>
       </div>
 
-      {/* Centered Warning Notification Modal (លោតជាសារដំណឹងចំកណ្តាលអេក្រង់ ខ្លឹមសារខ្លីចំគោលដៅ) */}
-      {showWarningModal && warningColumns.length > 0 && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in no-print">
-          <div className="bg-white rounded-3xl p-5 sm:p-6 max-w-sm sm:max-w-md w-full shadow-2xl border-2 border-rose-300 text-center space-y-4 animate-scale-up">
-            <div className="w-14 h-14 mx-auto rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center text-3xl shadow-inner">
-              ⚠️
-            </div>
-
-            <div className="space-y-1">
-              <h3 className="text-base font-black text-rose-950">
-                ភាគរយលើសពី ១០០%!
-              </h3>
-              <p className="text-xs text-slate-600">
-                ផលបូកគ្រប់និទ្ទេសត្រូវតែស្មើ <strong>១០០% គត់</strong>
-              </p>
-            </div>
-
-            {/* Short & Concise Column Details */}
-            <div className="bg-rose-50 rounded-2xl p-2.5 border border-rose-200/80 space-y-1.5 max-h-48 overflow-y-auto">
-              {warningColumns.map((c, i) => (
-                <div
-                  key={i}
-                  className="flex items-center justify-between text-xs font-bold text-rose-900 px-3 py-2 bg-white rounded-xl shadow-2xs border border-rose-100"
-                >
-                  <span className="truncate pr-2">{c.name}</span>
-                  <span className="font-mono text-rose-600 font-black shrink-0">{c.sum}%</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Action Buttons: Auto-balance & Dismiss */}
-            <div className="flex items-center justify-center gap-2 pt-1">
-              <button
-                type="button"
-                onClick={() => {
-                  handleAutoBalanceAll();
-                  setShowWarningModal(false);
-                }}
-                className="flex-1 py-2.5 px-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-md flex items-center justify-center gap-1.5 active:scale-95"
-              >
-                <Scale className="w-4 h-4" />
-                <span>ថ្លឹងស្មើ ១០០% ស្វ័យប្រវត្ត</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setShowWarningModal(false)}
-                className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer border border-slate-200 active:scale-95"
-              >
-                យល់ព្រម
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Official Plan Sheet Container (Matches Excel Template Exactly for Display & Print) */}
       <div className="official-sheet bg-white rounded-2xl p-4 sm:p-6 lg:p-8 border border-slate-200 shadow-sm print:p-0 print:border-none print:shadow-none space-y-2">
@@ -1741,7 +1484,7 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
         {/* Red Document Title */}
         <div className="text-center mt-2 mb-2 print:mt-1.5 print:mb-1.5">
           <h1 className="font-moul text-sm sm:text-base print:text-[13pt] text-red-600 tracking-wide leading-relaxed">
-            ផែនការបង្រៀនប្រចាំឆ្នាំរបស់គ្រូ មុខវិជ្ជា {plan.subject} ( ឆ្នាំសិក្សា{plan.academicYear} )
+            ផែនការបង្រៀនប្រចាំឆ្នាំរបស់គ្រូ មុខវិជ្ជា {plan.subject}
           </h1>
         </div>
 

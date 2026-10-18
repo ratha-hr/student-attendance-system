@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { RotateCcw, Check } from 'lucide-react';
+import { RotateCcw, Check, Type, Minus, Plus } from 'lucide-react';
 
 interface ModernFontZoomProps {
   className?: string;
@@ -104,24 +104,24 @@ export const ModernFontZoom: React.FC<ModernFontZoomProps> = ({ className = '' }
 
   return (
     <div className={`relative inline-block ${className}`} ref={menuRef}>
-      {/* Sleek Trigger Pill Button with representative letters A± & % */}
+      {/* Sleek Trigger Button */}
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl border transition-all cursor-pointer shadow-2xs group ${
+        className={`inline-flex items-center space-x-2 px-3 py-1.5 rounded-xl border transition-all cursor-pointer shadow-xs group ${
           isOpen
-            ? 'bg-blue-50 border-blue-400 text-blue-700 shadow-sm ring-2 ring-blue-400/20'
-            : 'bg-slate-100 hover:bg-slate-200/80 border-slate-200 text-slate-700 hover:text-slate-900'
+            ? 'bg-blue-50 border-blue-400 text-blue-700 ring-2 ring-blue-400/20 shadow-sm'
+            : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700 hover:text-slate-900'
         }`}
-        title="ពង្រីក / បង្រួមទំហំអក្សរ និងប្តូរពុម្ពអក្សរ"
+        title="កំណត់ទំហំ និងពុម្ពអក្សរ"
       >
-        <div className="flex items-center justify-center w-5 h-5 rounded-md bg-white border border-slate-200 shadow-2xs group-hover:border-blue-300 font-serif font-black text-xs text-blue-600">
+        <span className="w-5 h-5 rounded-md bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs">
           A
-        </div>
-        <span className="text-xs font-black font-mono">
+        </span>
+        <span className="text-xs font-black font-mono text-slate-800">
           {scale}%
         </span>
-        <span className="text-[10px] text-blue-700 font-bold bg-blue-100/70 px-1.5 py-0.2 rounded hidden lg:inline">
+        <span className="text-[11px] text-slate-500 font-medium hidden sm:inline">
           {activeFontObj.shortName}
         </span>
         <span className="text-[9px] text-slate-400 group-hover:text-slate-600">
@@ -129,73 +129,84 @@ export const ModernFontZoom: React.FC<ModernFontZoomProps> = ({ className = '' }
         </span>
       </button>
 
-      {/* Clean, Non-Messy Font Scale & Font Modal */}
+      {/* Spacious, Airy, Minimalist Dropdown Card */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white/98 backdrop-blur-md rounded-2xl shadow-2xl border border-slate-200/90 p-3.5 z-50 animate-in fade-in zoom-in-95 duration-150 space-y-3 text-slate-800">
+        <div className="absolute right-0 mt-2 w-80 sm:w-[340px] bg-white rounded-3xl shadow-2xl border border-slate-150 p-4 z-50 animate-in fade-in zoom-in-95 duration-150 space-y-4 text-slate-800">
           {/* Header */}
-          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <div className="flex items-center space-x-2">
-              <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 border border-blue-200/60 flex items-center justify-center font-serif font-black text-xs">
-                A±
+              <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-2xs">
+                <Type className="w-4 h-4" />
               </div>
-              <h4 className="text-xs font-black text-slate-800">
-                ទំហំ និងពុម្ពអក្សរ
-              </h4>
+              <div>
+                <h4 className="text-xs font-black text-slate-900 leading-tight">
+                  ទំហំ និងពុម្ពអក្សរ
+                </h4>
+                <p className="text-[10px] text-slate-400">
+                  កែសម្រួលការបង្ហាញទូទាំងប្រព័ន្ធ
+                </p>
+              </div>
             </div>
 
-            {scale !== 100 && (
+            {(scale !== 100 || currentFont !== 'font-kantumruy') && (
               <button
                 type="button"
-                onClick={() => applyScale(100)}
-                className="inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors cursor-pointer border border-blue-200/60"
-                title="កំណត់ទំហំ 100% ដើមវិញ"
+                onClick={() => {
+                  applyScale(100);
+                  applyFont('font-kantumruy');
+                }}
+                className="inline-flex items-center px-2 py-1 rounded-lg text-[10px] font-bold text-slate-600 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
+                title="កំណត់ឡើងវិញទម្រង់ដើម"
               >
-                <RotateCcw className="w-2.5 h-2.5 mr-1" />
-                100%
+                <RotateCcw className="w-3 h-3 mr-1" />
+                ទម្រង់ដើម
               </button>
             )}
           </div>
 
-          {/* Section 1: Font Scale Percentages with representative letters A⁻ / A⁺ */}
-          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/70 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-slate-600">ភាគរយទំហំអក្សរ៖</span>
-              <span className="text-xs font-black text-blue-700 bg-blue-100/70 px-2 py-0.5 rounded-full font-mono">
+          {/* Section 1: Font Scale (Minimalist Stepper & Preset Pills) */}
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between px-1">
+              <span className="text-xs font-bold text-slate-700">ទំហំអក្សរ</span>
+              <span className="text-xs font-mono font-black text-blue-600">
                 {scale}%
               </span>
             </div>
 
-            {/* A⁻ and A⁺ Stepper Buttons with percentage center */}
-            <div className="flex items-center gap-2">
+            {/* Stepper with Large Percentage Display */}
+            <div className="flex items-center justify-between bg-slate-50/80 rounded-2xl p-1.5 border border-slate-100">
               <button
                 type="button"
                 onClick={() => applyScale(scale - 5)}
                 disabled={scale <= 60}
-                className="flex-1 py-1.5 px-2 bg-white hover:bg-slate-100 active:scale-95 disabled:opacity-40 text-slate-700 font-bold rounded-xl text-xs transition-all cursor-pointer border border-slate-200 shadow-2xs flex items-center justify-center gap-1.5"
+                className="w-10 h-10 rounded-xl bg-white hover:bg-blue-50 active:scale-95 disabled:opacity-30 text-slate-700 hover:text-blue-600 font-bold transition-all cursor-pointer shadow-2xs border border-slate-200/80 flex items-center justify-center"
                 title="បង្រួមអក្សរ (-5%)"
               >
-                <span className="font-serif font-black text-sm text-slate-600">A⁻</span>
-                <span className="text-[11px]">បង្រួម</span>
+                <Minus className="w-4 h-4" />
               </button>
 
-              <div className="px-3 py-1 bg-white border border-blue-300 rounded-xl text-center shadow-2xs font-mono font-black text-sm text-blue-700 min-w-[65px]">
-                {scale}%
+              <div className="text-center px-4">
+                <div className="text-lg font-black font-mono text-slate-800 tracking-tight">
+                  {scale}%
+                </div>
+                <div className="text-[10px] text-slate-400 font-medium">
+                  {scale === 100 ? 'ទំហំស្តង់ដារ' : scale > 100 ? 'ពង្រីកធំ' : 'បង្រួមតូច'}
+                </div>
               </div>
 
               <button
                 type="button"
                 onClick={() => applyScale(scale + 5)}
                 disabled={scale >= 180}
-                className="flex-1 py-1.5 px-2 bg-blue-600 hover:bg-blue-700 active:scale-95 disabled:opacity-40 text-white font-bold rounded-xl text-xs transition-all cursor-pointer shadow-xs flex items-center justify-center gap-1.5"
+                className="w-10 h-10 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 disabled:opacity-30 text-white font-bold transition-all cursor-pointer shadow-xs flex items-center justify-center"
                 title="ពង្រីកអក្សរ (+5%)"
               >
-                <span className="font-serif font-black text-sm text-white">A⁺</span>
-                <span className="text-[11px]">ពង្រីក</span>
+                <Plus className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Quick 1-Tap Percentage Preset Pills */}
-            <div className="grid grid-cols-6 gap-1 pt-0.5">
+            {/* Clean Quick Preset Pills */}
+            <div className="flex items-center justify-between gap-1 pt-0.5">
               {PERCENTAGE_PRESETS.map((pct) => {
                 const isSelected = scale === pct;
                 return (
@@ -203,10 +214,10 @@ export const ModernFontZoom: React.FC<ModernFontZoomProps> = ({ className = '' }
                     key={pct}
                     type="button"
                     onClick={() => applyScale(pct)}
-                    className={`py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer border text-center ${
+                    className={`flex-1 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer text-center ${
                       isSelected
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-2xs font-black'
-                        : 'bg-white hover:bg-blue-50 text-slate-700 border-slate-200'
+                        ? 'bg-blue-600 text-white shadow-xs font-black'
+                        : 'bg-slate-100/80 hover:bg-slate-200/70 text-slate-700'
                     }`}
                   >
                     {pct}%
@@ -216,13 +227,13 @@ export const ModernFontZoom: React.FC<ModernFontZoomProps> = ({ className = '' }
             </div>
           </div>
 
-          {/* Section 2: Font Family using representative letter "ក" (អក្សរតំណាង) */}
-          <div className="space-y-1.5">
-            <div className="text-[11px] font-bold text-slate-600">
-              ពុម្ពអក្សរ (Font Family) ៖
-            </div>
+          {/* Section 2: Font Family Cards */}
+          <div className="space-y-2 pt-1 border-t border-slate-100">
+            <span className="text-xs font-bold text-slate-700 px-1">
+              ពុម្ពអក្សរខ្មែរ
+            </span>
 
-            <div className="grid grid-cols-2 gap-1.5">
+            <div className="grid grid-cols-2 gap-2">
               {FONT_OPTIONS.map((f) => {
                 const isSelected = currentFont === f.id;
                 return (
@@ -230,32 +241,33 @@ export const ModernFontZoom: React.FC<ModernFontZoomProps> = ({ className = '' }
                     key={f.id}
                     type="button"
                     onClick={() => applyFont(f.id)}
-                    className={`p-2 rounded-xl text-left border transition-all cursor-pointer flex items-center gap-2 ${
+                    className={`p-2.5 rounded-2xl text-left transition-all cursor-pointer relative group flex flex-col justify-between ${
                       isSelected
-                        ? 'bg-blue-50 border-blue-500 ring-2 ring-blue-400/20 shadow-2xs'
-                        : 'bg-slate-50 hover:bg-white border-slate-200 hover:border-blue-300'
+                        ? 'bg-blue-50/80 border-2 border-blue-500 shadow-2xs'
+                        : 'bg-slate-50/70 hover:bg-white border border-slate-200/70 hover:border-blue-300'
                     }`}
                   >
-                    {/* Representative Letter (អក្សរតំណាង) in that actual font */}
-                    <div
-                      className={`w-7 h-7 rounded-lg bg-white border border-slate-200 shadow-2xs flex items-center justify-center text-sm font-black shrink-0 ${
-                        isSelected ? 'text-blue-600 border-blue-300' : 'text-slate-700'
-                      } ${f.fontClass}`}
-                    >
-                      ក
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div
-                        className={`text-xs font-bold truncate ${
-                          isSelected ? 'text-blue-800' : 'text-slate-800'
+                    <div className="flex items-center justify-between w-full mb-1">
+                      <span
+                        className={`text-base font-bold ${
+                          isSelected ? 'text-blue-600' : 'text-slate-600'
                         } ${f.fontClass}`}
                       >
-                        {f.shortName}
-                      </div>
+                        ក ខ គ
+                      </span>
+                      {isSelected && (
+                        <span className="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center">
+                          <Check className="w-2.5 h-2.5" />
+                        </span>
+                      )}
                     </div>
-                    {isSelected && (
-                      <Check className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                    )}
+                    <div
+                      className={`text-xs font-bold truncate ${
+                        isSelected ? 'text-blue-900' : 'text-slate-800'
+                      } ${f.fontClass}`}
+                    >
+                      {f.name}
+                    </div>
                   </button>
                 );
               })}

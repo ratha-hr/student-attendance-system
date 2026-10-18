@@ -47,7 +47,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       color: 'text-purple-600',
     },
     {
-      id: 'timetable-class' as NavTab,
+      id: 'timetable-teacher' as NavTab,
       label: 'កាលវិភាគ',
       icon: Calendar,
       color: 'text-amber-600',

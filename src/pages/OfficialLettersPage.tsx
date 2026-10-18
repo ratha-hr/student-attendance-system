@@ -311,47 +311,41 @@ export const OfficialLettersPage: React.FC<OfficialLettersPageProps> = ({
           </div>
         </div>
 
-        {/* Body Paragraphs: Detailed Official Content */}
-        <div className="text-xs sm:text-[13px] print:text-[10pt] leading-[1.8] text-justify space-y-2.5">
-          {/* Paragraph 1: Notification & Detailed Absences */}
-          <p className="indent-8 text-slate-900">
-            តបតាមកម្មវត្ថុ និងយោងខាងលើ គណៈគ្រប់គ្រង{schoolName} រួមជាមួយលោកគ្រូ-អ្នកគ្រូបន្ទុកថ្នាក់ សូមជម្រាបជូនលោក/លោកស្រីមាតាបិតា ឬអាណាព្យាបាលមេត្តាជ្រាបថា ៖ កន្លងមកនេះ សិស្សឈ្មោះ{' '}
-            <strong className="font-bold text-slate-950">{stu.nameKh}</strong> បានអវត្តមានពីការសិក្សាសរុបចំនួន{' '}
+        {/* Body Paragraphs: Short, Direct & Easy-to-understand for Parents */}
+        <div className="text-xs sm:text-[13px] print:text-[10pt] leading-[1.8] text-justify space-y-2.5 text-slate-900">
+          {/* Paragraph 1: Direct Absence Count & Dates */}
+          <p className="indent-8">
+            គណៈគ្រប់គ្រង{schoolName} និងលោកគ្រូ-អ្នកគ្រូបន្ទុកថ្នាក់ សូមជម្រាបជូនអាណាព្យាបាលសិស្សឈ្មោះ{' '}
+            <strong className="font-bold text-slate-950">{stu.nameKh}</strong> ថា ៖ កន្លងមកនេះ សិស្សបានអវត្តមានពីការសិក្សាសរុបចំនួន{' '}
             <strong className="font-bold text-rose-600 print:text-black underline text-sm">{toKhmerNum(abs.total)} លើក/ម៉ោង</strong>{' '}
-            ក្នុងនោះរួមមាន ៖ អវត្តមានឥតច្បាប់ (គ្មានមូលហេតុ ឬគ្មានការអនុញ្ញាត) ចំនួន{' '}
-            <strong className="font-bold text-rose-600 print:text-black underline text-sm">{toKhmerNum(abs.unexcused)} លើក/ម៉ោង</strong>{' '}
-            និងអវត្តមានមានច្បាប់ចំនួន <strong className="font-bold text-slate-900">{toKhmerNum(abs.excused)} លើក/ម៉ោង</strong>{' '}
-            (កាលបរិច្ឆេទអវត្តមានជាក់ស្តែង ៖ {datesFormatted})។
+            (ក្នុងនោះ <strong>ឥតច្បាប់ {toKhmerNum(abs.unexcused)} ម៉ោង</strong> និង <strong>មានច្បាប់ {toKhmerNum(abs.excused)} ម៉ោង</strong>{datesFormatted ? ` • កាលបរិច្ឆេទ ៖ ${datesFormatted}` : ''})។
           </p>
 
-          {/* Paragraph 2: Impact & School Rules */}
-          <p className="indent-8 text-slate-900">
-            ការអវត្តមានពីការសិក្សាដោយគ្មានការអនុញ្ញាតច្បាប់ត្រឹមត្រូវនេះ បានធ្វើឱ្យសិស្សខកខានការក្រេបជញ្ជក់ចំណេះដឹង មេរៀនស្នូល និងការអនុវត្តលំហាត់សំខាន់ៗក្នុងថ្នាក់ ដែលបង្កផលប៉ះពាល់យ៉ាងធ្ងន់ធ្ងរដល់ការយល់ដឹង លទ្ធផលសិក្សាប្រចាំខែ ការប្រឡងឆមាស ព្រមទាំងផ្ទុយស្រឡះពីបទបញ្ជាផ្ទៃក្នុងរបស់សាលារៀន។ យោងតាមបទបញ្ជាផ្ទៃក្នុង ប្រសិនបើសិស្សានុសិស្សនៅតែបន្តអវត្តមានឥតច្បាប់លើសពីចំនួនកំណត់ នោះសាលារៀននឹងចាត់វិធានការរដ្ឋបាលជាធរមាន ឬអាចឈានដល់ការកាត់ពិន្ទុស្វ័យប្រវត្តិ និងបាត់បង់សិទ្ធិក្នុងការប្រឡងបញ្ចប់ឆ្នាំសិក្សា។
+          {/* Paragraph 2: Direct Impact on Studies & Internal Rules */}
+          <p className="indent-8">
+            ការអវត្តមានឥតច្បាប់ច្រើនលើកនេះ ធ្វើឱ្យសិស្សខកខានមេរៀនសំខាន់ៗ ប៉ះពាល់ដល់ពិន្ទុប្រចាំខែ និងអាចបាត់បង់សិទ្ធិប្រឡងតាមបទបញ្ជាផ្ទៃក្នុងរបស់សាលារៀន។
           </p>
 
-          {/* Paragraph 3: Action Required */}
+          {/* Paragraph 3: Direct Action for Parents */}
           {letterType === 'parent_invite' ? (
             <p className="indent-8 font-semibold text-slate-950 bg-amber-50/70 print:bg-transparent p-2.5 print:p-0 rounded-xl border border-amber-200 print:border-none">
-              អាស្រ័យហេតុនេះ ដើម្បីរួមគ្នាដោះស្រាយបញ្ហា និងស្វែងរកវិធានការជួយជ្រោមជ្រែងដល់ការសិក្សារបស់កូន-ក្មួយ គណៈគ្រប់គ្រងសាលាសូមគោរពអញ្ជើញលោក/លោកស្រីមាតាបិតា ឬអាណាព្យាបាល មេត្តាអញ្ជើញមកកាន់{schoolName} (បន្ទប់ការិយាល័យសិក្សា) នៅថ្ងៃទី{' '}
+              អាស្រ័យហេតុនេះ សូមគោរពអញ្ជើញអាណាព្យាបាលមេត្តាអញ្ជើញមកកាន់សាលារៀន នៅថ្ងៃទី{' '}
               <strong className="font-bold underline">{formatKhmerDate(meetingDate, false)}</strong> វេលាម៉ោង{' '}
-              <strong className="font-bold underline">{meetingTime}</strong> ដើម្បីជួបពិភាក្សាការងារផ្ទាល់ជាមួយគណៈគ្រប់គ្រងសាលា និងលោកគ្រូ-អ្នកគ្រូបន្ទុកថ្នាក់។
+              <strong className="font-bold underline">{meetingTime}</strong> ដើម្បីរួមគ្នាពិភាក្សា និងរកដំណោះស្រាយជួយដល់ការសិក្សារបស់សិស្ស។
             </p>
           ) : letterType === 'disciplinary_pledge' ? (
             <p className="indent-8 font-semibold text-slate-950">
-              អាស្រ័យហេតុនេះ សិស្សឈ្មោះ <strong>{stu.nameKh}</strong> សូមធ្វើកិច្ចសន្យាចំពោះមុខគណៈគ្រប់គ្រងសាលា លោកគ្រូ-អ្នកគ្រូបន្ទុកថ្នាក់ និងមាតាបិតា ថានឹងកែប្រែឥរិយាបថ គោរពបទបញ្ជាផ្ទៃក្នុង និងមកចូលរៀនឱ្យបានទៀងទាត់ជារៀងរាល់ថ្ងៃ ដោយមិនឱ្យមានការអវត្តមានឥតច្បាប់តទៅទៀតឡើយ។ ប្រសិនបើនៅតែប្រព្រឹត្តខុស ខ្ញុំបាទ/នាងខ្ញុំសូមទទួលខុសត្រូវចំពោះមុខវិន័យរបស់សាលារៀន។
+              អាស្រ័យហេតុនេះ សិស្សឈ្មោះ <strong>{stu.nameKh}</strong> សូមធ្វើកិច្ចសន្យាថានឹងកែប្រែខ្លួន មកចូលរៀនឱ្យបានទៀងទាត់ និងមិនឱ្យអវត្តមានឥតច្បាប់ទៀតឡើយ។
             </p>
           ) : (
-            <p className="indent-8 text-slate-900">
-              អាស្រ័យហេតុនេះ ដើម្បីធានាអនាគត និងផលប្រយោជន៍សិក្សារបស់កូន-ក្មួយ គណៈគ្រប់គ្រងសាលា និងលោកគ្រូ-អ្នកគ្រូបន្ទុកថ្នាក់ សូមស្នើលោក/លោកស្រីមាតាបិតា ឬអាណាព្យាបាល មេត្តាជួយអប់រំ ទូន្មាន ដាស់តឿន និងតាមដានវត្តមានរបស់កូន-ក្មួយឱ្យបានហ្មត់ចត់ជាទីបំផុត។ ជាមួយគ្នានេះ សូមលោក/លោកស្រីមេត្តាចុះហត្ថលេខាទទួលដំណឹងលើលិខិតនេះ ហើយប្រគល់ជូនសិស្សយកមកជូនលោកគ្រូ-អ្នកគ្រូបន្ទុកថ្នាក់វិញឱ្យបានទាន់ពេលវេលា។
+            <p className="indent-8">
+              អាស្រ័យហេតុនេះ សូមអាណាព្យាបាលមេត្តាជួយដាស់តឿន និងតាមដានវត្តមានកូន-ក្មួយឱ្យបានទៀងទាត់ ព្រមទាំងចុះហត្ថលេខាទទួលដំណឹងលើលិខិតនេះ ប្រគល់ជូនលោកគ្រូ-អ្នកគ្រូបន្ទុកថ្នាក់វិញ។
             </p>
           )}
 
-          {/* Paragraph 4: Closing Politeness */}
-          <p className="indent-8 text-slate-900">
-            សាលារៀនសង្ឃឹមយ៉ាងមុតមាំលើស្មារតីសហការដ៏ល្អ និងការយកចិត្តទុកដាក់ខ្ពស់ពីសំណាក់លោក/លោកស្រីមាតាបិតា ឬអាណាព្យាបាល ដើម្បីអនាគតដ៏ភ្លឺស្វាងរបស់កូន-ក្មួយ។
-          </p>
-          <p className="indent-8 text-slate-900">
-            សូមលោក/លោកស្រី មាតាបិតា ឬអាណាព្យាបាល ទទួលនូវការរាប់អានដ៏ស្មោះស្ម័គ្រ និងសេចក្តីគោរពដ៏ជ្រាលជ្រៅពីយើងខ្ញុំ។
+          {/* Paragraph 4: Respectful Short Closing */}
+          <p className="indent-8">
+            សាលារៀនសូមថ្លែងអំណរគុណយ៉ាងជ្រាលជ្រៅចំពោះកិច្ចសហការ និងការយកចិត្តទុកដាក់របស់អាណាព្យាបាល។
           </p>
 
           {customNote && (

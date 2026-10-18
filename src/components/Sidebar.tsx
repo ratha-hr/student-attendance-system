@@ -28,7 +28,6 @@ export type NavTab =
   | 'continuous-assessment'
   | 'teaching-plan'
   | 'grade-config'
-  | 'timetable-class'
   | 'timetable-teacher'
   | 'letters';
 
@@ -143,13 +142,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       title: 'កាលវិភាគ & លិខិត',
       items: [
         {
-          id: 'timetable-class',
-          label: 'កាលវិភាគតាមថ្នាក់',
-          icon: Calendar,
-        },
-        {
           id: 'timetable-teacher',
-          label: 'កាលវិភាគគ្រូ (ហ៊ុន រដ្ឋា)',
+          label: settings?.teacherName ? `កាលវិភាគគ្រូ (${settings.teacherName})` : 'កាលវិភាគគ្រូបង្រៀន',
           icon: Clock,
         },
         {
