@@ -50,6 +50,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [selectedSession, setSelectedSession] = useState<DashboardSession>('morning');
   // Dashboard Scope: 'all' (សាលារៀនទាំងមូល/ថ្នាក់ទាំងអស់) or 'class' (តាមថ្នាក់ជាក់លាក់)
   const [dashboardScope, setDashboardScope] = useState<'all' | 'class'>('all');
+  // Mode for vertical twin-column chart: 'total-female' (សរុប - ស្រី) or 'male-female' (ប្រុស - ស្រី)
+  const [gradeChartMode, setGradeChartMode] = useState<'total-female' | 'male-female'>('total-female');
+  // Optional active grade filter for class badges below chart
+  const [selectedGradeFilter, setSelectedGradeFilter] = useState<string | null>(null);
 
   // Active class filter scope (ALL or specific class)
   const activeClass = selectedClassId && selectedClassId !== 'ALL'
@@ -208,6 +212,27 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       heightPct: item.count > 0 ? Math.max(8, Math.round((item.count / maxVal) * 100)) : 0,
     }));
   }, [students, classes]);
+
+  // Maximum value with headroom for the vertical twin-column chart
+  const chartMax = useMemo(() => {
+    const maxVal = Math.max(1, ...gradeDistribution.map((item) => item.count));
+    return Math.max(10, Math.ceil((maxVal * 1.15) / 10) * 10);
+  }, [gradeDistribution]);
+
+  // Classes list filtered by selected grade in chart (or all classes if none selected)
+  const displayedClasses = useMemo(() => {
+    const list: Array<{ id: string; name: string; count: number; femaleCount: number; grade: number }> = [];
+    gradeDistribution.forEach((item) => {
+      if (selectedGradeFilter && selectedGradeFilter !== item.grade) return;
+      item.classes.forEach((c) => {
+        list.push({
+          ...c,
+          grade: parseInt(item.grade, 10),
+        });
+      });
+    });
+    return list;
+  }, [gradeDistribution, selectedGradeFilter]);
 
   // Attendance breakdown percentages for Diagram 1
   const totalRecordedToday = stats.totalRecorded;
@@ -634,88 +659,228 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
         </div>
 
-        {/* Diagram 3: Student Distribution by Grade (4 cols) - Clean Horizontal Progress Bars with full breakdown */}
-        <div className="lg:col-span-4 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
-          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-            <div className="flex items-center space-x-2">
-              <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
-                <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5" />
+        {/* Diagram 3: Student Distribution by Grade (4 cols) - ដ្យាក្រាមសរសរភ្លោះបញ្ឈរ (Vertical Twin-Column Chart) */}
+        <div className="lg:col-span-4 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-3 flex flex-col justify-between">
+          <div className="space-y-3">
+            {/* Header: Title & Twin-Column Mode Switch */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-slate-100">
+              <div className="flex items-center space-x-2">
+                <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl shrink-0">
+                  <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm sm:text-base text-slate-800 leading-tight">
+                    សិស្សតាមកម្រិតថ្នាក់
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    សរុប {toKhmerNum(classes.length)} ថ្នាក់ • {toKhmerNum(students.length)} នាក់
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-bold text-sm sm:text-base text-slate-800">
-                  សិស្សតាមកម្រិតថ្នាក់
-                </h3>
-                <p className="text-xs text-slate-500">
-                  សរុប {toKhmerNum(classes.length)} ថ្នាក់រៀន • {toKhmerNum(students.length)} នាក់
-                </p>
+
+              {/* Mode Switch & Legend */}
+              <div className="inline-flex items-center p-0.5 bg-slate-100 rounded-xl border border-slate-200 text-[11px]">
+                <button
+                  type="button"
+                  onClick={() => setGradeChartMode('total-female')}
+                  className={`px-2 py-1 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    gradeChartMode === 'total-female'
+                      ? 'bg-white text-indigo-950 shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                  title="ដ្យាក្រាមសរសរភ្លោះ៖ សរុប និង ស្រី"
+                >
+                  <span className="w-2 h-2 rounded-xs bg-indigo-600 shrink-0" />
+                  <span>សរុប</span>
+                  <span className="text-slate-300">/</span>
+                  <span className="w-2 h-2 rounded-xs bg-pink-500 shrink-0" />
+                  <span>ស្រី</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGradeChartMode('male-female')}
+                  className={`px-2 py-1 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    gradeChartMode === 'male-female'
+                      ? 'bg-white text-blue-950 shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                  title="ដ្យាក្រាមសរសរភ្លោះ៖ ប្រុស និង ស្រី"
+                >
+                  <span className="w-2 h-2 rounded-xs bg-blue-600 shrink-0" />
+                  <span>ប្រុស</span>
+                  <span className="text-slate-300">/</span>
+                  <span className="w-2 h-2 rounded-xs bg-pink-500 shrink-0" />
+                  <span>ស្រី</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Vertical Twin Column Chart Graphic */}
+            <div className="relative pt-1">
+              {/* Background horizontal guide lines */}
+              <div className="absolute inset-x-0 top-5 bottom-12 flex flex-col justify-between pointer-events-none z-0">
+                <div className="border-b border-dashed border-slate-200 w-full flex items-center justify-between">
+                  <span className="text-[9px] font-mono font-semibold text-slate-400 bg-white/90 px-1 rounded -mt-2">
+                    {toKhmerNum(chartMax)}
+                  </span>
+                </div>
+                <div className="border-b border-dashed border-slate-200 w-full flex items-center justify-between">
+                  <span className="text-[9px] font-mono font-semibold text-slate-400 bg-white/90 px-1 rounded -mt-2">
+                    {toKhmerNum(Math.round(chartMax / 2))}
+                  </span>
+                </div>
+                <div className="w-full" />
+              </div>
+
+              {/* 6 Grade Vertical Columns (ថ្នាក់ទី ៧ ដល់ ១២) */}
+              <div className="relative z-10 grid grid-cols-6 gap-1 sm:gap-1.5 h-44 sm:h-48">
+                {gradeDistribution.map((item) => {
+                  const val1 = gradeChartMode === 'total-female' ? item.count : item.maleCount;
+                  const val2 = item.femaleCount;
+                  const isSelectedGrade = selectedGradeFilter === item.grade;
+
+                  const bar1Pct = chartMax > 0 && val1 > 0 ? Math.max(6, Math.min(100, Math.round((val1 / chartMax) * 100))) : 0;
+                  const bar2Pct = chartMax > 0 && val2 > 0 ? Math.max(6, Math.min(100, Math.round((val2 / chartMax) * 100))) : 0;
+
+                  return (
+                    <div
+                      key={item.grade}
+                      onClick={() => {
+                        if (item.classes.length > 0) {
+                          setSelectedGradeFilter(isSelectedGrade ? null : item.grade);
+                        }
+                      }}
+                      className={`flex flex-col items-center justify-end h-full pt-4 pb-0.5 px-0.5 rounded-xl transition-all ${
+                        item.classes.length > 0 ? 'cursor-pointer hover:bg-indigo-50/40' : 'opacity-65'
+                      } ${isSelectedGrade ? 'bg-indigo-50/90 ring-2 ring-indigo-400' : ''}`}
+                      title={`ថ្នាក់ទី ${item.grade} ៖ សរុប ${item.count} នាក់ (ស្រី ${item.femaleCount} នាក់, ប្រុស ${item.maleCount} នាក់) • ${item.classesCount} ថ្នាក់`}
+                    >
+                      {/* Twin Bars & Numbers */}
+                      <div className="flex items-end justify-center gap-1 sm:gap-1.5 h-full w-full">
+                        {/* Bar 1 (Total or Male) */}
+                        <div className="flex flex-col items-center h-full justify-end w-3 sm:w-3.5 md:w-4">
+                          <span
+                            className={`text-[9.5px] sm:text-[10.5px] font-black leading-none mb-1 tabular-nums ${
+                              val1 > 0
+                                ? gradeChartMode === 'total-female'
+                                  ? 'text-indigo-900'
+                                  : 'text-blue-900'
+                                : 'text-slate-300'
+                            }`}
+                          >
+                            {val1 > 0 ? toKhmerNum(val1) : '–'}
+                          </span>
+                          <div
+                            style={{ height: `${bar1Pct}%` }}
+                            className={`w-full rounded-t-md transition-all duration-500 ${
+                              val1 > 0
+                                ? gradeChartMode === 'total-female'
+                                  ? 'bg-linear-to-t from-indigo-700 via-indigo-600 to-indigo-400 shadow-2xs hover:from-indigo-800 hover:to-indigo-500'
+                                  : 'bg-linear-to-t from-blue-700 via-blue-600 to-sky-400 shadow-2xs hover:from-blue-800 hover:to-blue-500'
+                                : 'bg-slate-100 h-1 rounded-t'
+                            }`}
+                          />
+                        </div>
+
+                        {/* Bar 2 (Female) */}
+                        <div className="flex flex-col items-center h-full justify-end w-3 sm:w-3.5 md:w-4">
+                          <span
+                            className={`text-[9.5px] sm:text-[10.5px] font-black leading-none mb-1 tabular-nums ${
+                              val2 > 0 ? 'text-pink-600' : 'text-slate-300'
+                            }`}
+                          >
+                            {val2 > 0 ? toKhmerNum(val2) : '–'}
+                          </span>
+                          <div
+                            style={{ height: `${bar2Pct}%` }}
+                            className={`w-full rounded-t-md transition-all duration-500 ${
+                              val2 > 0
+                                ? 'bg-linear-to-t from-pink-600 via-pink-500 to-rose-400 shadow-2xs hover:from-pink-700 hover:to-rose-500'
+                                : 'bg-slate-100 h-1 rounded-t'
+                            }`}
+                          />
+                        </div>
+                      </div>
+
+                      {/* X-axis Baseline */}
+                      <div className="w-full border-t-2 border-slate-300 mt-0" />
+
+                      {/* X-axis Label & Class count */}
+                      <div className="text-center pt-1.5 leading-tight">
+                        <div className={`text-xs sm:text-sm font-black ${
+                          item.count > 0 ? 'text-slate-800' : 'text-slate-400'
+                        }`}>
+                          {item.label}
+                        </div>
+                        <div className="text-[10px] text-slate-500 font-semibold">
+                          {item.classesCount > 0 ? `${toKhmerNum(item.classesCount)} ថ្នាក់` : '(០)'}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
 
-          {/* Clean Horizontal Bars for each Grade (7 to 12) with full student counts & class badges */}
-          <div className="space-y-2">
-            {gradeDistribution.map((item) => (
-              <div
-                key={item.grade}
-                className="p-2 rounded-xl border border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/20 transition-all space-y-1.5"
-              >
-                <div className="flex items-center justify-between text-xs sm:text-sm font-bold">
-                  <div className="flex items-center space-x-1.5">
-                    <span className="text-slate-800 font-black">ថ្នាក់ទី {toKhmerNum(item.grade)}</span>
-                    <span className="text-[11px] text-slate-500 font-semibold">
-                      ({toKhmerNum(item.classesCount)} ថ្នាក់)
+          {/* Individual Classes Badges Section */}
+          {displayedClasses.length > 0 && (
+            <div className="pt-2 border-t border-slate-100 space-y-1.5">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-600">
+                <span className="flex items-center gap-1.5">
+                  <span>ថ្នាក់រៀនសកម្ម</span>
+                  {selectedGradeFilter ? (
+                    <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.2 rounded-full">
+                      ថ្នាក់ទី {toKhmerNum(selectedGradeFilter)}
                     </span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-slate-900 font-black">
-                      <strong className="text-indigo-700 text-sm sm:text-base">{toKhmerNum(item.count)}</strong> នាក់
+                  ) : (
+                    <span className="text-[10px] text-slate-400 font-normal">
+                      ({toKhmerNum(displayedClasses.length)} ថ្នាក់)
                     </span>
-                    {item.count > 0 && (
-                      <span className="text-xs text-slate-500 font-semibold ml-1.5">
-                        (ស្រី <strong className="text-pink-600">{toKhmerNum(item.femaleCount)}</strong>)
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Progress bar */}
-                <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                  <div
-                    style={{ width: `${item.heightPct}%` }}
-                    className="h-full bg-linear-to-r from-indigo-500 via-blue-500 to-indigo-600 rounded-full transition-all duration-500"
-                  />
-                </div>
-
-                {/* Individual Classes Badges */}
-                {item.classes.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-1 pt-0.5">
-                    {item.classes.map((cls) => {
-                      const isSelected = cls.id === selectedClassId;
-                      return (
-                        <button
-                          key={cls.id}
-                          type="button"
-                          onClick={() => onSelectClass(cls.id)}
-                          className={`text-[10.5px] px-2 py-0.5 rounded-lg font-bold transition-all cursor-pointer flex items-center space-x-1 ${
-                            isSelected
-                              ? 'bg-indigo-600 text-white shadow-2xs scale-102 ring-1 ring-indigo-400'
-                              : 'bg-slate-100 hover:bg-indigo-100 text-slate-700 hover:text-indigo-900 border border-slate-200'
-                          }`}
-                          title={`ចុចដើម្បីជ្រើសរើស ${cls.name}`}
-                        >
-                          <span>{cls.name}</span>
-                          <span className={isSelected ? 'text-indigo-200' : 'text-slate-400'}>:</span>
-                          <span className={isSelected ? 'text-white font-black' : 'text-slate-900 font-bold'}>
-                            {toKhmerNum(cls.count)}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
+                  )}
+                </span>
+                {selectedGradeFilter && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedGradeFilter(null)}
+                    className="text-[11px] text-indigo-600 hover:underline cursor-pointer font-semibold"
+                  >
+                    បង្ហាញទាំងអស់
+                  </button>
                 )}
               </div>
-            ))}
-          </div>
+
+              <div className="flex flex-wrap items-center gap-1.5 max-h-24 overflow-y-auto pr-0.5">
+                {displayedClasses.map((cls) => {
+                  const isSelected = cls.id === selectedClassId;
+                  return (
+                    <button
+                      key={cls.id}
+                      type="button"
+                      onClick={() => onSelectClass(cls.id)}
+                      className={`text-[11px] px-2.5 py-0.5 rounded-lg font-bold transition-all cursor-pointer flex items-center space-x-1 ${
+                        isSelected
+                          ? 'bg-indigo-600 text-white shadow-2xs scale-102 ring-1 ring-indigo-400'
+                          : 'bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-900 border border-slate-200'
+                      }`}
+                      title={`ចុចដើម្បីជ្រើសរើស ${cls.name}`}
+                    >
+                      <span>{cls.name}</span>
+                      <span className={isSelected ? 'text-indigo-200' : 'text-slate-400'}>:</span>
+                      <span className={isSelected ? 'text-white font-black' : 'text-indigo-950 font-black'}>
+                        {toKhmerNum(cls.count)}
+                      </span>
+                      {cls.femaleCount > 0 && (
+                        <span className={`text-[10px] ${isSelected ? 'text-pink-200' : 'text-pink-600'}`}>
+                          (ស្រី {toKhmerNum(cls.femaleCount)})
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
