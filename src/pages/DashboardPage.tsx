@@ -48,18 +48,25 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const today = getTodayDateString();
   const [selectedDate, setSelectedDate] = useState<string>(today);
   const [selectedSession, setSelectedSession] = useState<DashboardSession>('morning');
+  // Dashboard Scope: 'all' (សាលារៀនទាំងមូល/ថ្នាក់ទាំងអស់) or 'class' (តាមថ្នាក់ជាក់លាក់)
+  const [dashboardScope, setDashboardScope] = useState<'all' | 'class'>('all');
 
   // Active class filter scope (ALL or specific class)
-  const activeClass = selectedClassId !== 'ALL' ? classes.find((c) => c.id === selectedClassId) : null;
+  const activeClass = selectedClassId && selectedClassId !== 'ALL'
+    ? classes.find((c) => c.id === selectedClassId) || classes[0] || null
+    : classes[0] || null;
+
   const activeStudents = useMemo(() => {
-    if (!selectedClassId || selectedClassId === 'ALL') return students;
-    return students.filter((s) => s.classId === selectedClassId);
-  }, [students, selectedClassId]);
+    if (dashboardScope === 'all') return students;
+    if (!activeClass) return students;
+    return students.filter((s) => s.classId === activeClass.id);
+  }, [students, dashboardScope, activeClass]);
 
   const activeClasses = useMemo(() => {
-    if (!selectedClassId || selectedClassId === 'ALL') return classes;
-    return classes.filter((c) => c.id === selectedClassId);
-  }, [classes, selectedClassId]);
+    if (dashboardScope === 'all') return classes;
+    if (!activeClass) return classes;
+    return classes.filter((c) => c.id === activeClass.id);
+  }, [classes, dashboardScope, activeClass]);
 
   const activeStudentIds = useMemo(() => new Set(activeStudents.map((s) => s.id)), [activeStudents]);
   const activeClassIds = useMemo(() => new Set(activeClasses.map((c) => c.id)), [activeClasses]);
@@ -164,26 +171,43 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     };
   }, [activeStudents, activeClasses, activeStudentIds, activeClassIds, attendanceRecords, selectedDate, selectedSession, classes, students]);
 
-  // Grade Distribution Calculation (Grades 7, 8, 9, 10, 11, 12)
+  // Grade Distribution Calculation (Grades 7, 8, 9, 10, 11, 12 across the entire school)
   const gradeDistribution = useMemo(() => {
     const grades = ['7', '8', '9', '10', '11', '12'];
     const counts = grades.map((g) => {
-      const gClasses = activeClasses.filter((c) => parseGradeNumber(c.grade || c.name) === parseInt(g, 10));
+      const targetGradeNum = parseInt(g, 10);
+      const gClasses = classes.filter((c) => parseGradeNumber(c.grade || c.name) === targetGradeNum);
       const gClassIds = new Set(gClasses.map((c) => c.id));
-      const count = activeStudents.filter((s) => gClassIds.has(s.classId)).length;
-      return { grade: g, count, classesCount: gClasses.length };
+      const gStudents = students.filter((s) => gClassIds.has(s.classId));
+      const count = gStudents.length;
+      const femaleCount = gStudents.filter((s) => s.gender === 'ស្រី').length;
+      const maleCount = count - femaleCount;
+
+      const classesBreakdown = gClasses.map((c) => ({
+        id: c.id,
+        name: c.name,
+        count: students.filter((s) => s.classId === c.id).length,
+        femaleCount: students.filter((s) => s.classId === c.id && s.gender === 'ស្រី').length,
+      }));
+
+      return {
+        grade: g,
+        count,
+        femaleCount,
+        maleCount,
+        classesCount: gClasses.length,
+        classes: classesBreakdown,
+      };
     });
 
     const maxVal = Math.max(1, ...counts.map((item) => item.count));
 
     return counts.map((item) => ({
-      grade: item.grade,
-      label: `ទី ${item.grade}`,
-      count: item.count,
-      classesCount: item.classesCount,
+      ...item,
+      label: `ទី ${toKhmerNum(item.grade)}`,
       heightPct: item.count > 0 ? Math.max(8, Math.round((item.count / maxVal) * 100)) : 0,
     }));
-  }, [activeStudents, activeClasses]);
+  }, [students, classes]);
 
   // Attendance breakdown percentages for Diagram 1
   const totalRecordedToday = stats.totalRecorded;
@@ -352,7 +376,42 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
       {/* 🧭 Dashboard Date & Session Controller Bar */}
       <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
-        {/* Left: Date Picker + Quick Today Button */}
+        {/* Left: Scope Switcher (ថ្នាក់ទាំងអស់ vs ថ្នាក់ជាក់លាក់) */}
+        <div className="flex items-center space-x-2">
+          <span className="text-xs font-bold text-slate-600 hidden sm:inline">កម្រិតមើល៖</span>
+          <div className="inline-flex p-1 bg-slate-100 rounded-xl border border-slate-200 text-xs font-bold">
+            <button
+              type="button"
+              onClick={() => setDashboardScope('all')}
+              className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center space-x-1.5 ${
+                dashboardScope === 'all'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+              title="មើលស្ថិតិទូទៅនៃសាលារៀនទាំងមូល (ថ្នាក់ទាំងអស់)"
+            >
+              <span>🏫</span>
+              <span>ថ្នាក់ទាំងអស់ ({toKhmerNum(classes.length)})</span>
+            </button>
+            {activeClass && (
+              <button
+                type="button"
+                onClick={() => setDashboardScope('class')}
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center space-x-1.5 ${
+                  dashboardScope === 'class'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+                title={`មើលស្ថិតិចំពោះតែ ${activeClass.name}`}
+              >
+                <span>📚</span>
+                <span>{activeClass.name}</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Center: Date Picker + Quick Today Button */}
         <div className="flex flex-wrap items-center gap-2.5">
           <div className="flex items-center space-x-2">
             <span className="text-xs font-bold text-slate-700 flex items-center">
@@ -575,7 +634,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
         </div>
 
-        {/* Diagram 3: Student Distribution by Grade (4 cols) - Clean Horizontal Progress Bars */}
+        {/* Diagram 3: Student Distribution by Grade (4 cols) - Clean Horizontal Progress Bars with full breakdown */}
         <div className="lg:col-span-4 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
           <div className="flex items-center justify-between pb-2 border-b border-slate-100">
             <div className="flex items-center space-x-2">
@@ -587,29 +646,73 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   សិស្សតាមកម្រិតថ្នាក់
                 </h3>
                 <p className="text-xs text-slate-500">
-                  {toKhmerNum(activeClasses.length)} ថ្នាក់រៀន
+                  សរុប {toKhmerNum(classes.length)} ថ្នាក់រៀន • {toKhmerNum(students.length)} នាក់
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Clean Horizontal Bars for each Grade (7 to 12) */}
-          <div className="space-y-2.5">
+          {/* Clean Horizontal Bars for each Grade (7 to 12) with full student counts & class badges */}
+          <div className="space-y-2">
             {gradeDistribution.map((item) => (
-              <div key={item.grade} className="space-y-1">
+              <div
+                key={item.grade}
+                className="p-2 rounded-xl border border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/20 transition-all space-y-1.5"
+              >
                 <div className="flex items-center justify-between text-xs sm:text-sm font-bold">
-                  <span className="text-slate-700">ថ្នាក់ទី {toKhmerNum(item.grade)}</span>
-                  <span className="text-slate-900">
-                    <strong className="text-indigo-700">{toKhmerNum(item.count)}</strong> នាក់
-                    <span className="text-xs text-slate-400 font-normal ml-1">({toKhmerNum(item.classesCount)} ថ្នាក់)</span>
-                  </span>
+                  <div className="flex items-center space-x-1.5">
+                    <span className="text-slate-800 font-black">ថ្នាក់ទី {toKhmerNum(item.grade)}</span>
+                    <span className="text-[11px] text-slate-500 font-semibold">
+                      ({toKhmerNum(item.classesCount)} ថ្នាក់)
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-slate-900 font-black">
+                      <strong className="text-indigo-700 text-sm sm:text-base">{toKhmerNum(item.count)}</strong> នាក់
+                    </span>
+                    {item.count > 0 && (
+                      <span className="text-xs text-slate-500 font-semibold ml-1.5">
+                        (ស្រី <strong className="text-pink-600">{toKhmerNum(item.femaleCount)}</strong>)
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
+
+                {/* Progress bar */}
+                <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
                   <div
                     style={{ width: `${item.heightPct}%` }}
-                    className="h-full bg-linear-to-r from-indigo-500 to-blue-500 rounded-full transition-all"
+                    className="h-full bg-linear-to-r from-indigo-500 via-blue-500 to-indigo-600 rounded-full transition-all duration-500"
                   />
                 </div>
+
+                {/* Individual Classes Badges */}
+                {item.classes.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1 pt-0.5">
+                    {item.classes.map((cls) => {
+                      const isSelected = cls.id === selectedClassId;
+                      return (
+                        <button
+                          key={cls.id}
+                          type="button"
+                          onClick={() => onSelectClass(cls.id)}
+                          className={`text-[10.5px] px-2 py-0.5 rounded-lg font-bold transition-all cursor-pointer flex items-center space-x-1 ${
+                            isSelected
+                              ? 'bg-indigo-600 text-white shadow-2xs scale-102 ring-1 ring-indigo-400'
+                              : 'bg-slate-100 hover:bg-indigo-100 text-slate-700 hover:text-indigo-900 border border-slate-200'
+                          }`}
+                          title={`ចុចដើម្បីជ្រើសរើស ${cls.name}`}
+                        >
+                          <span>{cls.name}</span>
+                          <span className={isSelected ? 'text-indigo-200' : 'text-slate-400'}>:</span>
+                          <span className={isSelected ? 'text-white font-black' : 'text-slate-900 font-bold'}>
+                            {toKhmerNum(cls.count)}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             ))}
           </div>
