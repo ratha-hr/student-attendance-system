@@ -12,7 +12,7 @@ import {
   Settings,
   Target,
   Award,
-  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import type { ClassRoom, TeacherSettings } from '../types';
 import { StickerPickerModal } from './common/StickerPickerModal';
@@ -82,7 +82,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const [stickerPickerType, setStickerPickerType] = useState<'school' | 'teacher' | null>(null);
 
-  // Collapsible sub-menus state for all sections (Hidden by default unless active)
+  // Collapsible sub-menus state (Active section auto-expanded)
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(() => {
     const activeSection = getSectionIdForTab(currentTab);
     return {
@@ -120,10 +120,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const teacherAvatar = settings?.teacherAvatar || '👨‍🏫';
   const isTeacherImage = teacherAvatar.startsWith('data:image') || teacherAvatar.startsWith('http');
 
+  // Short, targeted titles for each main menu
   const menuSections: MenuSection[] = [
     {
       id: 'general',
-      title: 'ទូទៅ & ស្ថិតិសង្ខេប',
+      title: 'ព័ត៌មានទូទៅ',
       icon: LayoutDashboard,
       items: [
         {
@@ -140,7 +141,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: 'attendance',
-      title: 'ការគ្រប់គ្រងវត្តមាន',
+      title: 'វត្តមាន',
       icon: CalendarCheck2,
       items: [
         {
@@ -157,7 +158,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: 'grades',
-      title: 'ការសិក្សា & ពិន្ទុ',
+      title: 'ពិន្ទុ & វាយតម្លៃ',
       icon: GraduationCap,
       items: [
         {
@@ -179,7 +180,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: 'teaching-plan',
-      title: 'ផែនការបង្រៀន & យុទ្ធសាស្ត្រ',
+      title: 'ផែនការបង្រៀន',
       icon: Target,
       items: [
         {
@@ -280,65 +281,54 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         </div>
 
-        {/* Collapsible Accordion-style Menu Navigation for All 5 Categories */}
-        <nav className="flex-1 px-3 py-3 space-y-2.5 overflow-y-auto scrollbar-thin">
+        {/* Clean, Collapsible Navigation without Numbers, Sub-menus indented 1 Tab */}
+        <nav className="flex-1 px-3 py-3 space-y-1.5 overflow-y-auto scrollbar-thin">
           {menuSections.map((section) => {
             const SectionIcon = section.icon;
             const isSectionActive = section.items.some((item) => item.id === currentTab);
             const isExpanded = Boolean(expandedSections[section.id]);
 
             return (
-              <div
-                key={section.id}
-                className={`rounded-2xl border transition-all duration-200 overflow-hidden ${
-                  isSectionActive
-                    ? 'border-blue-500/40 bg-slate-800/40 shadow-xs'
-                    : 'border-slate-800/80 bg-slate-900/40 hover:border-slate-700/80'
-                }`}
-              >
-                {/* Main Menu Header (Click to expand/collapse sub-menus) */}
+              <div key={section.id} className="space-y-1">
+                {/* Main Menu Header (Short, targeted title, No numbers, Rotating chevron) */}
                 <button
                   type="button"
                   onClick={() => toggleSection(section.id)}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-2xl transition-all cursor-pointer text-left select-none ${
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all cursor-pointer text-left select-none ${
                     isSectionActive
-                      ? 'text-white font-bold bg-slate-800/80'
-                      : 'text-slate-300 hover:bg-slate-800/50 hover:text-white font-medium'
+                      ? 'bg-slate-800 text-white font-bold shadow-xs border border-slate-700/70'
+                      : 'text-slate-300 hover:bg-slate-800/60 hover:text-white font-medium'
                   }`}
-                  title={isExpanded ? `បិទមីនុយ ${section.title}` : `បើកមើលមីនុយរង ${section.title}`}
+                  title={isExpanded ? `បិទមីនុយ ${section.title}` : `បើកមើលមីនុយ ${section.title}`}
                 >
                   <div className="flex items-center space-x-2.5 truncate">
                     <div
-                      className={`p-1.5 rounded-xl shrink-0 transition-all ${
+                      className={`p-1.5 rounded-lg shrink-0 transition-all ${
                         isSectionActive
                           ? 'bg-blue-600 text-white shadow-xs'
-                          : 'bg-slate-800/80 text-slate-400 group-hover:text-slate-200'
+                          : 'bg-slate-800 text-slate-400'
                       }`}
                     >
                       <SectionIcon className="w-4 h-4" />
                     </div>
-                    <span className="truncate text-xs sm:text-sm tracking-wide">{section.title}</span>
+                    <span className="truncate text-xs sm:text-sm tracking-wide">
+                      {section.title}
+                    </span>
                   </div>
 
-                  <div className="flex items-center space-x-1.5 shrink-0 ml-1">
-                    <span
-                      className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
-                        isSectionActive
-                          ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
-                          : 'bg-slate-800 text-slate-400'
-                      }`}
-                    >
-                      {section.items.length}
-                    </span>
-                    <div className={`transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>
-                      <ChevronDown className="w-4 h-4 text-slate-400" />
-                    </div>
+                  {/* Clean rotating chevron indicator (NO number badge) */}
+                  <div
+                    className={`p-1 transition-transform duration-200 shrink-0 ${
+                      isExpanded ? 'rotate-90 text-blue-400' : 'text-slate-500'
+                    }`}
+                  >
+                    <ChevronRight className="w-4 h-4" />
                   </div>
                 </button>
 
-                {/* Sub-menus (Hidden by default, shown when main menu is expanded) */}
+                {/* Sub-menus indented by 1 Tab (ចូលមួយTab: ml-5 pl-3 border-l-2) */}
                 {isExpanded && (
-                  <div className="px-2 pb-2 pt-1 space-y-1 border-t border-slate-800/70 bg-slate-950/30 animate-fadeIn">
+                  <div className="ml-5 pl-3 border-l-2 border-slate-700/80 space-y-1 py-1 animate-fadeIn">
                     {section.items.map((item) => {
                       const ItemIcon = item.icon;
                       const isItemActive = currentTab === item.id;
@@ -350,10 +340,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             onSelectTab(item.id);
                             onClose();
                           }}
-                          className={`w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs sm:text-xs transition-all cursor-pointer text-left ${
+                          className={`w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-xs transition-all cursor-pointer text-left ${
                             isItemActive
                               ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold shadow-md shadow-blue-900/30'
-                              : 'text-slate-300 hover:bg-slate-800/80 hover:text-white font-medium'
+                              : 'text-slate-300 hover:bg-slate-800/70 hover:text-white font-medium'
                           }`}
                         >
                           <ItemIcon
