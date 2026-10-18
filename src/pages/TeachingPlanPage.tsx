@@ -602,21 +602,32 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
     const saved = localStorage.getItem('app_model_school_start_year');
     if (saved) {
       const p = parseInt(saved, 10);
-      // Migrate legacy years (< 2026) to 2026
-      if (p < 2026) {
-        localStorage.setItem('app_model_school_start_year', '2026');
-        return 2026;
-      }
       if (!isNaN(p) && p >= 1990 && p <= 2100) return p;
     }
-    return 2026;
+    return 2022; // Default to 2022 matching school baseline implementation
   });
 
   const handleStartYearChange = (newYear: number) => {
     if (isNaN(newYear) || newYear < 1990 || newYear > 2100) return;
     setModelSchoolStartYear(newYear);
     localStorage.setItem('app_model_school_start_year', String(newYear));
-    showToast(`បានកំណត់ឆ្នាំទី១ ត្រូវនឹងឆ្នាំ ${newYear} (${toKhmerNum(newYear)})`);
+    const implYears = `${toKhmerNum(newYear)} - ${toKhmerNum(newYear + 5)}`;
+    setPlan((p) => {
+      const updated = {
+        ...p,
+        startYear: newYear,
+        implementationYears: implYears,
+        updatedAt: new Date().toISOString(),
+      };
+      const planKey = `teaching_plan_${p.classId || activeClass?.id || 'default'}_${p.subject || selectedSubject}`;
+      try {
+        localStorage.setItem(planKey, JSON.stringify(updated));
+      } catch (err) {
+        // ignore
+      }
+      return updated;
+    });
+    showToast(`បានកំណត់ និងរក្សាទុកស្វ័យប្រវត្ត ឆ្នាំទី១៖ ${newYear} (ឆ្នាំអនុវត្ត៖ ${implYears})`);
   };
 
   // Dynamically compute benchmarks for 6 years based on modelSchoolStartYear
@@ -1706,21 +1717,26 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
           </div>
 
           {/* Quick Stats Banner */}
-          <div className="flex items-center gap-2 bg-[#FFF2CC]/80 border border-amber-200 rounded-xl px-3 py-2">
-            <Info className="w-4 h-4 text-amber-700 shrink-0" />
-            <div className="text-xs text-amber-900 leading-tight">
-              <span>សិស្សសរុប: </span>
-              <strong className="text-amber-950 font-black">{plan.totalStudents}</strong>
-              <span className="mx-1">|</span>
-              <span>ស្រី: </span>
-              <strong className="text-pink-700 font-black">{plan.femaleStudents}</strong> នាក់
+          <div className="flex items-center justify-between gap-2 bg-[#FFF2CC]/80 border border-amber-200 rounded-xl px-3 py-2">
+            <div className="flex items-center gap-2">
+              <Info className="w-4 h-4 text-amber-700 shrink-0" />
+              <div className="text-xs text-amber-900 leading-tight">
+                <span>សិស្សសរុប: </span>
+                <strong className="text-amber-950 font-black">{plan.totalStudents}</strong>
+                <span className="mx-1">|</span>
+                <span>ស្រី: </span>
+                <strong className="text-pink-700 font-black">{plan.femaleStudents}</strong> នាក់
+              </div>
+            </div>
+            <div className="text-[11px] font-bold text-blue-950 bg-white/90 px-2.5 py-0.5 rounded-lg border border-amber-300 shadow-2xs">
+              📅 ឆ្នាំអនុវត្ត៖ <span className="font-mono text-blue-800">{toKhmerNum(modelSchoolStartYear)} - {toKhmerNum(modelSchoolStartYear + 5)}</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* ផែនការទូទៅ៖ ផែនការគោលដៅសាលាស្តង់ដារគំរូ ៦ឆ្នាំ (Model School Target Benchmarks) */}
-      {activeScope === 'all' && (
+      {/* ផែនការទូទៅ និង ផែនការ ៦ឆ្នាំ៖ ផែនការគោលដៅសាលារៀនជំនាន់ថ្មី ៦ឆ្នាំ (Model School Target Benchmarks) */}
+      {(activeScope === 'all' || activeScope === '6y') && (
         <div className="official-sheet bg-white rounded-2xl p-4 sm:p-6 lg:p-8 border border-slate-200 shadow-sm print:p-0 print:border-none print:shadow-none space-y-3">
           {/* Official Kingdom & Ministry Administrative Header */}
           <div className="w-full relative mb-4 print:mb-3 pt-1 pb-1 min-h-[96px] print:min-h-[86px]">
@@ -1761,7 +1777,7 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
           {/* Document Title */}
           <div className="text-center my-3 print:my-2">
             <h1 className="font-moul text-sm sm:text-base print:text-[12pt] text-red-600 leading-snug">
-              ផែនការគោលដៅសាលាស្តង់ដារគំរូ ៦ឆ្នាំ តាមកម្រិតនិទ្ទេស
+              ផែនការគោលដៅសាលារៀនជំនាន់ថ្មី ៦ឆ្នាំ តាមកម្រិតនិទ្ទេស
             </h1>
             <h2 className="font-moul text-xs sm:text-sm print:text-[10.5pt] text-red-600 mt-1">
               មុខវិជ្ជា ៖ {plan.subject || selectedSubject}
@@ -1778,6 +1794,16 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
               <div className="flex items-center gap-1.5 shrink-0">
                 <span className="font-bold text-black text-xs print:text-[8.5pt]">ថ្នាក់ទី ៖</span>
                 <span className="font-bold text-black text-xs print:text-[8.5pt]">{plan.className}</span>
+              </div>
+              {/* បន្ថែមឆ្នាំអនុវត្ត តាមការស្នើសុំ */}
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="font-bold text-black text-xs print:text-[8.5pt]">ឆ្នាំអនុវត្ត ៖</span>
+                <span className="font-bold text-blue-900 print:text-black text-xs print:text-[8.5pt] bg-amber-50 print:bg-transparent px-1.5 py-0.5 rounded border border-amber-200 print:border-none">
+                  {toKhmerNum(modelSchoolStartYear)} - {toKhmerNum(modelSchoolStartYear + 5)}
+                  <span className="font-mono text-[11px] text-slate-500 print:hidden ml-1 font-semibold">
+                    ({modelSchoolStartYear} - {modelSchoolStartYear + 5})
+                  </span>
+                </span>
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
                 <span className="font-bold text-black text-xs print:text-[8.5pt]">ចំនួនសិស្ស សរុប ៖</span>
@@ -1828,20 +1854,37 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
                   ផែនការបែងចែកភាគរយតាមកម្រិតនិទ្ទេស A, B, C, D, E, F សម្រាប់ ៦ ឆ្នាំ ({modelSchoolStartYear} - {modelSchoolStartYear + 5})
                 </span>
                 <span className="text-[10px] bg-blue-200/90 text-blue-900 px-2 py-0.2 rounded-full font-bold ml-2">
-                  ស្តង់ដាក្រសួងអប់រំ យុវជន និងកីឡា
+                  ស្តង់ដារក្រសួងអប់រំ យុវជន និងកីឡា
                 </span>
               </div>
             </div>
-            <div className="flex items-center gap-1.5 text-xs font-bold text-blue-950 bg-white px-2.5 py-1 rounded-xl border border-blue-200 shadow-2xs self-start sm:self-auto">
-              <span>📅 ឆ្នាំទី១ ៖</span>
+            <div className="flex items-center gap-2 text-xs font-bold text-blue-950 bg-white px-3 py-1.5 rounded-xl border border-blue-300 shadow-2xs self-start sm:self-auto">
+              <span className="shrink-0 flex items-center gap-1 text-slate-800 font-bold">
+                📅 ឆ្នាំទី១ ៖
+              </span>
+              <select
+                value={modelSchoolStartYear}
+                onChange={(e) => handleStartYearChange(parseInt(e.target.value, 10))}
+                className="px-2.5 py-1 font-bold font-mono text-center text-blue-900 bg-blue-50 border border-blue-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-xs cursor-pointer hover:bg-blue-100 transition-colors"
+                title="ជ្រើសរើសឆ្នាំទី១ (នឹងកំណត់អូតូរក្សាទុក)"
+              >
+                {[2020, 2021, 2022, 2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030].map((yr) => (
+                  <option key={yr} value={yr}>
+                    {yr} ({toKhmerNum(yr)} - {toKhmerNum(yr + 5)})
+                  </option>
+                ))}
+              </select>
               <input
                 type="number"
                 min="2000"
                 max="2100"
                 value={modelSchoolStartYear}
-                onChange={(e) => handleStartYearChange(parseInt(e.target.value, 10) || 2026)}
-                className="w-16 px-1.5 py-0.5 font-bold font-mono text-center text-blue-800 bg-blue-50 border border-blue-300 rounded-lg outline-none focus:ring-1 focus:ring-blue-500 text-xs"
-                title="លោកគ្រូ-អ្នកគ្រូអាចកំណត់ឆ្នាំទី១ បានដោយសេរី"
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10);
+                  if (!isNaN(val)) handleStartYearChange(val);
+                }}
+                className="w-16 px-1.5 py-1 font-bold font-mono text-center text-blue-900 bg-slate-50 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-xs"
+                title="ឬវាយបញ្ចូលឆ្នាំដោយផ្ទាល់"
               />
             </div>
           </div>
@@ -1951,8 +1994,8 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
         </div>
       )}
 
-      {/* ផែនការតាមត្រីមាស និង ១ឆ្នាំ, ៣ឆ្នាំ, ៦ឆ្នាំ (លាក់ទាំងស្រុងពីផែនការទូទៅ តាមការស្នើសុំ) */}
-      {activeScope !== 'all' && (
+      {/* ផែនការតាមត្រីមាស និង ១ឆ្នាំ, ៣ឆ្នាំ (លាក់ទាំងស្រុងពីផែនការទូទៅ និង ផែនការ ៦ឆ្នាំ) */}
+      {activeScope !== 'all' && activeScope !== '6y' && (
         <>
           {/* Scope Navigation Switcher (ត្រីមាសទី១, ទី២, ទី៣, មួយឆ្នាំ, បីឆ្នាំ, ៦ឆ្នាំ) */}
           <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between gap-3 flex-wrap no-print">
@@ -2008,7 +2051,6 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
             {activeScope === 'q4' && '📊 កំពុងបង្ហាញ ៖ ផែនការត្រីមាសទី៤ (២ខែចុងក្រោយ & ចុងឆ្នាំ) • បង្ហាញតារាងទី៤'}
             {activeScope === '1y' && '🏆 កំពុងបង្ហាញ ៖ ផែនការ ១ឆ្នាំ (ឆ្នាំទី១ - គោលដៅ ABC ៣២%) • តារាងពេញ ១ឆ្នាំសិក្សា'}
             {activeScope === '3y' && '⏳ កំពុងបង្ហាញ ៖ ផែនការ ៣ឆ្នាំ • ទុកអភិវឌ្ឍន៍ពេលក្រោយ'}
-            {activeScope === '6y' && '⏳ កំពុងបង្ហាញ ៖ ផែនការ ៦ឆ្នាំ • ទុកអភិវឌ្ឍន៍ពេលក្រោយ'}
           </span>
         </div>
         <button
@@ -2095,6 +2137,14 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
               />
             </div>
 
+            {/* ឆ្នាំអនុវត្ត */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="font-bold text-black text-xs print:text-[8.5pt]">ឆ្នាំអនុវត្ត ៖</span>
+              <span className="font-bold text-blue-900 print:text-black text-xs print:text-[8.5pt] bg-amber-50 print:bg-transparent px-1.5 py-0.5 rounded border border-amber-200 print:border-none">
+                {toKhmerNum(modelSchoolStartYear)} - {toKhmerNum(modelSchoolStartYear + 5)}
+              </span>
+            </div>
+
             {/* ស្ថិតិសិស្ស (សរុប & ស្រី) */}
             <div className="flex items-center gap-1.5 shrink-0">
               <span className="font-bold text-black text-xs print:text-[8.5pt]">ចំនួនសិស្ស សរុប ៖</span>
@@ -2163,14 +2213,14 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
           </div>
         </div>
 
-        {/* If activeScope is 3y or 6y: show clean "ទុកអភិវឌ្ឍន៍ពេលក្រោយ" notice and hide tables as requested */}
-        {activeScope === '3y' || activeScope === '6y' ? (
+        {/* If activeScope is 3y: show clean "ទុកអភិវឌ្ឍន៍ពេលក្រោយ" notice and hide tables as requested */}
+        {activeScope === '3y' ? (
           <div className="bg-amber-50/70 border-2 border-dashed border-amber-300 rounded-2xl p-12 text-center my-6 space-y-3">
             <div className="w-16 h-16 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center mx-auto text-3xl shadow-xs">
               ⏳
             </div>
             <h3 className="font-moul text-base text-amber-950">
-              {activeScope === '3y' ? 'ផែនការបង្រៀន ៣ឆ្នាំ' : 'ផែនការបង្រៀន ៦ឆ្នាំ'}
+              ផែនការបង្រៀន ៣ឆ្នាំ
             </h3>
             <p className="text-sm font-bold text-amber-800">
               ខ្លឹមសារនេះត្រូវបានដកចេញជាបណ្ដោះអាសន្ន និង «ទុកអភិវឌ្ឍន៍ពេលក្រោយ»

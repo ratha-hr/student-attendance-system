@@ -211,6 +211,8 @@ export interface TeachingPlan {
   className: string;
   subject: string;
   academicYear: string;
+  startYear?: number;
+  implementationYears?: string;
   schoolName: string;
   districtOffice: string;
   teacherName: string;
