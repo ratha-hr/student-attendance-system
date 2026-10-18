@@ -1641,216 +1641,308 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Model Standard School (សាលារៀនគំរូ) Benchmark Control - Only shown on ផែនការទូទៅ (all) */}
-        {activeScope === 'all' && (
-          <div className="bg-gradient-to-r from-blue-50/80 via-indigo-50/70 to-blue-50/80 border border-blue-200/90 rounded-2xl p-4 space-y-3 shadow-xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                <Award className="w-4 h-4 text-amber-300" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-black text-sm text-blue-950">
-                    គោលដៅសាលាស្តង់ដារគំរូ (Model School Target Benchmarks)
-                  </span>
-                  <span className="text-[10px] bg-blue-200/90 text-blue-900 px-2 py-0.5 rounded-full font-bold">
-                    ក្រសួងអប់រំ យុវជន និងកីឡា
-                  </span>
-                </div>
-                <p className="text-[11px] text-blue-700 mt-0.5">
-                  ផែនការបែងចែកភាគរយតាមកម្រិតនិទ្ទេស A, B, C, D, E, F សម្រាប់ ៦ ឆ្នាំ ({modelSchoolStartYear} - {modelSchoolStartYear + 5})
-                </p>
+      {/* ផែនការទូទៅ៖ ផែនការគោលដៅសាលាស្តង់ដារគំរូ ៦ឆ្នាំ (Model School Target Benchmarks) */}
+      {activeScope === 'all' && (
+        <div className="official-sheet bg-white rounded-2xl p-4 sm:p-6 lg:p-8 border border-slate-200 shadow-sm print:p-0 print:border-none print:shadow-none space-y-3">
+          {/* Official Kingdom & Ministry Administrative Header */}
+          <div className="w-full relative mb-4 print:mb-3 pt-1 pb-1 min-h-[96px] print:min-h-[86px]">
+            {/* Top Center: National Motto */}
+            <div className="w-full text-center">
+              <h2 className="font-moul text-sm sm:text-base print:text-[13pt] text-black tracking-wide leading-relaxed select-none">
+                ព្រះរាជាណាចក្រកម្ពុជា
+              </h2>
+              <h3 className="font-moul text-xs sm:text-sm print:text-[11pt] text-black tracking-wider mt-0.5 leading-relaxed select-none">
+                ជាតិ សាសនា ព្រះមហាក្សត្រ
+              </h3>
+              <div className="flex items-center justify-center space-x-1.5 pt-0.5 text-black">
+                <span className="w-7 h-[1px] bg-black/70 rounded-full select-none" />
+                <span className="text-[10px] sm:text-xs font-serif leading-none select-none tracking-widest text-black">❖ ❖ ❖</span>
+                <span className="w-7 h-[1px] bg-black/70 rounded-full select-none" />
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
-              {/* Year 1 User-Configurable Input without Khmer numbers */}
-              <div className="flex items-center gap-1.5 text-xs font-bold text-blue-950 bg-white px-2.5 py-1 rounded-xl border border-blue-200 shadow-2xs">
-                <span>📅 ឆ្នាំទី១ ៖</span>
-                <input
-                  type="number"
-                  min="2000"
-                  max="2100"
-                  value={modelSchoolStartYear}
-                  onChange={(e) => handleStartYearChange(parseInt(e.target.value, 10) || 2026)}
-                  className="w-16 px-1.5 py-0.5 font-bold font-mono text-center text-blue-800 bg-blue-50 border border-blue-300 rounded-lg outline-none focus:ring-1 focus:ring-blue-500 text-xs"
-                  title="លោកគ្រូ-អ្នកគ្រូអាចកំណត់ឆ្នាំទី១ បានដោយសេរី"
-                />
-              </div>
-
-              {/* Toggle Table Collapse */}
-              <button
-                type="button"
-                onClick={() => setShowBenchmarkMatrix(!showBenchmarkMatrix)}
-                className="px-3 py-1.5 bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs flex items-center gap-1.5"
-                title="បង្ហាញ ឬលាក់ តារាងស្តង់ដាក្រសួងអប់រំ ៦ ឆ្នាំ"
-              >
-                <Table className="w-3.5 h-3.5 text-blue-600" />
-                <span>{showBenchmarkMatrix ? 'លាក់តារាងស្តង់ដា ៦ឆ្នាំ' : 'បង្ហាញតារាងស្តង់ដា ៦ឆ្នាំ'}</span>
-                {showBenchmarkMatrix ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-              </button>
+            {/* Left: Office & School */}
+            <div className="sm:absolute sm:left-0 sm:top-[44px] print:absolute print:left-0 print:top-[38px] text-left text-black space-y-0.5 max-w-[42%]">
+              <input
+                type="text"
+                value={plan.districtOffice || settings?.districtOffice || 'ការិ.អយកស្រុកកំពង់ត្រឡាច'}
+                onChange={(e) => setPlan((p) => ({ ...p, districtOffice: e.target.value }))}
+                className="font-moul text-[10.5px] sm:text-[11.5px] print:text-[9.5pt] text-black bg-transparent border-none outline-none w-full p-0 hover:bg-amber-50 focus:bg-white rounded cursor-text"
+                title="ចុចដើម្បីកែសម្រួលឈ្មោះការិយាល័យអប់រំ"
+              />
+              <input
+                type="text"
+                value={plan.schoolName || settings?.schoolName || 'វិទ្យាល័យ ហ៊ុន សែន កំពង់ត្រឡាច'}
+                onChange={(e) => setPlan((p) => ({ ...p, schoolName: e.target.value }))}
+                className="font-moul text-[10px] sm:text-[11px] print:text-[9pt] text-black bg-transparent border-none outline-none w-full p-0 hover:bg-amber-50 focus:bg-white rounded cursor-text"
+                title="ចុចដើម្បីកែសម្រួលឈ្មោះវិទ្យាល័យ"
+              />
             </div>
           </div>
 
-          {/* Full Official MoEYS Standard Matrix Reference Table (Clean & Modern) */}
-          {showBenchmarkMatrix && (
-            <div className="overflow-x-auto bg-white rounded-xl border border-slate-300 shadow-xs">
-              <table className="w-full text-center border-collapse text-xs">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-300 text-slate-800 font-bold">
-                    <th rowSpan={2} className="border-r border-slate-300 px-3 py-2 w-20 text-[#8B2500]">
-                      និទ្ទេស
-                    </th>
-                    {MODEL_SCHOOL_YEAR_KEYS.map((yKey) => {
-                      const b = benchmarks[yKey];
-                      return (
-                        <th
-                          key={yKey}
-                          className="border-r border-slate-300 px-2 py-1.5 font-bold text-[#8B2500]"
-                        >
-                          {b.yearName} ({b.calendarYear})
-                        </th>
-                      );
-                    })}
-                  </tr>
-                  <tr className="bg-slate-50/80 border-b border-slate-300 text-slate-700 font-bold">
-                    {MODEL_SCHOOL_YEAR_KEYS.map((yKey) => {
-                      const b = benchmarks[yKey];
-                      return (
-                        <th
-                          key={yKey}
-                          className="border-r border-slate-300 px-2 py-1 text-[11px] text-[#8B2500] font-normal"
-                        >
-                          <div>ក្រុមគោលដៅ</div>
-                          <div className="font-bold">ABC( {b.targetABC}% )</div>
-                        </th>
-                      );
-                    })}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">
-                  {(['A', 'B', 'C', 'D', 'E', 'F'] as const).map((grade) => (
-                    <tr key={grade} className="hover:bg-blue-50/40 transition-colors">
-                      <td className="border-r border-slate-300 px-3 py-1.5 font-black text-slate-800 bg-slate-50/50">
-                        {grade}
-                      </td>
-                      {MODEL_SCHOOL_YEAR_KEYS.map((yKey) => {
-                        const val = benchmarks[yKey].targets[grade];
-                        const isRed =
-                          (yKey === 'year4' && (grade === 'D' || grade === 'E' || grade === 'F')) ||
-                          (yKey === 'year5' && (grade === 'D' || grade === 'E' || grade === 'F')) ||
-                          (yKey === 'year6' && (grade === 'E' || grade === 'F'));
-                        return (
-                          <td
-                            key={yKey}
-                            className={`border-r border-slate-300 px-2 py-1.5 font-mono text-xs ${
-                              isRed ? 'text-red-600 font-bold' : 'text-slate-800 font-medium'
-                            }`}
-                          >
-                            {val}%
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                  {/* Total Row */}
-                  <tr className="bg-slate-100/90 font-bold border-t-2 border-slate-300">
-                    <td className="border-r border-slate-300 px-3 py-1.5 text-[#8B2500]">
-                      សរុប
+          {/* Document Title */}
+          <div className="text-center my-3 print:my-2">
+            <h1 className="font-moul text-sm sm:text-base print:text-[12pt] text-red-600 leading-snug">
+              ផែនការគោលដៅសាលាស្តង់ដារគំរូ ៦ឆ្នាំ តាមកម្រិតនិទ្ទេស
+            </h1>
+            <h2 className="font-moul text-xs sm:text-sm print:text-[10.5pt] text-red-600 mt-1">
+              មុខវិជ្ជា ៖ {plan.subject || selectedSubject}
+            </h2>
+          </div>
+
+          {/* Metadata Details Section */}
+          <div className="text-xs text-black space-y-1.5 my-2.5 print:my-1.5 print:text-[8.5pt]">
+            <div className="flex flex-wrap print:flex-nowrap items-center justify-between gap-x-4 gap-y-1 border-b border-slate-100 print:border-none pb-1 print:pb-0">
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="font-bold text-black text-xs print:text-[8.5pt]">ឈ្មោះសាលា ៖</span>
+                <span className="font-bold text-black text-xs print:text-[8.5pt]">{plan.schoolName}</span>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="font-bold text-black text-xs print:text-[8.5pt]">ថ្នាក់ទី ៖</span>
+                <span className="font-bold text-black text-xs print:text-[8.5pt]">{plan.className}</span>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="font-bold text-black text-xs print:text-[8.5pt]">ចំនួនសិស្ស សរុប ៖</span>
+                <span className="bg-[#FFC000] text-black font-bold font-mono px-2.5 py-0.5 border border-black/40 text-center min-w-[30px] text-xs print:text-[8.5pt] shadow-2xs">
+                  {plan.totalStudents}
+                </span>
+                <span className="font-medium text-black text-xs print:text-[8.5pt] mr-2">នាក់</span>
+                <span className="font-bold text-black text-xs print:text-[8.5pt]">ស្រី ៖</span>
+                <span className="bg-[#FFC000] text-black font-bold font-mono px-2.5 py-0.5 border border-black/40 text-center min-w-[30px] text-xs print:text-[8.5pt] shadow-2xs">
+                  {plan.femaleStudents}
+                </span>
+                <span className="font-medium text-black text-xs print:text-[8.5pt]">នាក់</span>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap print:flex-nowrap items-center justify-between gap-x-4 gap-y-1 pt-0.5">
+              <div className="flex items-center gap-3 shrink-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-bold text-black text-xs print:text-[8.5pt]">ឈ្មោះគ្រូ ៖</span>
+                  <span className="font-bold text-black text-xs print:text-[8.5pt]">{plan.teacherName}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-bold text-black text-xs print:text-[8.5pt]">លេខទូរស័ព្ទ ៖</span>
+                  <span className="font-bold font-mono text-black text-xs print:text-[8.5pt]">{plan.teacherPhone}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-bold text-black text-xs print:text-[8.5pt]">ឈ្មោះនាយករងបច្ចេកទេស ៖</span>
+                  <span className="font-bold text-black text-xs print:text-[8.5pt]">{plan.deputyDirectorName}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-bold text-black text-xs print:text-[8.5pt]">លេខទូរស័ព្ទ ៖</span>
+                  <span className="font-bold font-mono text-black text-xs print:text-[8.5pt]">{plan.deputyDirectorPhone}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Year 1 Config Toolbar (Interactive in UI, hidden in Print) */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-blue-50/80 via-indigo-50/70 to-blue-50/80 border border-blue-200/90 rounded-2xl p-3 no-print">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0">
+                <Award className="w-4 h-4 text-amber-300" />
+              </div>
+              <div>
+                <span className="font-black text-xs text-blue-950">
+                  ផែនការបែងចែកភាគរយតាមកម្រិតនិទ្ទេស A, B, C, D, E, F សម្រាប់ ៦ ឆ្នាំ ({modelSchoolStartYear} - {modelSchoolStartYear + 5})
+                </span>
+                <span className="text-[10px] bg-blue-200/90 text-blue-900 px-2 py-0.2 rounded-full font-bold ml-2">
+                  ស្តង់ដាក្រសួងអប់រំ យុវជន និងកីឡា
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs font-bold text-blue-950 bg-white px-2.5 py-1 rounded-xl border border-blue-200 shadow-2xs self-start sm:self-auto">
+              <span>📅 ឆ្នាំទី១ ៖</span>
+              <input
+                type="number"
+                min="2000"
+                max="2100"
+                value={modelSchoolStartYear}
+                onChange={(e) => handleStartYearChange(parseInt(e.target.value, 10) || 2026)}
+                className="w-16 px-1.5 py-0.5 font-bold font-mono text-center text-blue-800 bg-blue-50 border border-blue-300 rounded-lg outline-none focus:ring-1 focus:ring-blue-500 text-xs"
+                title="លោកគ្រូ-អ្នកគ្រូអាចកំណត់ឆ្នាំទី១ បានដោយសេរី"
+              />
+            </div>
+          </div>
+
+          {/* Full Official MoEYS Standard Matrix Reference Table */}
+          <div className="overflow-x-auto my-2 print:overflow-visible">
+            <table className="w-full text-center border-collapse border border-black text-xs print:text-[8.5pt]">
+              <thead>
+                <tr className="bg-slate-100 border border-black text-black font-bold">
+                  <th rowSpan={2} className="border border-black px-3 py-2 w-20 text-[#8B2500]">
+                    និទ្ទេស
+                  </th>
+                  {MODEL_SCHOOL_YEAR_KEYS.map((yKey) => {
+                    const b = benchmarks[yKey];
+                    return (
+                      <th
+                        key={yKey}
+                        className="border border-black px-2 py-1.5 font-bold text-[#8B2500]"
+                      >
+                        {b.yearName} ({b.calendarYear})
+                      </th>
+                    );
+                  })}
+                </tr>
+                <tr className="bg-slate-50 border border-black text-black font-bold">
+                  {MODEL_SCHOOL_YEAR_KEYS.map((yKey) => {
+                    const b = benchmarks[yKey];
+                    return (
+                      <th
+                        key={yKey}
+                        className="border border-black px-2 py-1 text-[11px] print:text-[7.5pt] text-[#8B2500] font-normal"
+                      >
+                        <div>ក្រុមគោលដៅ</div>
+                        <div className="font-bold">ABC( {b.targetABC}% )</div>
+                      </th>
+                    );
+                  })}
+                </tr>
+              </thead>
+              <tbody>
+                {(['A', 'B', 'C', 'D', 'E', 'F'] as const).map((grade) => (
+                  <tr key={grade} className="bg-white hover:bg-blue-50/40 transition-colors">
+                    <td className="border border-black px-3 py-1.5 font-black text-black bg-slate-50">
+                      {grade}
                     </td>
                     {MODEL_SCHOOL_YEAR_KEYS.map((yKey) => {
-                      const isRed = yKey === 'year4' || yKey === 'year5' || yKey === 'year6';
+                      const val = benchmarks[yKey].targets[grade];
+                      const isRed =
+                        (yKey === 'year4' && (grade === 'D' || grade === 'E' || grade === 'F')) ||
+                        (yKey === 'year5' && (grade === 'D' || grade === 'E' || grade === 'F')) ||
+                        (yKey === 'year6' && (grade === 'E' || grade === 'F'));
                       return (
                         <td
                           key={yKey}
-                          className={`border-r border-slate-300 px-2 py-1.5 font-mono font-bold text-xs ${
-                            isRed ? 'text-red-600' : 'text-slate-900'
+                          className={`border border-black px-2 py-1.5 font-mono text-xs print:text-[8.5pt] ${
+                            isRed ? 'text-red-600 font-bold' : 'text-black font-medium'
                           }`}
                         >
-                          100%
+                          {val}%
                         </td>
                       );
                     })}
                   </tr>
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-        )}
-      </div>
-
-
-      {/* Scope Navigation Switcher (ត្រីមាសទី១, ទី២, ទី៣, មួយឆ្នាំ, បីឆ្នាំ, ៦ឆ្នាំ, ទាំងអស់) */}
-      <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between gap-3 flex-wrap no-print">
-        <div className="flex items-center space-x-2">
-          <span className="text-xs font-bold text-slate-800 flex items-center">
-            <Target className="w-4 h-4 text-blue-600 mr-1.5" />
-            ប្រភេទផែនការ ៖
-          </span>
-        </div>
-
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {[
-            { id: 'all' as PlanScope, label: '🎯 ទាំងអស់' },
-            { id: 'q1' as PlanScope, label: 'ត្រីមាសទី១' },
-            { id: 'q2' as PlanScope, label: 'ត្រីមាសទី២' },
-            { id: 'q3' as PlanScope, label: 'ត្រីមាសទី៣' },
-            { id: 'q4' as PlanScope, label: 'ត្រីមាសទី៤' },
-            { id: '1y' as PlanScope, label: 'ផែនការ ១ឆ្នាំ' },
-            { id: '3y' as PlanScope, label: 'ផែនការ ៣ឆ្នាំ' },
-            { id: '6y' as PlanScope, label: 'ផែនការ ៦ឆ្នាំ' },
-          ].map((sc) => {
-            const isCur = activeScope === sc.id;
-            return (
-              <button
-                key={sc.id}
-                type="button"
-                onClick={() => {
-                  setActiveScope(sc.id);
-                  if (sc.id === '1y') handleSelectBenchmarkYear('year1');
-                  else if (sc.id === '3y') handleSelectBenchmarkYear('year3');
-                  else if (sc.id === '6y') handleSelectBenchmarkYear('year6');
-                }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  isCur
-                    ? 'bg-blue-600 text-white shadow-xs scale-105'
-                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                }`}
-              >
-                {sc.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Scope Notice Banner (When specific scope is selected) */}
-      {activeScope !== 'all' && (
-        <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-blue-50 border border-blue-200/90 rounded-2xl p-3 flex items-center justify-between no-print gap-2">
-          <div className="flex items-center space-x-2 text-xs font-bold text-blue-900">
-            <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
-            <span>
-              {activeScope === 'q1' && '📊 កំពុងបង្ហាញ ៖ ផែនការត្រីមាសទី១ (៣ខែដំបូង) • បង្ហាញតារាងទី១'}
-              {activeScope === 'q2' && '📊 កំពុងបង្ហាញ ៖ ផែនការត្រីមាសទី២ (៣ខែបន្ទាប់) • បង្ហាញតារាងទី២'}
-              {activeScope === 'q3' && '📊 កំពុងបង្ហាញ ៖ ផែនការត្រីមាសទី៣ (២ខែ) • បង្ហាញតារាងទី៣'}
-              {activeScope === 'q4' && '📊 កំពុងបង្ហាញ ៖ ផែនការត្រីមាសទី៤ (២ខែចុងក្រោយ & ចុងឆ្នាំ) • បង្ហាញតារាងទី៤'}
-              {activeScope === '1y' && '🏆 កំពុងបង្ហាញ ៖ ផែនការ ១ឆ្នាំ (ឆ្នាំទី១ - គោលដៅ ABC ៣២%) • តារាងពេញ ១ឆ្នាំសិក្សា'}
-              {activeScope === '3y' && '⏳ កំពុងបង្ហាញ ៖ ផែនការ ៣ឆ្នាំ • ទុកអភិវឌ្ឍន៍ពេលក្រោយ'}
-              {activeScope === '6y' && '⏳ កំពុងបង្ហាញ ៖ ផែនការ ៦ឆ្នាំ • ទុកអភិវឌ្ឍន៍ពេលក្រោយ'}
-            </span>
+                ))}
+                {/* Total Row */}
+                <tr className="bg-slate-100 font-bold border-t-2 border-black">
+                  <td className="border border-black px-3 py-1.5 text-[#8B2500]">
+                    សរុប
+                  </td>
+                  {MODEL_SCHOOL_YEAR_KEYS.map((yKey) => {
+                    const isRed = yKey === 'year4' || yKey === 'year5' || yKey === 'year6';
+                    return (
+                      <td
+                        key={yKey}
+                        className={`border border-black px-2 py-1.5 font-mono font-bold text-xs print:text-[8.5pt] ${
+                          isRed ? 'text-red-600' : 'text-black'
+                        }`}
+                      >
+                        100%
+                      </td>
+                    );
+                  })}
+                </tr>
+              </tbody>
+            </table>
           </div>
-          <button
-            type="button"
-            onClick={() => setActiveScope('all')}
-            className="text-xs text-blue-700 hover:text-blue-900 font-bold underline cursor-pointer whitespace-nowrap"
-          >
-            បង្ហាញទាំងអស់
-          </button>
+
+          {/* Official Signatures */}
+          <div className="pt-5 pb-1 print:pt-4 print:pb-0 grid grid-cols-2 text-center text-xs text-black break-inside-avoid">
+            <div className="space-y-1">
+              <div className="font-bold">បានឃើញ និងឯកភាព</div>
+              <div className="text-slate-600">ថ្ងៃទី...........ខែ...........ឆ្នាំ២០២...</div>
+              <div className="font-bold font-moul text-xs pt-1">នាយករងបច្ចេកទេស</div>
+              <div className="text-[11px] text-slate-500 italic">(ហត្ថលេខា និងត្រា)</div>
+              <div className="h-16 print:h-20" />
+              <div className="font-bold text-sm text-black">{plan.deputyDirectorName}</div>
+            </div>
+
+            <div className="space-y-1">
+              <div className="text-slate-600">ថ្ងៃទី...........ខែ...........ឆ្នាំ២០២...</div>
+              <div className="font-bold font-moul text-xs pt-1">គ្រូបង្រៀនមុខវិជ្ជា</div>
+              <div className="text-[11px] text-slate-500 italic">(ហត្ថលេខា)</div>
+              <div className="h-16 print:h-20" />
+              <div className="font-bold text-sm text-black">{plan.teacherName}</div>
+            </div>
+          </div>
         </div>
       )}
+
+      {/* ផែនការតាមត្រីមាស និង ១ឆ្នាំ, ៣ឆ្នាំ, ៦ឆ្នាំ (លាក់ទាំងស្រុងពីផែនការទូទៅ តាមការស្នើសុំ) */}
+      {activeScope !== 'all' && (
+        <>
+          {/* Scope Navigation Switcher (ត្រីមាសទី១, ទី២, ទី៣, មួយឆ្នាំ, បីឆ្នាំ, ៦ឆ្នាំ) */}
+          <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between gap-3 flex-wrap no-print">
+            <div className="flex items-center space-x-2">
+              <span className="text-xs font-bold text-slate-800 flex items-center">
+                <Target className="w-4 h-4 text-blue-600 mr-1.5" />
+                ប្រភេទផែនការ ៖
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {[
+                { id: 'q1' as PlanScope, label: 'ត្រីមាសទី១' },
+                { id: 'q2' as PlanScope, label: 'ត្រីមាសទី២' },
+                { id: 'q3' as PlanScope, label: 'ត្រីមាសទី៣' },
+                { id: 'q4' as PlanScope, label: 'ត្រីមាសទី៤' },
+                { id: '1y' as PlanScope, label: 'ផែនការ ១ឆ្នាំ' },
+                { id: '3y' as PlanScope, label: 'ផែនការ ៣ឆ្នាំ' },
+                { id: '6y' as PlanScope, label: 'ផែនការ ៦ឆ្នាំ' },
+              ].map((sc) => {
+                const isCur = activeScope === sc.id;
+                return (
+                  <button
+                    key={sc.id}
+                    type="button"
+                    onClick={() => {
+                      setActiveScope(sc.id);
+                      if (sc.id === '1y') handleSelectBenchmarkYear('year1');
+                      else if (sc.id === '3y') handleSelectBenchmarkYear('year3');
+                      else if (sc.id === '6y') handleSelectBenchmarkYear('year6');
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      isCur
+                        ? 'bg-blue-600 text-white shadow-xs scale-105'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                    }`}
+                  >
+                    {sc.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+      {/* Scope Notice Banner (When specific scope is selected) */}
+      <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-blue-50 border border-blue-200/90 rounded-2xl p-3 flex items-center justify-between no-print gap-2">
+        <div className="flex items-center space-x-2 text-xs font-bold text-blue-900">
+          <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+          <span>
+            {activeScope === 'q1' && '📊 កំពុងបង្ហាញ ៖ ផែនការត្រីមាសទី១ (៣ខែដំបូង) • បង្ហាញតារាងទី១'}
+            {activeScope === 'q2' && '📊 កំពុងបង្ហាញ ៖ ផែនការត្រីមាសទី២ (៣ខែបន្ទាប់) • បង្ហាញតារាងទី២'}
+            {activeScope === 'q3' && '📊 កំពុងបង្ហាញ ៖ ផែនការត្រីមាសទី៣ (២ខែ) • បង្ហាញតារាងទី៣'}
+            {activeScope === 'q4' && '📊 កំពុងបង្ហាញ ៖ ផែនការត្រីមាសទី៤ (២ខែចុងក្រោយ & ចុងឆ្នាំ) • បង្ហាញតារាងទី៤'}
+            {activeScope === '1y' && '🏆 កំពុងបង្ហាញ ៖ ផែនការ ១ឆ្នាំ (ឆ្នាំទី១ - គោលដៅ ABC ៣២%) • តារាងពេញ ១ឆ្នាំសិក្សា'}
+            {activeScope === '3y' && '⏳ កំពុងបង្ហាញ ៖ ផែនការ ៣ឆ្នាំ • ទុកអភិវឌ្ឍន៍ពេលក្រោយ'}
+            {activeScope === '6y' && '⏳ កំពុងបង្ហាញ ៖ ផែនការ ៦ឆ្នាំ • ទុកអភិវឌ្ឍន៍ពេលក្រោយ'}
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={() => setActiveScope('all')}
+          className="text-xs text-blue-700 hover:text-blue-900 font-bold underline cursor-pointer whitespace-nowrap"
+        >
+          ត្រឡប់ទៅផែនការទូទៅ
+        </button>
+      </div>
 
       {/* Official Plan Sheet Container (Matches Excel Template Exactly for Display & Print) */}
       <div className="official-sheet bg-white rounded-2xl p-4 sm:p-6 lg:p-8 border border-slate-200 shadow-sm print:p-0 print:border-none print:shadow-none space-y-2">
@@ -2014,19 +2106,19 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
         ) : (
           <>
             {/* Table 1: ត្រីមាសទី ១ */}
-            {(activeScope === 'all' || activeScope === 'q1' || activeScope === '1y') &&
+            {(activeScope === 'q1' || activeScope === '1y') &&
               renderTableBlock('តារាងទី ១ (ត្រីមាសទី១)', plan.monthCols?.table1 || TABLE_1_MONTHS, 'table1')}
 
             {/* Table 2: ត្រីមាសទី ២ */}
-            {(activeScope === 'all' || activeScope === 'q2' || activeScope === '1y') &&
+            {(activeScope === 'q2' || activeScope === '1y') &&
               renderTableBlock('តារាងទី ២ (ត្រីមាសទី២)', plan.monthCols?.table2 || TABLE_2_MONTHS, 'table2')}
 
             {/* Table 3: ត្រីមាសទី ៣ */}
-            {(activeScope === 'all' || activeScope === 'q3' || activeScope === '1y') &&
+            {(activeScope === 'q3' || activeScope === '1y') &&
               renderTableBlock('តារាងទី ៣ (ត្រីមាសទី៣)', plan.monthCols?.table3 || TABLE_3_MONTHS, 'table3')}
 
             {/* Table 4: ត្រីមាសទី ៤ (បន្ថែមថ្មី) */}
-            {(activeScope === 'all' || activeScope === 'q4' || activeScope === '1y') &&
+            {(activeScope === 'q4' || activeScope === '1y') &&
               renderTableBlock('តារាងទី ៤ (ត្រីមាសទី៤)', plan.monthCols?.table4 || TABLE_4_MONTHS, 'table4')}
           </>
         )}
@@ -2053,6 +2145,8 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
           </div>
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 };
