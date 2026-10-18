@@ -21,7 +21,12 @@ export const TABLE_2_MONTHS: MonthColDef[] = [
 
 export const TABLE_3_MONTHS: MonthColDef[] = [
   { key: 'jun', monthName: 'ខែមិថុនា', actualName: 'ចុងខែកក្កដា' },
-  { key: 'jul', monthName: 'ខែកក្កដា', actualName: 'ចុងឆ្នាំ' },
+  { key: 'jul', monthName: 'ខែកក្កដា', actualName: 'ចុងខែសីហា' },
+];
+
+export const TABLE_4_MONTHS: MonthColDef[] = [
+  { key: 'aug', monthName: 'ខែសីហា', actualName: 'ចុងខែកញ្ញា' },
+  { key: 'sep', monthName: 'ខែកញ្ញា', actualName: 'ចុងឆ្នាំ' },
 ];
 
 export const KHMER_MONTH_LIST = [
@@ -49,10 +54,11 @@ export function generateMonthSequence(startMonthName: string): {
   table1: MonthColDef[];
   table2: MonthColDef[];
   table3: MonthColDef[];
+  table4: MonthColDef[];
 } {
   const startIdx = KHMER_MONTH_LIST.indexOf(startMonthName);
   const safeIdx = startIdx >= 0 ? startIdx : 11; // default 'ខែធ្នូ' (index 11)
-  const keys = ['dec', 'jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul'];
+  const keys = ['dec', 'jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep'];
 
   const getCol = (offset: number, key: string, isLast: boolean = false): MonthColDef => {
     const curMonth = KHMER_MONTH_LIST[(safeIdx + offset) % 12];
@@ -67,7 +73,8 @@ export function generateMonthSequence(startMonthName: string): {
   return {
     table1: [getCol(0, keys[0]), getCol(1, keys[1]), getCol(2, keys[2])],
     table2: [getCol(3, keys[3]), getCol(4, keys[4]), getCol(5, keys[5])],
-    table3: [getCol(6, keys[6]), getCol(7, keys[7], true)],
+    table3: [getCol(6, keys[6]), getCol(7, keys[7])],
+    table4: [getCol(8, keys[8]), getCol(9, keys[9], true)],
   };
 }
 
@@ -102,8 +109,8 @@ export function clearPlanAndActualData(plan: TeachingPlan): TeachingPlan {
     Object.keys(row.monthly || {}).forEach((k) => {
       newMonthly[k] = { planCount: 0, planPct: 0, actualCount: 0, actualPct: 0 };
     });
-    // Ensure all 8 standard keys exist
-    ['dec', 'jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul'].forEach((k) => {
+    // Ensure all 10 standard keys exist
+    ['dec', 'jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep'].forEach((k) => {
       newMonthly[k] = { planCount: 0, planPct: 0, actualCount: 0, actualPct: 0 };
     });
     return {
@@ -138,6 +145,7 @@ export const ALL_MONTH_KEYS = [
   ...TABLE_1_MONTHS,
   ...TABLE_2_MONTHS,
   ...TABLE_3_MONTHS,
+  ...TABLE_4_MONTHS,
 ];
 
 export const POPULAR_SUBJECTS = [
@@ -286,6 +294,8 @@ export function createDefaultTeachingPlan(
     may: { planCount: 0, planPct: 0, actualCount: 0, actualPct: 0 },
     jun: { planCount: 0, planPct: 0, actualCount: 0, actualPct: 0 },
     jul: { planCount: 0, planPct: 0, actualCount: 0, actualPct: 0 },
+    aug: { planCount: 0, planPct: 0, actualCount: 0, actualPct: 0 },
+    sep: { planCount: 0, planPct: 0, actualCount: 0, actualPct: 0 },
   };
 
   const defaultRows: TeachingPlanGradeRow[] = [
@@ -353,6 +363,7 @@ export function createDefaultTeachingPlan(
       table1: [...TABLE_1_MONTHS],
       table2: [...TABLE_2_MONTHS],
       table3: [...TABLE_3_MONTHS],
+      table4: [...TABLE_4_MONTHS],
     },
     updatedAt: new Date().toISOString(),
   };
@@ -576,6 +587,8 @@ export function exportTeachingPlanToExcel(plan: TeachingPlan) {
   appendTable('តារាងទី ២', plan.monthCols?.table2 || TABLE_2_MONTHS);
   // Table 3
   appendTable('តារាងទី ៣', plan.monthCols?.table3 || TABLE_3_MONTHS);
+  // Table 4
+  appendTable('តារាងទី ៤', plan.monthCols?.table4 || TABLE_4_MONTHS);
 
   // Bottom signatures
   aoa.push([]);

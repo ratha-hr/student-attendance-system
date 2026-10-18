@@ -249,7 +249,7 @@ export function App() {
           onOpenSettings={() => setIsSettingsOpen(true)}
           onOpenManageClasses={() => setIsManageClassesOpen(true)}
           onOpenSync={() => setIsSyncModalOpen(true)}
-          hideClassSelector={currentTab === 'teaching-plan'}
+          hideClassSelector={currentTab === 'teaching-plan' || (currentTab as string).startsWith('teaching-plan-')}
           currentTab={currentTab}
           onSelectTab={setCurrentTab}
         />
@@ -362,6 +362,8 @@ export function App() {
                   ? 'q2'
                   : currentTab === 'teaching-plan-q3'
                   ? 'q3'
+                  : currentTab === 'teaching-plan-q4'
+                  ? 'q4'
                   : currentTab === 'teaching-plan-1y'
                   ? '1y'
                   : currentTab === 'teaching-plan-3y'

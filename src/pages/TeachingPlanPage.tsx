@@ -27,6 +27,7 @@ import {
   TABLE_1_MONTHS,
   TABLE_2_MONTHS,
   TABLE_3_MONTHS,
+  TABLE_4_MONTHS,
   ALL_MONTH_KEYS,
   POPULAR_SUBJECTS,
   MODEL_SCHOOL_BENCHMARKS,
@@ -45,10 +46,11 @@ import {
   clearPlanAndActualData,
   isOldDummyPlan,
 } from '../utils/teachingPlanUtils';
+import { ALL_SUBJECTS } from '../utils/gradeCoefficients';
 import { triggerPrint, type PrintOrientation } from '../utils/printUtils';
 import { toKhmerNum } from '../utils/dateUtils';
 
-export type PlanScope = 'all' | 'q1' | 'q2' | 'q3' | '1y' | '3y' | '6y';
+export type PlanScope = 'all' | 'q1' | 'q2' | 'q3' | 'q4' | '1y' | '3y' | '6y';
 
 interface TeachingPlanPageProps {
   classes: ClassRoom[];
@@ -128,6 +130,114 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
     const planKey = `teaching_plan_${activeClass?.id || 'default'}_${selectedSubject}`;
     const loadPlan = async () => {
       try {
+        const allGrades = activeClass ? await db.grades.where('classId').equals(activeClass.id).toArray() : [];
+
+        const applyGradesToPlan = (targetPlan: TeachingPlan): TeachingPlan => {
+          if (!allGrades || allGrades.length === 0) return targetPlan;
+
+          const subjectObj = ALL_SUBJECTS.find(
+            (s) => s.name === selectedSubject || s.id === selectedSubject
+          );
+          const subjectId = subjectObj?.id || selectedSubject;
+          const subjectName = subjectObj?.name || selectedSubject;
+
+          const getScore = (rec: any): number => {
+            const raw =
+              rec.scores?.[selectedSubject] ??
+              rec.scores?.[subjectName] ??
+              rec.scores?.[subjectId] ??
+              rec.scores?.[selectedSubject.toLowerCase()] ??
+              rec.finalTotal100 ??
+              rec.assessmentTotal ??
+              0;
+            return Number(raw) || 0;
+          };
+
+          const toGrade = (score: number): 'A' | 'B' | 'C' | 'D' | 'E' | 'F' => {
+            if (score <= 50 && score > 0 && selectedSubject.includes('ពលរដ្ឋ')) {
+              if (score >= 45) return 'A';
+              if (score >= 40) return 'B';
+              if (score >= 35) return 'C';
+              if (score >= 30) return 'D';
+              if (score >= 25) return 'E';
+              return 'F';
+            }
+            if (score >= 90) return 'A';
+            if (score >= 80) return 'B';
+            if (score >= 71) return 'C';
+            if (score >= 61) return 'D';
+            if (score >= 51) return 'E';
+            return 'F';
+          };
+
+          const total = targetPlan.totalStudents || 1;
+          const newRows = [...targetPlan.rows];
+
+          // 1. Pull Baseline from 'តេស្តដើមឆ្នាំ'
+          const diagRecords = allGrades.filter(
+            (g) =>
+              g.month === 'តេស្តដើមឆ្នាំ' ||
+              g.month?.includes('តេស្តដើមឆ្នាំ') ||
+              g.month?.includes('ដើមឆ្នាំ')
+          );
+
+          if (diagRecords.length > 0) {
+            const diagCounts: Record<string, number> = { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 };
+            diagRecords.forEach((rec) => {
+              const score = getScore(rec);
+              const g = toGrade(score);
+              diagCounts[g]++;
+            });
+            const diagCountArr = newRows.map((r) => diagCounts[r.grade] || 0);
+            const diagPctArr = calculateBalancedPercentages(diagCountArr, total);
+            newRows.forEach((r, idx) => {
+              r.baselineCount = diagCountArr[idx];
+              r.baselinePct = diagPctArr[idx];
+            });
+          }
+
+          // 2. Pull Monthly Actuals
+          const allCols = [
+            ...(targetPlan.monthCols?.table1 || TABLE_1_MONTHS),
+            ...(targetPlan.monthCols?.table2 || TABLE_2_MONTHS),
+            ...(targetPlan.monthCols?.table3 || TABLE_3_MONTHS),
+            ...(targetPlan.monthCols?.table4 || TABLE_4_MONTHS),
+          ];
+
+          allCols.forEach((col) => {
+            const cleanColMonth = col.monthName.replace(/^ខែ\s*/, '').trim();
+            const monthRecords = allGrades.filter((g) => {
+              if (!g.month || g.month.includes('តេស្តដើមឆ្នាំ') || g.month.includes('ដើមឆ្នាំ')) return false;
+              const cleanGMonth = g.month.replace(/^ខែ\s*/, '').trim();
+              return (
+                cleanGMonth === cleanColMonth ||
+                g.month === col.monthName ||
+                g.month.includes(cleanColMonth)
+              );
+            });
+
+            if (monthRecords.length > 0) {
+              const counts: Record<string, number> = { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 };
+              monthRecords.forEach((rec) => {
+                const score = getScore(rec);
+                const g = toGrade(score);
+                counts[g]++;
+              });
+              const mCountArr = newRows.map((r) => counts[r.grade] || 0);
+              const mPctArr = calculateBalancedPercentages(mCountArr, total);
+              newRows.forEach((r, idx) => {
+                r.monthly[col.key] = {
+                  ...(r.monthly[col.key] || { planCount: 0, planPct: 0 }),
+                  actualCount: mCountArr[idx],
+                  actualPct: mPctArr[idx],
+                };
+              });
+            }
+          });
+
+          return { ...targetPlan, rows: newRows };
+        };
+
         const fromDb = await db.teachingPlans
           .where('classId')
           .equals(activeClass?.id || '')
@@ -137,8 +247,16 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
         if (fromDb) {
           if (isOldDummyPlan(fromDb)) {
             const cleaned = clearPlanAndActualData(fromDb);
-            await db.teachingPlans.put(cleaned);
-            setPlan(cleaned);
+            const autoPopulated = applyGradesToPlan(cleaned);
+            await db.teachingPlans.put(autoPopulated);
+            setPlan(autoPopulated);
+            return;
+          }
+          // If baseline counts are all 0 and grades exist, auto-pull baseline
+          const isBaselineZero = fromDb.rows.every((r) => (r.baselineCount || 0) === 0);
+          if (isBaselineZero && allGrades.length > 0) {
+            const autoPopulated = applyGradesToPlan(fromDb);
+            setPlan(autoPopulated);
             return;
           }
           setPlan(fromDb);
@@ -150,18 +268,26 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
           const parsed = JSON.parse(savedLocal);
           if (isOldDummyPlan(parsed)) {
             const cleaned = clearPlanAndActualData(parsed);
-            localStorage.setItem(planKey, JSON.stringify(cleaned));
-            setPlan(cleaned);
+            const autoPopulated = applyGradesToPlan(cleaned);
+            localStorage.setItem(planKey, JSON.stringify(autoPopulated));
+            setPlan(autoPopulated);
+            return;
+          }
+          const isBaselineZero = parsed.rows.every((r: any) => (r.baselineCount || 0) === 0);
+          if (isBaselineZero && allGrades.length > 0) {
+            const autoPopulated = applyGradesToPlan(parsed);
+            setPlan(autoPopulated);
             return;
           }
           setPlan(parsed);
           return;
         }
 
-        // Initialize default
+        // Initialize default and auto-pull from db.grades
         const newPlan = createDefaultTeachingPlan(activeClass, classTotal, classFemales, settings);
         newPlan.subject = selectedSubject;
-        setPlan(newPlan);
+        const populated = applyGradesToPlan(newPlan);
+        setPlan(populated);
       } catch (err) {
         console.error('Error loading teaching plan:', err);
       }
@@ -297,7 +423,7 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
 
   // Handler for changing month name in column header
   const handleMonthNameChange = (
-    tableKey: 'table1' | 'table2' | 'table3',
+    tableKey: 'table1' | 'table2' | 'table3' | 'table4',
     colKey: string,
     newMonthName: string
   ) => {
@@ -306,12 +432,13 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
         table1: prev.monthCols?.table1 || TABLE_1_MONTHS,
         table2: prev.monthCols?.table2 || TABLE_2_MONTHS,
         table3: prev.monthCols?.table3 || TABLE_3_MONTHS,
+        table4: prev.monthCols?.table4 || TABLE_4_MONTHS,
       };
 
       const targetList = [...curCols[tableKey]];
       const colIdx = targetList.findIndex((m) => m.key === colKey);
       if (colIdx !== -1) {
-        const isVeryLast = tableKey === 'table3' && colIdx === targetList.length - 1;
+        const isVeryLast = tableKey === 'table4' && colIdx === targetList.length - 1;
         const nxt = getNextKhmerMonth(newMonthName);
         const newActual = isVeryLast ? 'ចុងឆ្នាំ' : `ចុង${nxt}`;
 
@@ -339,7 +466,7 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
 
   // Handler for customizing month-end actual title
   const handleActualNameChange = (
-    tableKey: 'table1' | 'table2' | 'table3',
+    tableKey: 'table1' | 'table2' | 'table3' | 'table4',
     colKey: string,
     newActualName: string
   ) => {
@@ -348,6 +475,7 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
         table1: prev.monthCols?.table1 || TABLE_1_MONTHS,
         table2: prev.monthCols?.table2 || TABLE_2_MONTHS,
         table3: prev.monthCols?.table3 || TABLE_3_MONTHS,
+        table4: prev.monthCols?.table4 || TABLE_4_MONTHS,
       };
 
       const targetList = [...curCols[tableKey]];
@@ -475,7 +603,7 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
       });
 
       // 2. Distribute monthly plan targets progressively from baseline to yearEndTarget
-      const months = ['dec', 'jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul'];
+      const months = ['dec', 'jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep'];
       months.forEach((mKey, mIdx) => {
         const factor = (mIdx + 1) / months.length;
         const rawPcts: number[] = newRows.map((r) => {
@@ -526,7 +654,7 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
       });
 
       // 2. Balance Months
-      const months = ['dec', 'jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul'];
+      const months = ['dec', 'jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep'];
       months.forEach((mKey) => {
         const planPcts = newRows.map((r) => r.monthly[mKey]?.planPct || 0);
         const balancedPlan = balancePctList(planPcts);
@@ -579,6 +707,46 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
       let filledCount = 0;
       let pulledBaseline = false;
 
+      // Find matching subject definition (both Khmer name and English id)
+      const subjectObj = ALL_SUBJECTS.find(
+        (s) => s.name === selectedSubject || s.id === selectedSubject
+      );
+      const subjectId = subjectObj?.id || selectedSubject;
+      const subjectName = subjectObj?.name || selectedSubject;
+
+      // Helper to extract score from record
+      const getScoreFromRec = (rec: any): number => {
+        const raw =
+          rec.scores?.[selectedSubject] ??
+          rec.scores?.[subjectName] ??
+          rec.scores?.[subjectId] ??
+          rec.scores?.[selectedSubject.toLowerCase()] ??
+          rec.finalTotal100 ??
+          rec.assessmentTotal ??
+          0;
+        return Number(raw) || 0;
+      };
+
+      // Helper to convert score to A-F grade based on MoEYS rubric
+      const scoreToGrade = (score: number): 'A' | 'B' | 'C' | 'D' | 'E' | 'F' => {
+        // If score is on 50-scale (max <= 50)
+        if (score <= 50 && score > 0 && selectedSubject.includes('ពលរដ្ឋ')) {
+          if (score >= 45) return 'A';
+          if (score >= 40) return 'B';
+          if (score >= 35) return 'C';
+          if (score >= 30) return 'D';
+          if (score >= 25) return 'E';
+          return 'F';
+        }
+        // Standard 100-scale
+        if (score >= 90) return 'A';
+        if (score >= 80) return 'B';
+        if (score >= 71) return 'C';
+        if (score >= 61) return 'D';
+        if (score >= 51) return 'E';
+        return 'F';
+      };
+
       setPlan((prev) => {
         const total = prev.totalStudents || 1;
         const newRows = [...prev.rows];
@@ -595,18 +763,9 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
           pulledBaseline = true;
           const diagCounts: Record<string, number> = { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 };
           diagRecords.forEach((rec) => {
-            const score =
-              rec.scores?.[selectedSubject] ??
-              rec.scores?.[selectedSubject.toLowerCase()] ??
-              rec.finalTotal100 ??
-              0;
-
-            if (score >= 90) diagCounts.A++;
-            else if (score >= 80) diagCounts.B++;
-            else if (score >= 71) diagCounts.C++;
-            else if (score >= 61) diagCounts.D++;
-            else if (score >= 51) diagCounts.E++;
-            else diagCounts.F++;
+            const score = getScoreFromRec(rec);
+            const g = scoreToGrade(score);
+            diagCounts[g]++;
           });
 
           const diagCountArr = newRows.map((r) => diagCounts[r.grade] || 0);
@@ -617,17 +776,18 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
           });
         }
 
-        // 2. Pull Monthly Actuals for each month column in plan
+        // 2. Pull Monthly Actuals for each month column in plan (Tables 1, 2, 3, 4)
         const allCols = [
           ...(prev.monthCols?.table1 || TABLE_1_MONTHS),
           ...(prev.monthCols?.table2 || TABLE_2_MONTHS),
           ...(prev.monthCols?.table3 || TABLE_3_MONTHS),
+          ...(prev.monthCols?.table4 || TABLE_4_MONTHS),
         ];
 
         allCols.forEach((col) => {
           const cleanColMonth = col.monthName.replace(/^ខែ\s*/, '').trim();
           const monthRecords = allGrades.filter((g) => {
-            if (!g.month || g.month.includes('តេស្តដើមឆ្នាំ')) return false;
+            if (!g.month || g.month.includes('តេស្តដើមឆ្នាំ') || g.month.includes('ដើមឆ្នាំ')) return false;
             const cleanGMonth = g.month.replace(/^ខែ\s*/, '').trim();
             return (
               cleanGMonth === cleanColMonth ||
@@ -640,18 +800,9 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
             filledCount++;
             const counts: Record<string, number> = { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 };
             monthRecords.forEach((rec) => {
-              const score =
-                rec.scores?.[selectedSubject] ??
-                rec.scores?.[selectedSubject.toLowerCase()] ??
-                rec.finalTotal100 ??
-                0;
-
-              if (score >= 90) counts.A++;
-              else if (score >= 80) counts.B++;
-              else if (score >= 71) counts.C++;
-              else if (score >= 61) counts.D++;
-              else if (score >= 51) counts.E++;
-              else counts.F++;
+              const score = getScoreFromRec(rec);
+              const g = scoreToGrade(score);
+              counts[g]++;
             });
 
             const mCountArr = newRows.map((r) => counts[r.grade] || 0);
@@ -697,33 +848,125 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
     showToast('បានទាញយកឯកសារ Excel (.xlsx) រួចរាល់!');
   };
 
-  // Helper to render count cell (black font)
+  // Excel-identical keyboard navigation handler (Enter down, Shift+Enter up, Tab right, Shift+Tab left, Arrow keys)
+  const handleCellKeyDown = (
+    e: React.KeyboardEvent<HTMLInputElement>,
+    tableKey: string,
+    rowIdx: number,
+    colIdx: number,
+    maxCols: number
+  ) => {
+    let nextRow = rowIdx;
+    let nextCol = colIdx;
+    let shouldNavigate = false;
+
+    if (e.key === 'Enter') {
+      shouldNavigate = true;
+      if (e.shiftKey) {
+        nextRow = rowIdx > 0 ? rowIdx - 1 : 5;
+      } else {
+        nextRow = rowIdx < 5 ? rowIdx + 1 : 0;
+      }
+    } else if (e.key === 'Tab') {
+      shouldNavigate = true;
+      if (e.shiftKey) {
+        if (colIdx > 0) {
+          nextCol = colIdx - 1;
+        } else if (rowIdx > 0) {
+          nextRow = rowIdx - 1;
+          nextCol = maxCols - 1;
+        } else {
+          nextRow = 5;
+          nextCol = maxCols - 1;
+        }
+      } else {
+        if (colIdx < maxCols - 1) {
+          nextCol = colIdx + 1;
+        } else if (rowIdx < 5) {
+          nextRow = rowIdx + 1;
+          nextCol = 0;
+        } else {
+          nextRow = 0;
+          nextCol = 0;
+        }
+      }
+    } else if (e.key === 'ArrowDown') {
+      shouldNavigate = true;
+      nextRow = Math.min(5, rowIdx + 1);
+    } else if (e.key === 'ArrowUp') {
+      shouldNavigate = true;
+      nextRow = Math.max(0, rowIdx - 1);
+    } else if (e.key === 'ArrowRight') {
+      const input = e.currentTarget;
+      const atEnd = input.selectionEnd === input.value.length;
+      const allSelected = input.selectionStart === 0 && input.selectionEnd === input.value.length;
+      if ((atEnd || allSelected) && colIdx < maxCols - 1) {
+        shouldNavigate = true;
+        nextCol = colIdx + 1;
+      }
+    } else if (e.key === 'ArrowLeft') {
+      const input = e.currentTarget;
+      const atStart = input.selectionStart === 0;
+      const allSelected = input.selectionStart === 0 && input.selectionEnd === input.value.length;
+      if ((atStart || allSelected) && colIdx > 0) {
+        shouldNavigate = true;
+        nextCol = colIdx - 1;
+      }
+    }
+
+    if (shouldNavigate) {
+      e.preventDefault();
+      const targetId = `plan-cell-${tableKey}-${nextRow}-${nextCol}`;
+      const nextElem = document.getElementById(targetId) as HTMLInputElement | null;
+      if (nextElem) {
+        nextElem.focus();
+        nextElem.select();
+      }
+    }
+  };
+
+  // Helper to render count cell (black font) with Excel-identical navigation
   const renderCountCell = (
     value: number,
+    tableKey: string,
+    rowIdx: number,
+    colIdx: number,
+    maxCols: number,
     onChange: (val: number) => void
-  ) => (
-    <td className="border border-black p-0 text-center font-bold font-mono text-black text-xs print:text-[8.5px]">
-      <div className="flex items-center justify-center w-full h-full min-h-[26px] print:hidden">
-        <input
-          type="number"
-          min={0}
-          value={value}
-          onChange={(e) => onChange(parseInt(e.target.value) || 0)}
-          className="w-full text-center font-mono font-bold text-black text-xs bg-transparent border-none outline-none p-0 focus:bg-amber-100 rounded"
-        />
-      </div>
-      <span className="hidden print:inline-block font-bold font-mono text-black text-[11px] print:text-[8.5px]">
-        {value}
-      </span>
-    </td>
-  );
+  ) => {
+    const cellId = `plan-cell-${tableKey}-${rowIdx}-${colIdx}`;
+    return (
+      <td className="border border-black p-0 text-center font-bold font-mono text-black text-xs print:text-[8.5px]">
+        <div className="flex items-center justify-center w-full h-full min-h-[26px] print:hidden">
+          <input
+            id={cellId}
+            type="number"
+            min={0}
+            value={value}
+            onChange={(e) => onChange(parseInt(e.target.value) || 0)}
+            onFocus={(e) => e.target.select()}
+            onKeyDown={(e) => handleCellKeyDown(e, tableKey, rowIdx, colIdx, maxCols)}
+            className="w-full text-center font-mono font-bold text-black text-xs bg-transparent border-none outline-none p-0 focus:bg-amber-100 rounded"
+          />
+        </div>
+        <span className="hidden print:inline-block font-bold font-mono text-black text-[11px] print:text-[8.5px]">
+          {value}
+        </span>
+      </td>
+    );
+  };
 
-  // Helper to render percentage cell (red font) with >100% warning
+  // Helper to render percentage cell (red font) with >100% warning and Excel-identical navigation
   const renderPercentCell = (
     value: number,
+    tableKey: string,
+    rowIdx: number,
+    colIdx: number,
+    maxCols: number,
     onChange: (val: number) => void
   ) => {
     const isOver100 = value > 100;
+    const cellId = `plan-cell-${tableKey}-${rowIdx}-${colIdx}`;
     return (
       <td
         className={`border border-black p-0 text-center font-bold font-mono text-xs print:text-[8.5px] ${
@@ -738,10 +981,13 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
             </span>
           )}
           <input
+            id={cellId}
             type="number"
             min={0}
             value={value}
             onChange={(e) => onChange(parseInt(e.target.value) || 0)}
+            onFocus={(e) => e.target.select()}
+            onKeyDown={(e) => handleCellKeyDown(e, tableKey, rowIdx, colIdx, maxCols)}
             className={`w-7 text-right font-mono font-bold text-xs bg-transparent border-none outline-none p-0 rounded ${
               isOver100 ? 'text-rose-700 font-black' : 'text-red-600'
             } focus:bg-amber-100`}
@@ -755,15 +1001,20 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
     );
   };
 
-  // Helper to render year-end target percentage cell (golden yellow for A, B, C; black text) with >100% warning
+  // Helper to render year-end target percentage cell with Excel-identical navigation
   const renderTargetCell = (
     value: number,
     grade: string,
+    tableKey: string,
+    rowIdx: number,
+    colIdx: number,
+    maxCols: number,
     onChange: (val: number) => void
   ) => {
     const isHighGrade = ['A', 'B', 'C'].includes(grade);
     const isOver100 = value > 100;
     const bgClass = isOver100 ? 'bg-rose-100 ring-2 ring-rose-500 ring-inset' : isHighGrade ? 'bg-[#FFC000]' : 'bg-white';
+    const cellId = `plan-cell-${tableKey}-${rowIdx}-${colIdx}`;
     return (
       <td
         className={`border border-black p-0 text-center font-bold font-mono text-xs print:text-[8.5px] ${bgClass} ${
@@ -778,10 +1029,13 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
             </span>
           )}
           <input
+            id={cellId}
             type="number"
             min={0}
             value={value}
             onChange={(e) => onChange(parseInt(e.target.value) || 0)}
+            onFocus={(e) => e.target.select()}
+            onKeyDown={(e) => handleCellKeyDown(e, tableKey, rowIdx, colIdx, maxCols)}
             className={`w-7 text-right font-mono font-bold text-xs bg-transparent border-none outline-none p-0 focus:bg-amber-100 rounded ${
               isOver100 ? 'text-rose-700 font-black' : 'text-black'
             }`}
@@ -799,7 +1053,7 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
   const renderTableBlock = (
     title: string,
     months: MonthColDef[],
-    tableKey: 'table1' | 'table2' | 'table3'
+    tableKey: 'table1' | 'table2' | 'table3' | 'table4'
   ) => {
     const baselineTotals = calculateTotals(
       plan.rows,
@@ -810,6 +1064,7 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
     const yearTargetTotal = plan.rows.reduce((sum, r) => sum + (r.yearEndTargetPct || 0), 0);
     const totalCols = 1 + 2 + months.length * 4 + 1;
     const is3Months = months.length === 3;
+    const maxCols = 2 + months.length * 4 + 1;
 
     return (
       <div className="overflow-x-auto mb-3.5 print:mb-2.5 print:overflow-visible break-inside-avoid">
@@ -923,56 +1178,93 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
           </thead>
 
           <tbody>
-            {plan.rows.map((row) => (
+            {plan.rows.map((row, rowIdx) => (
               <tr key={row.grade} className="bg-white hover:bg-slate-50/50 transition-colors">
                 {/* Grade */}
                 <td className="border border-black px-2 py-1 font-bold text-black text-xs text-center">
                   {row.grade}
                 </td>
 
-                {/* Baseline Count (Black) */}
-                {renderCountCell(row.baselineCount, (val) =>
-                  handleBaselineCountChange(row.grade, val)
+                {/* Baseline Count (Black) - Col 0 */}
+                {renderCountCell(
+                  row.baselineCount,
+                  tableKey,
+                  rowIdx,
+                  0,
+                  maxCols,
+                  (val) => handleBaselineCountChange(row.grade, val)
                 )}
 
-                {/* Baseline % (Red) */}
-                {renderPercentCell(row.baselinePct, (val) =>
-                  handleBaselinePctChange(row.grade, val)
+                {/* Baseline % (Red) - Col 1 */}
+                {renderPercentCell(
+                  row.baselinePct,
+                  tableKey,
+                  rowIdx,
+                  1,
+                  maxCols,
+                  (val) => handleBaselinePctChange(row.grade, val)
                 )}
 
                 {/* Months Data */}
-                {months.map((m) => {
+                {months.map((m, mIdx) => {
                   const d = row.monthly[m.key] || {
                     planCount: 0,
                     planPct: 0,
                     actualCount: 0,
                     actualPct: 0,
                   };
+                  const baseCol = 2 + mIdx * 4;
                   return (
                     <React.Fragment key={m.key}>
                       {/* Plan Count */}
-                      {renderCountCell(d.planCount, (val) =>
-                        handleMonthCellChange(row.grade, m.key, 'planCount', val)
+                      {renderCountCell(
+                        d.planCount,
+                        tableKey,
+                        rowIdx,
+                        baseCol + 0,
+                        maxCols,
+                        (val) => handleMonthCellChange(row.grade, m.key, 'planCount', val)
                       )}
                       {/* Plan % */}
-                      {renderPercentCell(d.planPct, (val) =>
-                        handleMonthCellChange(row.grade, m.key, 'planPct', val)
+                      {renderPercentCell(
+                        d.planPct,
+                        tableKey,
+                        rowIdx,
+                        baseCol + 1,
+                        maxCols,
+                        (val) => handleMonthCellChange(row.grade, m.key, 'planPct', val)
                       )}
                       {/* Actual Count */}
-                      {renderCountCell(d.actualCount, (val) =>
-                        handleMonthCellChange(row.grade, m.key, 'actualCount', val)
+                      {renderCountCell(
+                        d.actualCount,
+                        tableKey,
+                        rowIdx,
+                        baseCol + 2,
+                        maxCols,
+                        (val) => handleMonthCellChange(row.grade, m.key, 'actualCount', val)
                       )}
                       {/* Actual % */}
-                      {renderPercentCell(d.actualPct, (val) =>
-                        handleMonthCellChange(row.grade, m.key, 'actualPct', val)
+                      {renderPercentCell(
+                        d.actualPct,
+                        tableKey,
+                        rowIdx,
+                        baseCol + 3,
+                        maxCols,
+                        (val) => handleMonthCellChange(row.grade, m.key, 'actualPct', val)
                       )}
                     </React.Fragment>
                   );
                 })}
 
-                {/* Year-End Target % */}
-                {renderTargetCell(row.yearEndTargetPct, row.grade, (val) =>
-                  handleYearEndTargetChange(row.grade, val)
+                {/* Year-End Target % - Col maxCols - 1 */}
+                {renderTargetCell(
+                  row.yearEndTargetPct,
+                  row.grade,
+                  tableKey,
+                  rowIdx,
+                  maxCols - 1,
+                  maxCols,
+                  (val) => handleYearEndTargetChange(row.grade, val)
                 )}
               </tr>
             ))}
@@ -1478,6 +1770,7 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
             { id: 'q1' as PlanScope, label: 'ត្រីមាសទី១' },
             { id: 'q2' as PlanScope, label: 'ត្រីមាសទី២' },
             { id: 'q3' as PlanScope, label: 'ត្រីមាសទី៣' },
+            { id: 'q4' as PlanScope, label: 'ត្រីមាសទី៤' },
             { id: '1y' as PlanScope, label: 'ផែនការ ១ឆ្នាំ' },
             { id: '3y' as PlanScope, label: 'ផែនការ ៣ឆ្នាំ' },
             { id: '6y' as PlanScope, label: 'ផែនការ ៦ឆ្នាំ' },
@@ -1514,10 +1807,11 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
             <span>
               {activeScope === 'q1' && '📊 កំពុងបង្ហាញ ៖ ផែនការត្រីមាសទី១ (៣ខែដំបូង) • បង្ហាញតារាងទី១'}
               {activeScope === 'q2' && '📊 កំពុងបង្ហាញ ៖ ផែនការត្រីមាសទី២ (៣ខែបន្ទាប់) • បង្ហាញតារាងទី២'}
-              {activeScope === 'q3' && '📊 កំពុងបង្ហាញ ៖ ផែនការត្រីមាសទី៣ (២ខែចុងក្រោយ & ចុងឆ្នាំ) • បង្ហាញតារាងទី៣'}
+              {activeScope === 'q3' && '📊 កំពុងបង្ហាញ ៖ ផែនការត្រីមាសទី៣ (២ខែ) • បង្ហាញតារាងទី៣'}
+              {activeScope === 'q4' && '📊 កំពុងបង្ហាញ ៖ ផែនការត្រីមាសទី៤ (២ខែចុងក្រោយ & ចុងឆ្នាំ) • បង្ហាញតារាងទី៤'}
               {activeScope === '1y' && '🏆 កំពុងបង្ហាញ ៖ ផែនការ ១ឆ្នាំ (ឆ្នាំទី១ - គោលដៅ ABC ៣២%) • តារាងពេញ ១ឆ្នាំសិក្សា'}
-              {activeScope === '3y' && '🏆 កំពុងបង្ហាញ ៖ ផែនការ ៣ឆ្នាំ (ឆ្នាំទី៣ - គោលដៅ ABC ៤០%) • តារាងផែនការ និងគោលដៅ ៣ឆ្នាំ'}
-              {activeScope === '6y' && '🏆 កំពុងបង្ហាញ ៖ ផែនការ ៦ឆ្នាំ (ឆ្នាំទី៦ - គោលដៅ ABC ៨០% សាលារៀនគំរូ) • ម៉ាទ្រីសយុទ្ធសាស្ត្រគំរូពេញលេញ'}
+              {activeScope === '3y' && '⏳ កំពុងបង្ហាញ ៖ ផែនការ ៣ឆ្នាំ • ទុកអភិវឌ្ឍន៍ពេលក្រោយ'}
+              {activeScope === '6y' && '⏳ កំពុងបង្ហាញ ៖ ផែនការ ៦ឆ្នាំ • ទុកអភិវឌ្ឍន៍ពេលក្រោយ'}
             </span>
           </div>
           <button
@@ -1673,52 +1967,76 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
           </div>
         </div>
 
-        {/* Score Rubric Box (Exact 2-Row Bordered Table from Screenshot) */}
-        <div className="overflow-x-auto my-2.5 print:my-2 print:overflow-visible break-inside-avoid">
-          <table className="w-full table-fixed text-center border-collapse border border-black text-[11px] print:text-[8px]">
-            <colgroup>
-              <col style={{ width: '16%' }} />
-              <col style={{ width: '14%' }} />
-              <col style={{ width: '14%' }} />
-              <col style={{ width: '14%' }} />
-              <col style={{ width: '14%' }} />
-              <col style={{ width: '14%' }} />
-              <col style={{ width: '14%' }} />
-            </colgroup>
-            <tbody>
-              <tr className="bg-white">
-                <td className="border border-black px-1.5 py-0.5 print:px-1 print:py-0.5 font-bold text-black">កម្រិតពិន្ទុ</td>
-                <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black">F ក្រោម ៥០ ពិន្ទុ</td>
-                <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black">E ពី ៥១ - ៦០ ពិន្ទុ</td>
-                <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black">D ពី ៦១ - ៧០ ពិន្ទុ</td>
-                <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black">C ពី ៧១ - ៧៩ ពិន្ទុ</td>
-                <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black">B ពី ៨០ - ៨៩ ពិន្ទុ</td>
-                <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black font-bold">A ពី ៩០ - ១០០ ពិន្ទុ</td>
-              </tr>
-              <tr className="bg-white">
-                <td className="border border-black px-1.5 py-0.5 print:px-1 print:py-0.5 font-bold text-black">កម្រិតពិន្ទុ</td>
-                <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black">F ក្រោម ២៥ ពិន្ទុ</td>
-                <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black">E ពី ២៥ - ២៩ ពិន្ទុ</td>
-                <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black">D ពី ៣០ - ៣៤ ពិន្ទុ</td>
-                <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black">C ពី ៣៥ - ៣៩ ពិន្ទុ</td>
-                <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black">B ពី ៤០ - ៤៤ ពិន្ទុ</td>
-                <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black font-bold">A ពី ៤៥ - ៥០ ពិន្ទុ</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        {/* If activeScope is 3y or 6y: show clean "ទុកអភិវឌ្ឍន៍ពេលក្រោយ" notice and hide tables as requested */}
+        {activeScope === '3y' || activeScope === '6y' ? (
+          <div className="bg-amber-50/70 border-2 border-dashed border-amber-300 rounded-2xl p-12 text-center my-6 space-y-3">
+            <div className="w-16 h-16 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center mx-auto text-3xl shadow-xs">
+              ⏳
+            </div>
+            <h3 className="font-moul text-base text-amber-950">
+              {activeScope === '3y' ? 'ផែនការបង្រៀន ៣ឆ្នាំ' : 'ផែនការបង្រៀន ៦ឆ្នាំ'}
+            </h3>
+            <p className="text-sm font-bold text-amber-800">
+              ខ្លឹមសារនេះត្រូវបានដកចេញជាបណ្ដោះអាសន្ន និង «ទុកអភិវឌ្ឍន៍ពេលក្រោយ»
+            </p>
+            <p className="text-xs text-slate-500 max-w-md mx-auto">
+              ផ្នែកនេះនឹងត្រូវអភិវឌ្ឍបន្ថែមឱ្យកាន់តែសម្បូរបែប ស្របតាមទិសដៅយុទ្ធសាស្ត្រ និងគោលការណ៍ណែនាំថ្មីៗរបស់ក្រសួងអប់រំ យុវជន និងកីឡា។
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Score Rubric Box (Exact 2-Row Bordered Table from Screenshot) */}
+            <div className="overflow-x-auto my-2.5 print:my-2 print:overflow-visible break-inside-avoid">
+              <table className="w-full table-fixed text-center border-collapse border border-black text-[11px] print:text-[8px]">
+                <colgroup>
+                  <col style={{ width: '16%' }} />
+                  <col style={{ width: '14%' }} />
+                  <col style={{ width: '14%' }} />
+                  <col style={{ width: '14%' }} />
+                  <col style={{ width: '14%' }} />
+                  <col style={{ width: '14%' }} />
+                  <col style={{ width: '14%' }} />
+                </colgroup>
+                <tbody>
+                  <tr className="bg-white">
+                    <td className="border border-black px-1.5 py-0.5 print:px-1 print:py-0.5 font-bold text-black">កម្រិតពិន្ទុ</td>
+                    <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black">F ក្រោម ៥០ ពិន្ទុ</td>
+                    <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black">E ពី ៥១ - ៦០ ពិន្ទុ</td>
+                    <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black">D ពី ៦១ - ៧០ ពិន្ទុ</td>
+                    <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black">C ពី ៧១ - ៧៩ ពិន្ទុ</td>
+                    <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black">B ពី ៨០ - ៨៩ ពិន្ទុ</td>
+                    <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black font-bold">A ពី ៩០ - ១០០ ពិន្ទុ</td>
+                  </tr>
+                  <tr className="bg-white">
+                    <td className="border border-black px-1.5 py-0.5 print:px-1 print:py-0.5 font-bold text-black">កម្រិតពិន្ទុ</td>
+                    <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black">F ក្រោម ២៥ ពិន្ទុ</td>
+                    <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black">E ពី ២៥ - ២៩ ពិន្ទុ</td>
+                    <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black">D ពី ៣០ - ៣៤ ពិន្ទុ</td>
+                    <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black">C ពី ៣៥ - ៣៩ ពិន្ទុ</td>
+                    <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black">B ពី ៤០ - ៤៤ ពិន្ទុ</td>
+                    <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black font-bold">A ពី ៤៥ - ៥០ ពិន្ទុ</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
 
-        {/* Table 1: ត្រីមាសទី ១ */}
-        {(activeScope === 'all' || activeScope === 'q1' || activeScope === '1y' || activeScope === '3y' || activeScope === '6y') &&
-          renderTableBlock('តារាងទី ១ (ត្រីមាសទី១)', plan.monthCols?.table1 || TABLE_1_MONTHS, 'table1')}
+            {/* Table 1: ត្រីមាសទី ១ */}
+            {(activeScope === 'all' || activeScope === 'q1' || activeScope === '1y') &&
+              renderTableBlock('តារាងទី ១ (ត្រីមាសទី១)', plan.monthCols?.table1 || TABLE_1_MONTHS, 'table1')}
 
-        {/* Table 2: ត្រីមាសទី ២ */}
-        {(activeScope === 'all' || activeScope === 'q2' || activeScope === '1y' || activeScope === '3y' || activeScope === '6y') &&
-          renderTableBlock('តារាងទី ២ (ត្រីមាសទី២)', plan.monthCols?.table2 || TABLE_2_MONTHS, 'table2')}
+            {/* Table 2: ត្រីមាសទី ២ */}
+            {(activeScope === 'all' || activeScope === 'q2' || activeScope === '1y') &&
+              renderTableBlock('តារាងទី ២ (ត្រីមាសទី២)', plan.monthCols?.table2 || TABLE_2_MONTHS, 'table2')}
 
-        {/* Table 3: បញ្ចប់ឆ្នាំសិក្សា / ត្រីមាសទី៣ */}
-        {(activeScope === 'all' || activeScope === 'q3' || activeScope === '1y' || activeScope === '3y' || activeScope === '6y') &&
-          renderTableBlock('តារាងទី ៣ (ត្រីមាសទី៣)', plan.monthCols?.table3 || TABLE_3_MONTHS, 'table3')}
+            {/* Table 3: ត្រីមាសទី ៣ */}
+            {(activeScope === 'all' || activeScope === 'q3' || activeScope === '1y') &&
+              renderTableBlock('តារាងទី ៣ (ត្រីមាសទី៣)', plan.monthCols?.table3 || TABLE_3_MONTHS, 'table3')}
+
+            {/* Table 4: ត្រីមាសទី ៤ (បន្ថែមថ្មី) */}
+            {(activeScope === 'all' || activeScope === 'q4' || activeScope === '1y') &&
+              renderTableBlock('តារាងទី ៤ (ត្រីមាសទី៤)', plan.monthCols?.table4 || TABLE_4_MONTHS, 'table4')}
+          </>
+        )}
 
         {/* Official Signatures (Kingdom of Cambodia Format) */}
         <div className="pt-5 pb-1 print:pt-4 print:pb-0 grid grid-cols-2 text-center text-xs text-black break-inside-avoid">

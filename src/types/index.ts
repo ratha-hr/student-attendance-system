@@ -225,6 +225,7 @@ export interface TeachingPlan {
     table1: TeachingPlanMonthDef[];
     table2: TeachingPlanMonthDef[];
     table3: TeachingPlanMonthDef[];
+    table4?: TeachingPlanMonthDef[];
   };
   updatedAt: string;
 }

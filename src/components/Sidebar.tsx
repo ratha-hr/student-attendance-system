@@ -29,6 +29,7 @@ export type NavTab =
   | 'teaching-plan-q1'
   | 'teaching-plan-q2'
   | 'teaching-plan-q3'
+  | 'teaching-plan-q4'
   | 'teaching-plan-1y'
   | 'teaching-plan-3y'
   | 'teaching-plan-6y'
@@ -201,6 +202,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {
           id: 'teaching-plan-q3',
           label: 'ផែនការត្រីមាសទី៣',
+          icon: CalendarCheck2,
+        },
+        {
+          id: 'teaching-plan-q4',
+          label: 'ផែនការត្រីមាសទី៤',
           icon: CalendarCheck2,
         },
         {
