@@ -1289,6 +1289,61 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                 👨‍🏫 គ្រូទទួលបន្ទុក៖ {currentClass.homeroomTeacher}
               </span>
             )}
+
+            {/* Interactive KPI & Gender Filter Group (យកមកដាក់ត្រង់នេះវិញតាមការស្នើសុំ) */}
+            <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-xl text-xs font-bold border border-slate-200 shadow-2xs shrink-0">
+              <button
+                type="button"
+                onClick={() => setGenderFilter('all')}
+                className={`px-2.5 sm:px-3 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 sm:gap-1.5 ${
+                  genderFilter === 'all'
+                    ? 'bg-white font-black text-slate-900 shadow-xs border border-slate-200/80 ring-1 ring-slate-300'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                }`}
+                title="បង្ហាញសិស្សទាំងអស់"
+              >
+                <span>👥</span>
+                <span className="hidden sm:inline">ទាំងអស់៖</span>
+                <strong className="text-slate-900 font-black">
+                  {classStudentsTotal}
+                </strong>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setGenderFilter('ស្រី')}
+                className={`px-2.5 sm:px-3 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 sm:gap-1.5 ${
+                  genderFilter === 'ស្រី'
+                    ? 'bg-pink-600 text-white font-black shadow-xs ring-1 ring-pink-700'
+                    : 'text-pink-700 hover:text-pink-900 hover:bg-pink-50'
+                }`}
+                title="ត្រងយកតែសិស្សស្រី"
+              >
+                <span>👩</span>
+                <span className="hidden sm:inline">ស្រី៖</span>
+                <strong className={genderFilter === 'ស្រី' ? 'text-white' : 'text-pink-700 font-black'}>
+                  {classStudentsFemale}
+                </strong>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setGenderFilter('ប្រុស')}
+                className={`px-2.5 sm:px-3 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 sm:gap-1.5 ${
+                  genderFilter === 'ប្រុស'
+                    ? 'bg-blue-600 text-white font-black shadow-xs ring-1 ring-blue-700'
+                    : 'text-blue-700 hover:text-blue-900 hover:bg-blue-50'
+                }`}
+                title="ត្រងយកតែសិស្សប្រុស"
+              >
+                <span>👨</span>
+                <span className="hidden sm:inline">ប្រុស៖</span>
+                <strong className={genderFilter === 'ប្រុស' ? 'text-white' : 'text-blue-700 font-black'}>
+                  {classStudentsMale}
+                </strong>
+              </button>
+            </div>
+
             {lastSavedId && (
               <span className="px-2 py-0.5 text-emerald-600 font-bold text-xs bg-emerald-50 rounded-full border border-emerald-300 animate-pulse shrink-0">
                 ✓ រក្សាទុក
@@ -1468,10 +1523,10 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
           </div>
         </div>
 
-        {/* Row 2: Search + Merged Interactive KPI & Gender Filter Group (បញ្ចូលគ្នាទាំងពីរ មិនជាន់គ្នា) */}
+        {/* Row 3: Search Box */}
         <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-2.5">
           {/* Search Box */}
-          <div className="relative w-full sm:w-80">
+          <div className="relative w-full sm:w-96">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
             <input
               type="text"
@@ -1481,62 +1536,11 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
               className="w-full pl-9 pr-4 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all"
             />
           </div>
-
-          {/* Unified Interactive KPI & Gender Filter Group (បញ្ចូលគ្នាទាំងពីរ មិនជាន់គ្នា) */}
-          <div className="flex items-center space-x-1.5 w-full sm:w-auto justify-end">
-            <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-xl text-xs font-bold border border-slate-200 shadow-2xs">
-              <button
-                type="button"
-                onClick={() => setGenderFilter('all')}
-                className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 sm:gap-1.5 ${
-                  genderFilter === 'all'
-                    ? 'bg-white font-black text-slate-900 shadow-xs border border-slate-200/80 ring-1 ring-slate-300'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-                }`}
-                title="បង្ហាញសិស្សទាំងអស់"
-              >
-                <span>👥</span>
-                <span className="hidden sm:inline">ទាំងអស់៖</span>
-                <strong className="text-slate-900 font-black">
-                  {classStudentsTotal}
-                </strong>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setGenderFilter('ស្រី')}
-                className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 sm:gap-1.5 ${
-                  genderFilter === 'ស្រី'
-                    ? 'bg-pink-600 text-white font-black shadow-xs ring-1 ring-pink-700'
-                    : 'text-pink-700 hover:text-pink-900 hover:bg-pink-50'
-                }`}
-                title="ត្រងយកតែសិស្សស្រី"
-              >
-                <span>👩</span>
-                <span className="hidden sm:inline">ស្រី៖</span>
-                <strong className={genderFilter === 'ស្រី' ? 'text-white' : 'text-pink-700 font-black'}>
-                  {classStudentsFemale}
-                </strong>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setGenderFilter('ប្រុស')}
-                className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 sm:gap-1.5 ${
-                  genderFilter === 'ប្រុស'
-                    ? 'bg-blue-600 text-white font-black shadow-xs ring-1 ring-blue-700'
-                    : 'text-blue-700 hover:text-blue-900 hover:bg-blue-50'
-                }`}
-                title="ត្រងយកតែសិស្សប្រុស"
-              >
-                <span>👨</span>
-                <span className="hidden sm:inline">ប្រុស៖</span>
-                <strong className={genderFilter === 'ប្រុស' ? 'text-white' : 'text-blue-700 font-black'}>
-                  {classStudentsMale}
-                </strong>
-              </button>
+          {searchTerm && (
+            <div className="text-xs text-slate-500 font-bold self-start sm:self-auto">
+              លទ្ធផលស្វែងរក ៖ <strong className="text-emerald-700 font-black">{filteredStudents.length}</strong> នាក់
             </div>
-          </div>
+          )}
         </div>
       </div>
 
