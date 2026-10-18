@@ -119,6 +119,7 @@ export const OfficialLettersPage: React.FC<OfficialLettersPageProps> = ({
   // Letter configuration state
   const [letterType, setLetterType] = useState<LetterType>('absence_warning');
   const [warningLevel, setWarningLevel] = useState<'auto' | 'level1' | 'level2' | 'final'>('auto');
+  const [adminLevel, setAdminLevel] = useState<'school' | 'dept_school' | 'full'>('school');
   const [letterNumber, setLetterNumber] = useState('០៤៥/២៦');
   const [schoolAcronym, setSchoolAcronym] = useState('វ.ហ.ស.ក.ត្រ');
   const [issuanceDate, setIssuanceDate] = useState(getTodayDateString());
@@ -176,8 +177,20 @@ export const OfficialLettersPage: React.FC<OfficialLettersPageProps> = ({
         : 'កាលបរិច្ឆេទក្នុងខែបច្ចុប្បន្ន';
 
     const warningInfo = getWarningLevelInfo(abs.unexcused);
-    const provinceName = settings?.provinceCity ? (settings.provinceCity.startsWith('ខេត្ត') || settings.provinceCity.startsWith('រាជធានី') ? settings.provinceCity : `ខេត្ត${settings.provinceCity}`) : 'ខេត្តកំពង់ឆ្នាំង';
+    const provinceName = settings?.provinceCity
+      ? (settings.provinceCity.startsWith('ខេត្ត') || settings.provinceCity.startsWith('រាជធានី')
+          ? settings.provinceCity
+          : `ខេត្ត${settings.provinceCity}`)
+      : 'ខេត្តកំពង់ឆ្នាំង';
     const schoolName = settings?.schoolName || 'វិទ្យាល័យ ហ៊ុន សែន កំពង់ត្រឡាច';
+
+    // Sanitize class name to avoid duplicate 'ថ្នាក់ទី ថ្នាក់ទី'
+    const rawClassName = stuClass?.name || '...';
+    const cleanClassName = rawClassName.startsWith('ថ្នាក់ទី')
+      ? rawClassName.replace(/^ថ្នាក់ទី\s*/, '')
+      : rawClassName.startsWith('ថ្នាក់')
+      ? rawClassName.replace(/^ថ្នាក់\s*/, '')
+      : rawClassName;
 
     return (
       <div
@@ -185,37 +198,47 @@ export const OfficialLettersPage: React.FC<OfficialLettersPageProps> = ({
         className="official-letter-doc bg-white p-7 sm:p-10 md:p-12 rounded-3xl border border-slate-300 shadow-md print:border-none print:shadow-none print:p-0 print:m-0 text-slate-900 font-kantumruy print-page text-[13px] sm:text-[13.5px] leading-[1.75]"
         style={{ breakAfter: 'page', pageBreakAfter: 'always' }}
       >
-        {/* Header: Kingdom of Cambodia & Ministry/School Level */}
-        <div className="flex justify-between items-start gap-4">
-          {/* Left Side: Ministry, Department & School */}
-          <div className="text-center font-semibold space-y-0.5 leading-snug">
-            <p className="font-moul text-xs sm:text-[13px] text-slate-950 tracking-wider">
-              ក្រសួងអប់រំ យុវជន និងកីឡា
-            </p>
-            <p className="text-xs sm:text-[12px] font-bold text-slate-800">
-              មន្ទីរអប់រំ យុវជន និងកីឡា {provinceName}
-            </p>
-            <p className="font-bold text-xs sm:text-[13px] text-indigo-950">
-              {schoolName}
-            </p>
-            <p className="text-[11.5px] text-slate-600 pt-1 font-mono font-medium">
-              លេខ ៖ {letterNumber} {idx !== undefined ? `-${toKhmerNum(idx + 1)}` : ''} / {schoolAcronym}
-            </p>
-          </div>
-
-          {/* Right Side: Kingdom of Cambodia Banner & Administrative Divider */}
-          <div className="text-center space-y-1">
-            <h3 className="font-moul text-sm sm:text-[15px] text-slate-950 tracking-wide">
+        {/* Header: Centered Motto, then Down-a-line Left-aligned Institution (Official Administrative Standard) */}
+        <div className="mb-4">
+          {/* Motto Centered (បាវចនានៅកណ្តាល) */}
+          <div className="text-center space-y-1 mb-3">
+            <h3 className="font-moul text-sm sm:text-base text-slate-950 tracking-wide">
               ព្រះរាជាណាចក្រកម្ពុជា
             </h3>
             <h4 className="font-moul text-xs sm:text-[13px] text-slate-900">
               ជាតិ សាសនា ព្រះមហាក្សត្រ
             </h4>
-            <div className="flex items-center justify-center space-x-1.5 pt-1 text-slate-800">
-              <span className="w-10 h-[1.5px] bg-slate-800 rounded-full" />
+            <div className="flex items-center justify-center space-x-1.5 pt-0.5 text-slate-800">
+              <span className="w-12 h-[1.5px] bg-slate-800 rounded-full" />
               <span className="text-xs font-bold leading-none select-none">៚</span>
-              <span className="w-10 h-[1.5px] bg-slate-800 rounded-full" />
+              <span className="w-12 h-[1.5px] bg-slate-800 rounded-full" />
             </div>
+          </div>
+
+          {/* Institution Left-aligned (ចុះបន្ទាត់ តម្រឹមឆ្វេងផ្នែកស្ថាប័ន - ចេញត្រឹមកម្រិតសាលារៀន) */}
+          <div className="text-left font-semibold space-y-0.5 leading-snug">
+            {adminLevel === 'full' && (
+              <>
+                <p className="font-moul text-xs sm:text-[12.5px] text-slate-950">
+                  ក្រសួងអប់រំ យុវជន និងកីឡា
+                </p>
+                <p className="text-xs sm:text-[11.5px] font-bold text-slate-800">
+                  មន្ទីរអប់រំ យុវជន និងកីឡា {provinceName}
+                </p>
+              </>
+            )}
+            {adminLevel === 'dept_school' && (
+              <p className="text-xs sm:text-[11.5px] font-bold text-slate-800">
+                មន្ទីរអប់រំ យុវជន និងកីឡា {provinceName}
+              </p>
+            )}
+            {/* School Level (កម្រិតសាលារៀន - បង្ហាញជាគោល) */}
+            <p className="font-moul text-xs sm:text-[13px] text-indigo-950">
+              {schoolName}
+            </p>
+            <p className="text-[11.5px] text-slate-700 pt-0.5 font-mono font-medium">
+              លេខ ៖ {letterNumber} {idx !== undefined ? `-${toKhmerNum(idx + 1)}` : ''} / {schoolAcronym}
+            </p>
           </div>
         </div>
 
@@ -246,7 +269,7 @@ export const OfficialLettersPage: React.FC<OfficialLettersPageProps> = ({
               ស្ដីពីការជូនដំណឹង ដាស់តឿន និងចាត់វិធានការអប់រំ {warningInfo.label} ចំពោះសិស្សឈ្មោះ{' '}
               <strong className="font-bold text-slate-950">{stu.nameKh}</strong> ភេទ{' '}
               <strong className="font-bold">{stu.gender}</strong> ថ្នាក់ទី{' '}
-              <strong className="font-bold">{stuClass?.name || '...'}</strong> ដែលបានអវត្តមានពីការសិក្សាច្រើនដងដោយគ្មានការអនុញ្ញាតច្បាប់ត្រឹមត្រូវ។
+              <strong className="font-bold">{cleanClassName}</strong> ដែលបានអវត្តមានពីការសិក្សាច្រើនដងដោយគ្មានការអនុញ្ញាតច្បាប់ត្រឹមត្រូវ។
             </span>
           </div>
           <div className="flex items-start">
@@ -255,7 +278,7 @@ export const OfficialLettersPage: React.FC<OfficialLettersPageProps> = ({
               <p>- បទបញ្ជាផ្ទៃក្នុងរបស់{schoolName} ស្ដីពីវិន័យ និងការគោរពវត្តមានសិក្សារបស់សិស្សានុសិស្ស។</p>
               <p>
                 - សៀវភៅតាមដានវត្តមានសិស្សប្រចាំថ្ងៃរបស់ថ្នាក់ទី{' '}
-                <strong className="font-bold">{stuClass?.name || '...'}</strong> ឆ្នាំសិក្សា{' '}
+                <strong className="font-bold">{cleanClassName}</strong> ឆ្នាំសិក្សា{' '}
                 {settings?.academicYear || '២០២៥-២០២៦'}។
               </p>
             </div>
@@ -294,7 +317,7 @@ export const OfficialLettersPage: React.FC<OfficialLettersPageProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 border-t border-slate-100 print:border-slate-300">
               <div>
                 <span className="text-slate-600">ថ្នាក់ទី ៖ </span>
-                <strong className="text-slate-900 font-bold">{stuClass?.name || '---'}</strong>
+                <strong className="text-slate-900 font-bold">{cleanClassName}</strong>
                 <span className="text-slate-500 text-[11px] ml-1.5">(លេខរៀង៖ {toKhmerNum(stu.rollNo || '---')})</span>
               </div>
               <div>
@@ -355,14 +378,14 @@ export const OfficialLettersPage: React.FC<OfficialLettersPageProps> = ({
           )}
         </div>
 
-        {/* Signatures & Official Dates: 3-Column School-Level Layout */}
+        {/* Signatures & Official Dates: 3-Column Official School Layout (Swap Principal to Center, Teacher to Right) */}
         <div className="mt-6 pt-2 text-xs sm:text-[13px] print:text-[10pt]">
           <div className="grid grid-cols-3 gap-3 items-start">
-            {/* Column 1: Parent / Guardian Acknowledgement */}
+            {/* Column 1: Parent / Guardian Acknowledgement (ខាងឆ្វេង) */}
             <div className="text-center space-y-1">
               <p className="font-bold text-slate-950 font-kantumruy">បានឃើញ និងទទួលដំណឹង</p>
               <p className="text-[11.5px] text-slate-600 font-medium">មាតាបិតា ឬអាណាព្យាបាលសិស្ស</p>
-              <div className="h-14 sm:h-16" />
+              <div className="h-16 sm:h-20" />
               <p className="font-bold text-slate-900 underline">
                 {stu.guardianName || '................................'}
               </p>
@@ -371,36 +394,37 @@ export const OfficialLettersPage: React.FC<OfficialLettersPageProps> = ({
               </p>
             </div>
 
-            {/* Column 2: Class Homeroom Teacher */}
+            {/* Column 2: School Principal Visa / Approval (ចំកណ្តាល) */}
             <div className="text-center space-y-1">
+              <p className="font-bold text-slate-950 font-kantumruy">បានឃើញ និងឯកភាព</p>
+              <p className="font-bold text-slate-900 text-[11.5px] leading-tight">
+                នាយក{schoolName}
+              </p>
+              <div className="h-16 sm:h-20" />
+              <p className="font-bold text-slate-950 text-xs sm:text-[13px]">
+                {principalNameOverride || settings?.principalName || 'នាយកសាលា'}
+              </p>
+            </div>
+
+            {/* Column 3: Official Date & Homeroom Teacher Preparation (ខាងស្តាំ) */}
+            <div className="text-center space-y-1">
+              {/* Official Date Header with clean leading and spacing */}
+              <div className="text-center pb-1.5 space-y-1">
+                <p className="text-[11px] sm:text-[11.5px] text-slate-700 font-medium leading-normal">
+                  {officialDate.lunarDateStr}
+                </p>
+                <p className="text-[11.5px] sm:text-xs text-slate-950 font-bold leading-normal">
+                  {officialDate.solarDateStr}
+                </p>
+              </div>
               <p className="font-bold text-slate-950 font-kantumruy">បានពិនិត្យ និងរៀបចំ</p>
               <p className="text-[11.5px] text-slate-600 font-medium">គ្រូបង្រៀនបន្ទុកថ្នាក់</p>
-              <div className="h-14 sm:h-16" />
+              <div className="h-12 sm:h-14" />
               <p className="font-bold text-slate-950">
                 {teacherNameOverride || settings?.teacherName || 'គ្រូបន្ទុកថ្នាក់'}
               </p>
               <p className="text-[11px] text-slate-600 font-mono">
                 ទូរស័ព្ទ ៖ {teacherPhoneOverride || settings?.phone || '093 486 987'}
-              </p>
-            </div>
-
-            {/* Column 3: Official Date (Lunar on top, Solar below) & School Principal */}
-            <div className="text-center space-y-0.5">
-              <div className="text-center pb-1 space-y-0.5">
-                <p className="text-[11px] text-slate-700 font-medium leading-tight">
-                  {officialDate.lunarDateStr}
-                </p>
-                <p className="text-[11.5px] sm:text-xs text-slate-950 font-bold leading-tight">
-                  {officialDate.solarDateStr}
-                </p>
-              </div>
-              <p className="font-bold text-slate-950 font-kantumruy">បានឃើញ និងឯកភាព</p>
-              <p className="font-bold text-slate-900 text-[11.5px] leading-tight">
-                នាយក{schoolName}
-              </p>
-              <div className="h-12 sm:h-14" />
-              <p className="font-bold text-slate-950 text-xs sm:text-[13px]">
-                {principalNameOverride || settings?.principalName || 'នាយកសាលា'}
               </p>
             </div>
           </div>
@@ -498,6 +522,22 @@ export const OfficialLettersPage: React.FC<OfficialLettersPageProps> = ({
                       </option>
                     );
                   })}
+                </select>
+              </div>
+
+              {/* Administrative Level (កម្រិតរដ្ឋបាលស្ថាប័ន) */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  កម្រិតរដ្ឋបាលស្ថាប័ន (ក្បាលលិខិត)
+                </label>
+                <select
+                  value={adminLevel}
+                  onChange={(e) => setAdminLevel(e.target.value as any)}
+                  className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl font-semibold cursor-pointer"
+                >
+                  <option value="school">ត្រឹមកម្រិតសាលារៀន (វិទ្យាល័យ)</option>
+                  <option value="dept_school">មន្ទីរអប់រំ និងសាលារៀន</option>
+                  <option value="full">ក្រសួង មន្ទីរ និងសាលារៀន (ពេញលេញ)</option>
                 </select>
               </div>
 
