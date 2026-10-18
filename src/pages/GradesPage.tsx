@@ -479,48 +479,134 @@ export const GradesPage: React.FC<GradesPageProps> = ({
     }
   };
 
-  const calculatedMonthlySubjectResults = useMemo(() => {
-    const allMonths = ['តេស្តដើមឆ្នាំ', ...monthColumns];
+  const allMonthKeys = useMemo(() => ['តេស្តដើមឆ្នាំ', ...monthColumns], [monthColumns]);
 
-    const list = classStudents.map((stu) => {
-      const stuScores = subjectMonthlyScores[stu.id] || {};
-      let total = 0;
-      let enteredCount = 0;
+  // Compute Rank and Letter Mention for each individual month
+  const monthlyStudentRankAndMention = useMemo(() => {
+    const result: Record<
+      string,
+      Record<string, { score?: number; mention: string; rank?: number }>
+    > = {};
 
-      allMonths.forEach((m) => {
-        const val = stuScores[m];
-        if (val !== undefined && val !== null) {
-          total += val;
-          enteredCount++;
+    allMonthKeys.forEach((m) => {
+      result[m] = {};
+
+      const studentScores: { stuId: string; score: number }[] = [];
+      classStudents.forEach((stu) => {
+        const sc = subjectMonthlyScores[stu.id]?.[m];
+        if (sc !== undefined && sc !== null && !isNaN(sc)) {
+          studentScores.push({ stuId: stu.id, score: sc });
         }
       });
 
-      const average = enteredCount > 0 ? Number((total / enteredCount).toFixed(2)) : 0;
-      const percentage = currentMaxScore > 0 ? Number(((average / currentMaxScore) * 100).toFixed(2)) : average;
-      const mention = calculateLetterMention(percentage);
+      // Sort descending to assign monthly ranks
+      studentScores.sort((a, b) => b.score - a.score);
 
-      return {
-        student: stu,
-        scores: stuScores,
-        total,
-        enteredCount,
-        average,
-        percentage,
-        mention,
-      };
+      let currentRank = 1;
+      const rankMap = new Map<string, number>();
+      studentScores.forEach((item, idx) => {
+        if (idx > 0 && item.score < studentScores[idx - 1].score) {
+          currentRank = idx + 1;
+        }
+        rankMap.set(item.stuId, currentRank);
+      });
+
+      classStudents.forEach((stu) => {
+        const sc = subjectMonthlyScores[stu.id]?.[m];
+        if (sc !== undefined && sc !== null && !isNaN(sc)) {
+          const pct = currentMaxScore > 0 ? (sc / currentMaxScore) * 100 : sc;
+          const mentionObj = calculateLetterMention(pct);
+          result[m][stu.id] = {
+            score: sc,
+            mention: mentionObj.grade, // 'A', 'B', 'C', 'D', 'E', 'F'
+            rank: rankMap.get(stu.id),
+          };
+        } else {
+          result[m][stu.id] = {
+            mention: '-',
+          };
+        }
+      });
     });
 
-    const sorted = [...list].sort((a, b) => b.average - a.average);
-    const rankMap = new Map<string, number>();
-    sorted.forEach((item, index) => {
-      rankMap.set(item.student.id, index + 1);
-    });
+    return result;
+  }, [allMonthKeys, classStudents, subjectMonthlyScores, currentMaxScore]);
 
-    return list.map((item) => ({
-      ...item,
-      rank: rankMap.get(item.student.id) || 1,
-    }));
-  }, [classStudents, subjectMonthlyScores, monthColumns, currentMaxScore]);
+  // Excel-like keyboard navigation (Enter, Tab, Arrow keys, Auto-select)
+  const handleCellKeyDown = (
+    e: React.KeyboardEvent<HTMLInputElement>,
+    stuIdx: number,
+    mIdx: number
+  ) => {
+    const totalStudents = classStudents.length;
+    const totalMonths = allMonthKeys.length;
+
+    const focusCell = (targetStu: number, targetMonth: number) => {
+      const el = document.getElementById(`score-cell-${targetStu}-${targetMonth}`) as HTMLInputElement | null;
+      if (el) {
+        el.focus();
+        el.select();
+      }
+    };
+
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (e.shiftKey) {
+        // Move up (previous student row)
+        if (stuIdx > 0) focusCell(stuIdx - 1, mIdx);
+      } else {
+        // Move down (next student row)
+        if (stuIdx + 1 < totalStudents) focusCell(stuIdx + 1, mIdx);
+      }
+    } else if (e.key === 'Tab') {
+      e.preventDefault();
+      if (e.shiftKey) {
+        // Move left (previous month column)
+        if (mIdx > 0) {
+          focusCell(stuIdx, mIdx - 1);
+        } else if (stuIdx > 0) {
+          focusCell(stuIdx - 1, totalMonths - 1);
+        }
+      } else {
+        // Move right (next month column)
+        if (mIdx + 1 < totalMonths) {
+          focusCell(stuIdx, mIdx + 1);
+        } else if (stuIdx + 1 < totalStudents) {
+          focusCell(stuIdx + 1, 0);
+        }
+      }
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (stuIdx + 1 < totalStudents) focusCell(stuIdx + 1, mIdx);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (stuIdx > 0) focusCell(stuIdx - 1, mIdx);
+    } else if (e.key === 'ArrowRight') {
+      const input = e.currentTarget;
+      if (
+        input.selectionStart === input.value.length ||
+        (input.selectionStart === 0 && input.selectionEnd === input.value.length)
+      ) {
+        if (mIdx + 1 < totalMonths) {
+          e.preventDefault();
+          focusCell(stuIdx, mIdx + 1);
+        }
+      }
+    } else if (e.key === 'ArrowLeft') {
+      const input = e.currentTarget;
+      if (
+        input.selectionStart === 0 ||
+        (input.selectionStart === 0 && input.selectionEnd === input.value.length)
+      ) {
+        if (mIdx > 0) {
+          e.preventDefault();
+          focusCell(stuIdx, mIdx - 1);
+        }
+      }
+    } else if (e.key === 'Escape') {
+      e.currentTarget.blur();
+    }
+  };
 
   const columnStats = useMemo(() => {
     const allMonths = ['តេស្តដើមឆ្នាំ', ...monthColumns];
@@ -590,22 +676,21 @@ export const GradesPage: React.FC<GradesPageProps> = ({
   }, [classStudents, subjectMonthlyScores, monthColumns, currentMaxScore]);
 
   const handleExportMonthlySubjectExcel = () => {
-    const data = calculatedMonthlySubjectResults.map((item) => {
+    const data = classStudents.map((stu, idx) => {
       const row: Record<string, any> = {
-        'លេខរៀង': item.student.rollNo,
-        'អត្តលេខ': item.student.studentCode,
-        'គោត្តនាម-នាម': item.student.nameKh,
-        'ភេទ': item.student.gender,
-        'តេស្តដើមឆ្នាំ': item.scores['តេស្តដើមឆ្នាំ'] ?? '-',
+        'លេខរៀង': idx + 1,
+        'អត្តលេខ': stu.studentCode,
+        'គោត្តនាម-នាម': stu.nameKh,
+        'ភេទ': stu.gender,
       };
 
-      monthColumns.forEach((m) => {
-        row[`ខែ ${m}`] = item.scores[m] ?? '-';
+      allMonthKeys.forEach((m) => {
+        const info = monthlyStudentRankAndMention[m]?.[stu.id];
+        const mLabel = m === 'តេស្តដើមឆ្នាំ' ? 'តេស្តដើមឆ្នាំ' : `ខែ ${m}`;
+        row[`${mLabel} (ពិន្ទុ)`] = info?.score !== undefined ? info.score : '-';
+        row[`${mLabel} (និ.)`] = info?.mention || '-';
+        row[`${mLabel} (ថ.)`] = info?.rank !== undefined ? info.rank : '-';
       });
-
-      row['មធ្យមភាគ'] = item.average;
-      row['និទ្ទេស'] = item.mention.khmerLabel;
-      row['ចំណាត់ថ្នាក់'] = item.rank;
 
       return row;
     });
@@ -817,36 +902,60 @@ export const GradesPage: React.FC<GradesPageProps> = ({
             </h2>
           </div>
 
+          {/* Excel-like Navigation Tip Banner */}
+          <div className="bg-blue-50/80 border border-blue-200/90 rounded-2xl px-3.5 py-2 no-print flex items-center justify-between text-xs text-blue-950 flex-wrap gap-2">
+            <div className="flex items-center space-x-2">
+              <span className="font-bold">💡 របៀបបញ្ចូលពិន្ទុដូច Excel ៖</span>
+              <span className="text-slate-600">
+                ចុច <strong>Enter</strong> (ចុះក្រោម), <strong>Tab</strong> (ទៅស្តាំ), ឬ <strong>ព្រួញ ↑ ↓ ← →</strong> ដើម្បីរំកិលក្រឡាស្វ័យប្រវត្ត
+              </span>
+            </div>
+            <div className="flex items-center space-x-3 text-[11px] font-bold text-blue-800">
+              <span><strong>និ.</strong> = និទ្ទេស (A-F)</span>
+              <span><strong>ថ.</strong> = ចំណាត់ថ្នាក់ប្រចាំខែ</span>
+            </div>
+          </div>
+
           {/* Main Monthly Score Table */}
           <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
             <div className="overflow-auto max-h-[72vh] table-scrollbar">
               <table className="w-full text-left border-collapse text-xs">
                 <thead className="sticky top-0 z-20 shadow-xs print:static print:table-header-group">
-                  <tr className="bg-slate-800 text-white font-bold text-center">
-                    <th className="py-2.5 px-2 border border-slate-700 w-10">ល.រ</th>
-                    <th className="py-2.5 px-2 border border-slate-700 w-24">អត្តលេខ</th>
-                    <th className="py-2.5 px-3 border border-slate-700 text-left min-w-[130px]">គោត្តនាម-នាម</th>
-                    <th className="py-2.5 px-2 border border-slate-700 w-14">ភេទ</th>
+                  {/* Row 1: Month Group Headers */}
+                  <tr className="bg-slate-900 text-white font-bold text-center">
+                    <th rowSpan={2} className="py-2 px-1 border border-slate-700 w-10 print:w-7 text-center">
+                      ល.រ
+                    </th>
+                    <th rowSpan={2} className="py-2 px-1 border border-slate-700 w-24 print:w-14 text-center">
+                      អត្តលេខ
+                    </th>
+                    <th rowSpan={2} className="py-2 px-2 border border-slate-700 text-left min-w-[120px] print:min-w-[90px]">
+                      គោត្តនាម-នាម
+                    </th>
+                    <th rowSpan={2} className="py-2 px-1 border border-slate-700 w-12 print:w-8 text-center">
+                      ភេទ
+                    </th>
 
-                    {/* Column 0: Fixed Starting Column 'តេស្តដើមឆ្នាំ' */}
-                    <th className="py-2 px-2 border border-slate-700 bg-blue-900/95 min-w-[95px]">
-                      <div className="font-black text-amber-200">តេស្តដើមឆ្នាំ</div>
+                    {/* Column 0: Fixed Starting Column 'តេស្តដើមឆ្នាំ' (ColSpan 3: ពិន្ទុ, និ., ថ.) */}
+                    <th colSpan={3} className="py-1 px-1 border border-slate-700 bg-blue-950 min-w-[96px] print:min-w-[70px] text-center">
+                      <div className="font-black text-amber-200 text-xs">តេស្តដើមឆ្នាំ</div>
                       <div className="text-[10px] text-blue-200 font-mono mt-0.5">
-                        មូលដ្ឋាន ({currentMaxScore}ពិន្ទុ)
+                        ({currentMaxScore}ពិន្ទុ)
                       </div>
                     </th>
 
-                    {/* Subsequent Month Columns with Header Selector */}
+                    {/* Subsequent Month Columns with Header Selector (ColSpan 3: ពិន្ទុ, និ., ថ.) */}
                     {monthColumns.map((m, idx) => (
                       <th
                         key={`mcol-${idx}`}
-                        className="py-1.5 px-1 border border-slate-700 min-w-[95px] bg-slate-800"
+                        colSpan={3}
+                        className="py-1 px-1 border border-slate-700 min-w-[96px] print:min-w-[70px] bg-slate-800 text-center"
                       >
                         <div className="flex items-center justify-center space-x-1 no-print">
                           <select
                             value={m}
                             onChange={(e) => handleUpdateMonthColumn(idx, e.target.value)}
-                            className="bg-slate-700 text-white text-[11px] font-bold rounded px-1.5 py-0.5 border border-slate-600 outline-none cursor-pointer hover:bg-slate-600 transition-colors"
+                            className="bg-slate-700 text-white text-[11px] font-bold rounded px-1 py-0.5 border border-slate-600 outline-none cursor-pointer hover:bg-slate-600 transition-colors"
                           >
                             {MONTH_OPTIONS.map((opt) => (
                               <option key={opt} value={opt} className="bg-slate-800 text-white">
@@ -866,7 +975,7 @@ export const GradesPage: React.FC<GradesPageProps> = ({
                           )}
                         </div>
                         {/* Print Only Header Display */}
-                        <div className="hidden print:block font-bold">
+                        <div className="hidden print:block font-bold text-xs">
                           {m.startsWith('ឆមាស') || m.startsWith('ប្រឡង') ? m : `ខែ ${m}`}
                         </div>
                         <div className="text-[10px] text-amber-300 font-mono mt-0.5">
@@ -876,7 +985,7 @@ export const GradesPage: React.FC<GradesPageProps> = ({
                     ))}
 
                     {/* Add Column Header Button */}
-                    <th className="py-1 px-1 border border-slate-700 bg-slate-900 w-9 no-print">
+                    <th rowSpan={2} className="py-1 px-1 border border-slate-700 bg-slate-900 w-9 no-print">
                       <button
                         type="button"
                         onClick={handleAddMonthColumn}
@@ -886,52 +995,70 @@ export const GradesPage: React.FC<GradesPageProps> = ({
                         <Plus className="w-4 h-4 mx-auto" />
                       </button>
                     </th>
+                  </tr>
 
-                    {/* Calculated Results */}
-                    <th className="py-2.5 px-2 border border-slate-700 bg-blue-900/80 min-w-[70px]">មធ្យមភាគ</th>
-                    <th className="py-2.5 px-2 border border-slate-700 bg-indigo-900/80 min-w-[95px]">និទ្ទេស</th>
-                    <th className="py-2.5 px-2 border border-slate-700 bg-amber-900/80 min-w-[65px]">ចំណាត់ថ្នាក់</th>
+                  {/* Row 2: Sub-headers (ពិន្ទុ, និ., ថ.) for each month */}
+                  <tr className="bg-slate-800 text-white font-bold text-center text-[10px] print:text-[8pt]">
+                    {/* For តេស្តដើមឆ្នាំ */}
+                    <th className="py-1 px-0.5 border border-slate-700 bg-blue-900/80 w-12 print:w-9 text-slate-200" title="ពិន្ទុតេស្តដើមឆ្នាំ">
+                      ពិន្ទុ
+                    </th>
+                    <th className="py-1 px-0.5 border border-slate-700 bg-blue-900/80 w-7 print:w-6 text-indigo-200" title="និទ្ទេស (A-F)">
+                      និ.
+                    </th>
+                    <th className="py-1 px-0.5 border border-slate-700 bg-blue-900/80 w-7 print:w-6 text-amber-200" title="ចំណាត់ថ្នាក់">
+                      ថ.
+                    </th>
+
+                    {/* For each month in monthColumns */}
+                    {monthColumns.map((m, idx) => (
+                      <React.Fragment key={`subhead-${idx}`}>
+                        <th className="py-1 px-0.5 border border-slate-700 bg-slate-900/90 w-12 print:w-9 text-slate-200" title={`ពិន្ទុ ខែ ${m}`}>
+                          ពិន្ទុ
+                        </th>
+                        <th className="py-1 px-0.5 border border-slate-700 bg-slate-900/90 w-7 print:w-6 text-indigo-300" title={`និទ្ទេស (A-F) ខែ ${m}`}>
+                          និ.
+                        </th>
+                        <th className="py-1 px-0.5 border border-slate-700 bg-slate-900/90 w-7 print:w-6 text-amber-300" title={`ចំណាត់ថ្នាក់ ខែ ${m}`}>
+                          ថ.
+                        </th>
+                      </React.Fragment>
+                    ))}
                   </tr>
                 </thead>
 
                 <tbody className="divide-y divide-slate-200 text-slate-800">
-                  {calculatedMonthlySubjectResults.length === 0 ? (
+                  {classStudents.length === 0 ? (
                     <tr>
-                      <td colSpan={monthColumns.length + 8} className="py-12 text-center text-slate-400">
+                      <td colSpan={allMonthKeys.length * 3 + 5} className="py-12 text-center text-slate-400">
                         <Users className="w-10 h-10 mx-auto text-slate-300 mb-2" />
                         មិនមានសិស្សក្នុងថ្នាក់នេះទេ
                       </td>
                     </tr>
                   ) : (
-                    calculatedMonthlySubjectResults.map((item, idx) => {
-                      const stu = item.student;
-                      const isTopRank = item.rank <= 3 && item.enteredCount > 0;
-                      const diagScore = item.scores['តេស្តដើមឆ្នាំ'];
-
+                    classStudents.map((stu, stuIdx) => {
                       return (
                         <tr
                           key={stu.id}
-                          className={`hover:bg-blue-50/40 transition-colors ${
-                            isTopRank ? 'bg-amber-50/20' : ''
-                          }`}
+                          className="hover:bg-blue-50/40 transition-colors"
                         >
                           {/* ល.រ */}
-                          <td className="py-2 px-2 text-center font-bold text-slate-700 border border-slate-200 bg-slate-50">
-                            {toKhmerNum(idx + 1)}
+                          <td className="py-1.5 px-1 text-center font-bold text-slate-700 border border-slate-200 bg-slate-50 text-xs">
+                            {toKhmerNum(stuIdx + 1)}
                           </td>
 
                           {/* អត្តលេខ */}
-                          <td className="py-2 px-2 font-mono text-[11px] font-bold text-slate-700 border border-slate-200 text-center">
+                          <td className="py-1.5 px-1 font-mono text-[11px] font-bold text-slate-700 border border-slate-200 text-center">
                             {stu.studentCode}
                           </td>
 
                           {/* ឈ្មោះសិស្ស */}
-                          <td className="py-2 px-3 border border-slate-200 font-bold text-slate-900 whitespace-nowrap">
+                          <td className="py-1.5 px-2 border border-slate-200 font-bold text-slate-900 whitespace-nowrap text-xs">
                             {stu.nameKh}
                           </td>
 
                           {/* ភេទ */}
-                          <td className="py-2 px-1 text-center border border-slate-200">
+                          <td className="py-1.5 px-0.5 text-center border border-slate-200">
                             <span
                               className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${
                                 stu.gender === 'ស្រី'
@@ -943,86 +1070,86 @@ export const GradesPage: React.FC<GradesPageProps> = ({
                             </span>
                           </td>
 
-                          {/* Col 0: តេស្តដើមឆ្នាំ */}
-                          <td className="p-1 border border-slate-200 text-center bg-blue-50/30 font-mono">
-                            <input
-                              type="number"
-                              min="0"
-                              max={currentMaxScore}
-                              step="0.5"
-                              value={diagScore !== undefined ? diagScore : ''}
-                              placeholder="-"
-                              onChange={(e) =>
-                                handleSubjectScoreChange(stu.id, 'តេស្តដើមឆ្នាំ', e.target.value)
-                              }
-                              className={`w-full text-center font-mono py-1 px-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 bg-transparent text-xs font-bold ${
-                                diagScore !== undefined && diagScore < (currentMaxScore * 0.5)
-                                  ? 'text-rose-600'
-                                  : diagScore !== undefined && diagScore >= (currentMaxScore * 0.8)
-                                  ? 'text-emerald-700'
-                                  : 'text-slate-800'
-                              }`}
-                            />
-                          </td>
+                          {/* Month columns: each month has 3 cells (Score, Mention, Rank) */}
+                          {allMonthKeys.map((m, mIdx) => {
+                            const info = monthlyStudentRankAndMention[m]?.[stu.id];
+                            const sc = info?.score;
+                            const mention = info?.mention || '-';
+                            const stuRank = info?.rank;
+                            const isTopRank = stuRank !== undefined && stuRank <= 3;
 
-                          {/* Month Columns */}
-                          {monthColumns.map((m) => {
-                            const sc = item.scores[m];
                             return (
-                              <td key={m} className="p-1 border border-slate-200 text-center font-mono">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max={currentMaxScore}
-                                  step="0.5"
-                                  value={sc !== undefined ? sc : ''}
-                                  placeholder="-"
-                                  onChange={(e) => handleSubjectScoreChange(stu.id, m, e.target.value)}
-                                  className={`w-full text-center font-mono py-1 px-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 bg-transparent text-xs ${
-                                    sc !== undefined && sc < (currentMaxScore * 0.5)
-                                      ? 'text-rose-600 font-bold'
-                                      : sc !== undefined && sc >= (currentMaxScore * 0.8)
-                                      ? 'text-emerald-700 font-bold'
-                                      : 'text-slate-800'
-                                  }`}
-                                />
-                              </td>
+                              <React.Fragment key={`cell-${stu.id}-${m}`}>
+                                {/* 1. Score input with Excel-like navigation (Enter, Tab, Arrows) */}
+                                <td className="p-0.5 border border-slate-200 text-center font-mono">
+                                  <input
+                                    id={`score-cell-${stuIdx}-${mIdx}`}
+                                    data-stu-idx={stuIdx}
+                                    data-col-idx={mIdx}
+                                    type="number"
+                                    min="0"
+                                    max={currentMaxScore}
+                                    step="0.5"
+                                    value={sc !== undefined ? sc : ''}
+                                    placeholder="-"
+                                    onFocus={(e) => e.target.select()}
+                                    onKeyDown={(e) => handleCellKeyDown(e, stuIdx, mIdx)}
+                                    onChange={(e) => handleSubjectScoreChange(stu.id, m, e.target.value)}
+                                    className={`w-full text-center font-mono py-1 px-0.5 rounded border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white bg-transparent text-xs font-bold outline-none transition-colors ${
+                                      sc !== undefined && sc < currentMaxScore * 0.5
+                                        ? 'text-rose-600'
+                                        : sc !== undefined && sc >= currentMaxScore * 0.8
+                                        ? 'text-emerald-700'
+                                        : 'text-slate-800'
+                                    }`}
+                                  />
+                                </td>
+
+                                {/* 2. និ. (Mention A-F) */}
+                                <td className="py-1 px-0.5 border border-slate-200 text-center font-bold text-[11px] whitespace-nowrap bg-slate-50/40">
+                                  {mention !== '-' ? (
+                                    <span
+                                      className={`inline-block px-1 py-0.2 rounded text-[10px] font-black ${
+                                        mention === 'A'
+                                          ? 'text-emerald-700 bg-emerald-100/80'
+                                          : mention === 'B'
+                                          ? 'text-blue-700 bg-blue-100/80'
+                                          : mention === 'C'
+                                          ? 'text-teal-700 bg-teal-100/80'
+                                          : mention === 'D'
+                                          ? 'text-amber-700 bg-amber-100/80'
+                                          : mention === 'E'
+                                          ? 'text-orange-700 bg-orange-100/80'
+                                          : 'text-rose-700 bg-rose-100/80'
+                                      }`}
+                                    >
+                                      {mention}
+                                    </span>
+                                  ) : (
+                                    <span className="text-slate-300">-</span>
+                                  )}
+                                </td>
+
+                                {/* 3. ថ. (Rank 1..N) */}
+                                <td className="py-1 px-0.5 border border-slate-200 text-center font-mono text-[11px] whitespace-nowrap bg-slate-50/20">
+                                  {stuRank !== undefined ? (
+                                    isTopRank ? (
+                                      <span className="font-black text-amber-700 bg-amber-100/70 px-1 py-0.2 rounded text-[10px]">
+                                        {stuRank}
+                                      </span>
+                                    ) : (
+                                      <span className="font-semibold text-slate-700">{stuRank}</span>
+                                    )
+                                  ) : (
+                                    <span className="text-slate-300">-</span>
+                                  )}
+                                </td>
+                              </React.Fragment>
                             );
                           })}
 
                           {/* Empty spacer for + column */}
                           <td className="p-1 border border-slate-200 bg-slate-50 no-print" />
-
-                          {/* Average */}
-                          <td className="py-2 px-2 text-center font-mono font-black text-slate-800 border border-slate-200 bg-blue-50/40">
-                            {item.enteredCount > 0 ? item.average : '-'}
-                          </td>
-
-                          {/* Mention */}
-                          <td className="py-2 px-2 text-center border border-slate-200 whitespace-nowrap">
-                            {item.enteredCount > 0 ? (
-                              <span
-                                className={`inline-block px-2 py-0.5 rounded-md text-[11px] font-bold border ${item.mention.badgeClass}`}
-                              >
-                                {item.mention.khmerLabel}
-                              </span>
-                            ) : (
-                              <span className="text-slate-400">-</span>
-                            )}
-                          </td>
-
-                          {/* Rank */}
-                          <td className="py-2 px-2 text-center font-black border border-slate-200 bg-slate-50">
-                            {item.enteredCount === 0 ? (
-                              <span className="text-slate-400">-</span>
-                            ) : isTopRank ? (
-                              <span className="inline-flex items-center text-amber-700 font-black">
-                                🏆 {toKhmerNum(item.rank)}
-                              </span>
-                            ) : (
-                              <span className="text-slate-700">{toKhmerNum(item.rank)}</span>
-                            )}
-                          </td>
                         </tr>
                       );
                     })
@@ -1030,23 +1157,23 @@ export const GradesPage: React.FC<GradesPageProps> = ({
                 </tbody>
 
                 {/* Table Footer: MoEYS & Teaching Plan Statistical Analysis */}
-                {calculatedMonthlySubjectResults.length > 0 && (
+                {classStudents.length > 0 && (
                   <tfoot className="bg-slate-50 font-bold text-slate-700 border-t-2 border-slate-300">
                     {/* Class Average Row */}
                     <tr className="bg-blue-50/60 font-black text-blue-900 border-b border-slate-200">
                       <td colSpan={4} className="py-2 px-3 text-right border border-slate-200">
                         មធ្យមភាគថ្នាក់៖
                       </td>
-                      <td className="py-2 px-1 text-center border border-slate-200 font-mono text-blue-800">
-                        {columnStats['តេស្តដើមឆ្នាំ']?.count > 0 ? columnStats['តេស្តដើមឆ្នាំ'].average : '-'}
-                      </td>
-                      {monthColumns.map((m) => (
-                        <td key={`avg-${m}`} className="py-2 px-1 text-center border border-slate-200 font-mono text-blue-800">
+                      {allMonthKeys.map((m) => (
+                        <td
+                          key={`avg-${m}`}
+                          colSpan={3}
+                          className="py-2 px-1 text-center border border-slate-200 font-mono text-blue-800"
+                        >
                           {columnStats[m]?.count > 0 ? columnStats[m].average : '-'}
                         </td>
                       ))}
                       <td className="no-print border border-slate-200" />
-                      <td colSpan={3} className="border border-slate-200" />
                     </tr>
 
                     {/* Passed Row */}
@@ -1054,16 +1181,18 @@ export const GradesPage: React.FC<GradesPageProps> = ({
                       <td colSpan={4} className="py-1.5 px-3 text-right border border-slate-200">
                         សិស្សជាប់ (≥៥០%)៖
                       </td>
-                      <td className="py-1.5 px-1 text-center border border-slate-200 font-mono text-[11px]">
-                        {columnStats['តេស្តដើមឆ្នាំ']?.count > 0 ? `${columnStats['តេស្តដើមឆ្នាំ'].passedCount} (${columnStats['តេស្តដើមឆ្នាំ'].passedPct}%)` : '-'}
-                      </td>
-                      {monthColumns.map((m) => (
-                        <td key={`pass-${m}`} className="py-1.5 px-1 text-center border border-slate-200 font-mono text-[11px]">
-                          {columnStats[m]?.count > 0 ? `${columnStats[m].passedCount} (${columnStats[m].passedPct}%)` : '-'}
+                      {allMonthKeys.map((m) => (
+                        <td
+                          key={`pass-${m}`}
+                          colSpan={3}
+                          className="py-1.5 px-1 text-center border border-slate-200 font-mono text-[11px]"
+                        >
+                          {columnStats[m]?.count > 0
+                            ? `${columnStats[m].passedCount} (${columnStats[m].passedPct}%)`
+                            : '-'}
                         </td>
                       ))}
                       <td className="no-print border border-slate-200" />
-                      <td colSpan={3} className="border border-slate-200" />
                     </tr>
 
                     {/* Failed Row */}
@@ -1071,16 +1200,18 @@ export const GradesPage: React.FC<GradesPageProps> = ({
                       <td colSpan={4} className="py-1.5 px-3 text-right border border-slate-200">
                         សិស្សធ្លាក់ (&lt;៥០%)៖
                       </td>
-                      <td className="py-1.5 px-1 text-center border border-slate-200 font-mono text-[11px]">
-                        {columnStats['តេស្តដើមឆ្នាំ']?.count > 0 ? `${columnStats['តេស្តដើមឆ្នាំ'].failedCount} (${columnStats['តេស្តដើមឆ្នាំ'].failedPct}%)` : '-'}
-                      </td>
-                      {monthColumns.map((m) => (
-                        <td key={`fail-${m}`} className="py-1.5 px-1 text-center border border-slate-200 font-mono text-[11px]">
-                          {columnStats[m]?.count > 0 ? `${columnStats[m].failedCount} (${columnStats[m].failedPct}%)` : '-'}
+                      {allMonthKeys.map((m) => (
+                        <td
+                          key={`fail-${m}`}
+                          colSpan={3}
+                          className="py-1.5 px-1 text-center border border-slate-200 font-mono text-[11px]"
+                        >
+                          {columnStats[m]?.count > 0
+                            ? `${columnStats[m].failedCount} (${columnStats[m].failedPct}%)`
+                            : '-'}
                         </td>
                       ))}
                       <td className="no-print border border-slate-200" />
-                      <td colSpan={3} className="border border-slate-200" />
                     </tr>
 
                     {/* Mention A Row */}
@@ -1088,16 +1219,12 @@ export const GradesPage: React.FC<GradesPageProps> = ({
                       <td colSpan={4} className="py-1 px-3 text-right border border-slate-200">
                         និទ្ទេស A (≥៩០%)៖
                       </td>
-                      <td className="py-1 px-1 text-center border border-slate-200 font-mono">
-                        {columnStats['តេស្តដើមឆ្នាំ']?.count > 0 ? columnStats['តេស្តដើមឆ្នាំ'].counts.A : '-'}
-                      </td>
-                      {monthColumns.map((m) => (
-                        <td key={`a-${m}`} className="py-1 px-1 text-center border border-slate-200 font-mono">
+                      {allMonthKeys.map((m) => (
+                        <td key={`a-${m}`} colSpan={3} className="py-1 px-1 text-center border border-slate-200 font-mono">
                           {columnStats[m]?.count > 0 ? columnStats[m].counts.A : '-'}
                         </td>
                       ))}
                       <td className="no-print border border-slate-200" />
-                      <td colSpan={3} className="border border-slate-200" />
                     </tr>
 
                     {/* Mention B Row */}
@@ -1105,16 +1232,12 @@ export const GradesPage: React.FC<GradesPageProps> = ({
                       <td colSpan={4} className="py-1 px-3 text-right border border-slate-200">
                         និទ្ទេស B (៨០-៨៩%)៖
                       </td>
-                      <td className="py-1 px-1 text-center border border-slate-200 font-mono">
-                        {columnStats['តេស្តដើមឆ្នាំ']?.count > 0 ? columnStats['តេស្តដើមឆ្នាំ'].counts.B : '-'}
-                      </td>
-                      {monthColumns.map((m) => (
-                        <td key={`b-${m}`} className="py-1 px-1 text-center border border-slate-200 font-mono">
+                      {allMonthKeys.map((m) => (
+                        <td key={`b-${m}`} colSpan={3} className="py-1 px-1 text-center border border-slate-200 font-mono">
                           {columnStats[m]?.count > 0 ? columnStats[m].counts.B : '-'}
                         </td>
                       ))}
                       <td className="no-print border border-slate-200" />
-                      <td colSpan={3} className="border border-slate-200" />
                     </tr>
 
                     {/* Mention C Row */}
@@ -1122,16 +1245,12 @@ export const GradesPage: React.FC<GradesPageProps> = ({
                       <td colSpan={4} className="py-1 px-3 text-right border border-slate-200">
                         និទ្ទេស C (៧០-៧៩%)៖
                       </td>
-                      <td className="py-1 px-1 text-center border border-slate-200 font-mono">
-                        {columnStats['តេស្តដើមឆ្នាំ']?.count > 0 ? columnStats['តេស្តដើមឆ្នាំ'].counts.C : '-'}
-                      </td>
-                      {monthColumns.map((m) => (
-                        <td key={`c-${m}`} className="py-1 px-1 text-center border border-slate-200 font-mono">
+                      {allMonthKeys.map((m) => (
+                        <td key={`c-${m}`} colSpan={3} className="py-1 px-1 text-center border border-slate-200 font-mono">
                           {columnStats[m]?.count > 0 ? columnStats[m].counts.C : '-'}
                         </td>
                       ))}
                       <td className="no-print border border-slate-200" />
-                      <td colSpan={3} className="border border-slate-200" />
                     </tr>
 
                     {/* Mention D Row */}
@@ -1139,16 +1258,12 @@ export const GradesPage: React.FC<GradesPageProps> = ({
                       <td colSpan={4} className="py-1 px-3 text-right border border-slate-200">
                         និទ្ទេស D (៦០-៦៩%)៖
                       </td>
-                      <td className="py-1 px-1 text-center border border-slate-200 font-mono">
-                        {columnStats['តេស្តដើមឆ្នាំ']?.count > 0 ? columnStats['តេស្តដើមឆ្នាំ'].counts.D : '-'}
-                      </td>
-                      {monthColumns.map((m) => (
-                        <td key={`d-${m}`} className="py-1 px-1 text-center border border-slate-200 font-mono">
+                      {allMonthKeys.map((m) => (
+                        <td key={`d-${m}`} colSpan={3} className="py-1 px-1 text-center border border-slate-200 font-mono">
                           {columnStats[m]?.count > 0 ? columnStats[m].counts.D : '-'}
                         </td>
                       ))}
                       <td className="no-print border border-slate-200" />
-                      <td colSpan={3} className="border border-slate-200" />
                     </tr>
 
                     {/* Mention E Row */}
@@ -1156,16 +1271,12 @@ export const GradesPage: React.FC<GradesPageProps> = ({
                       <td colSpan={4} className="py-1 px-3 text-right border border-slate-200">
                         និទ្ទេស E (៥០-៥៩%)៖
                       </td>
-                      <td className="py-1 px-1 text-center border border-slate-200 font-mono">
-                        {columnStats['តេស្តដើមឆ្នាំ']?.count > 0 ? columnStats['តេស្តដើមឆ្នាំ'].counts.E : '-'}
-                      </td>
-                      {monthColumns.map((m) => (
-                        <td key={`e-${m}`} className="py-1 px-1 text-center border border-slate-200 font-mono">
+                      {allMonthKeys.map((m) => (
+                        <td key={`e-${m}`} colSpan={3} className="py-1 px-1 text-center border border-slate-200 font-mono">
                           {columnStats[m]?.count > 0 ? columnStats[m].counts.E : '-'}
                         </td>
                       ))}
                       <td className="no-print border border-slate-200" />
-                      <td colSpan={3} className="border border-slate-200" />
                     </tr>
 
                     {/* Mention F Row */}
@@ -1173,16 +1284,12 @@ export const GradesPage: React.FC<GradesPageProps> = ({
                       <td colSpan={4} className="py-1 px-3 text-right border border-slate-200">
                         និទ្ទេស F (&lt;៥០%)៖
                       </td>
-                      <td className="py-1 px-1 text-center border border-slate-200 font-mono">
-                        {columnStats['តេស្តដើមឆ្នាំ']?.count > 0 ? columnStats['តេស្តដើមឆ្នាំ'].counts.F : '-'}
-                      </td>
-                      {monthColumns.map((m) => (
-                        <td key={`f-${m}`} className="py-1 px-1 text-center border border-slate-200 font-mono">
+                      {allMonthKeys.map((m) => (
+                        <td key={`f-${m}`} colSpan={3} className="py-1 px-1 text-center border border-slate-200 font-mono">
                           {columnStats[m]?.count > 0 ? columnStats[m].counts.F : '-'}
                         </td>
                       ))}
                       <td className="no-print border border-slate-200" />
-                      <td colSpan={3} className="border border-slate-200" />
                     </tr>
                   </tfoot>
                 )}
