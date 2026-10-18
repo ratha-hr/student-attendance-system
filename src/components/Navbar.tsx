@@ -234,8 +234,11 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         )}
 
+        {/* Slot for page-specific custom actions in Navbar (e.g. Teaching Plan actions) */}
+        <div id="navbar-custom-slot" className="flex items-center gap-2 overflow-x-auto no-scrollbar min-w-0 flex-1" />
+
         {/* Right side: Global Undo / Redo & Settings Profile */}
-        <div className="flex items-center space-x-2 sm:space-x-3">
+        <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
           {/* Global Undo / Redo Controls - Present on EVERY menu */}
           <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs font-bold shadow-2xs">
             <button

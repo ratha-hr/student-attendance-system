@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   FileSpreadsheet,
   Download,
@@ -119,6 +120,21 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
   });
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Target DOM element for Top Navbar portal (លើកផ្ទាំងសកម្មភាពឡើងទៅរបារខាងលើ)
+  const [navbarPortalEl, setNavbarPortalEl] = useState<HTMLElement | null>(() => {
+    if (typeof document !== 'undefined') {
+      return document.getElementById('navbar-custom-slot');
+    }
+    return null;
+  });
+
+  useEffect(() => {
+    if (!navbarPortalEl && typeof document !== 'undefined') {
+      const el = document.getElementById('navbar-custom-slot');
+      if (el) setNavbarPortalEl(el);
+    }
+  }, [navbarPortalEl]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -1435,118 +1451,128 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
         </div>
       )}
 
-      {/* Top Action Bar (Hide in Print) */}
-      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-2xs space-y-4 no-print">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-lg sm:text-xl font-black text-slate-900 flex items-center gap-2.5">
-              <FileSpreadsheet className="w-6 h-6 text-blue-600" />
-              <span>តារាងផែនការបង្រៀនប្រចាំឆ្នាំរបស់គ្រូ</span>
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 font-bold border border-blue-200">
-                {plan.subject}
+      {/* Top Navbar Action Bar (Portaled to Top Navbar - លើកផ្ទាំងចំណងជើង និងប៊ូតុងឡើងទៅរបារខាងលើ) */}
+      {navbarPortalEl &&
+        createPortal(
+          <div className="flex items-center justify-between gap-2 sm:gap-3 w-full py-1">
+            {/* Title & Subject Badge */}
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-200 shadow-2xs">
+                <FileSpreadsheet className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600" />
+              </div>
+              <div className="hidden sm:flex flex-col">
+                <span className="text-xs font-black text-slate-800 leading-tight">តារាងផែនការបង្រៀន</span>
+                <span className="text-[10px] text-slate-500 font-bold leading-none">{plan.subject || selectedSubject}</span>
+              </div>
+              <span className="sm:hidden text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-bold border border-blue-200">
+                {plan.subject || selectedSubject}
               </span>
-            </h2>
-            <p className="text-xs text-slate-500 mt-1">
-              កំណត់ទិន្នន័យមូលដ្ឋាន ផែនការបែងចែកនិទ្ទេស និងតាមដានលទ្ធផលប្រចាំខែរបស់សិស្ស
-            </p>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={handleAutoFillFromGrades}
-              className="px-3 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
-              title="ទាញយកការបែងចែកនិទ្ទេសស្វ័យប្រវត្តិតាមពិន្ទុដែលបានបញ្ចូលក្នុងប្រព័ន្ធ"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-purple-600" />
-              <span>ទាញយកពីពិន្ទុជាក់ស្តែង</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleClearPlanAndActual}
-              className="px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
-              title="លុបចំនួនទិន្នន័យផែនការ និងចុងខែទាំងអស់ឱ្យទៅជា ០"
-            >
-              <span>🧹</span>
-              <span>សម្អាតទិន្នន័យ (០)</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleExportExcel}
-              className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>Excel (.xlsx)</span>
-            </button>
-
-            {/* Paper Orientation Selector: Portrait (បញ្ឈរ) / Landscape (ផ្ដេក) */}
-            <div
-              className="inline-flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs font-bold shadow-2xs"
-              title="ជ្រើសរើសទម្រង់ក្រដាសបោះពុម្ព (Default: បញ្ឈរ)"
-            >
-              <button
-                type="button"
-                onClick={() => setPrintOrientation('portrait')}
-                className={`px-2.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
-                  printOrientation === 'portrait'
-                    ? 'bg-white text-blue-700 shadow-2xs font-black'
-                    : 'text-slate-500 hover:text-slate-900'
-                }`}
-                title="បោះពុម្ពជាទម្រង់បញ្ឈរ (A4 Portrait)"
-              >
-                <span>📄</span>
-                <span>បញ្ឈរ</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setPrintOrientation('landscape')}
-                className={`px-2.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
-                  printOrientation === 'landscape'
-                    ? 'bg-white text-blue-700 shadow-2xs font-black'
-                    : 'text-slate-500 hover:text-slate-900'
-                }`}
-                title="បោះពុម្ពជាទម្រង់ផ្ដេក (A4 Landscape)"
-              >
-                <span>📃</span>
-                <span>ផ្ដេក</span>
-              </button>
             </div>
 
-            <button
-              type="button"
-              onClick={() => handlePrint(printOrientation)}
-              className="px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-              title={`បោះពុម្ពជាទម្រង់${printOrientation === 'portrait' ? 'បញ្ឈរ (A4 Portrait)' : 'ផ្ដេក (A4 Landscape)'}`}
-            >
-              <Printer className="w-3.5 h-3.5 text-emerald-400" />
-              <span>បោះពុម្ព ({printOrientation === 'portrait' ? 'ទម្រង់បញ្ឈរ' : 'ទម្រង់ផ្ដេក'})</span>
-            </button>
+            {/* Action Buttons Row */}
+            <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+              <button
+                type="button"
+                onClick={handleAutoFillFromGrades}
+                className="px-2 sm:px-2.5 py-1 sm:py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-xl font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer shrink-0 shadow-2xs"
+                title="ទាញយកការបែងចែកនិទ្ទេសស្វ័យប្រវត្តិតាមពិន្ទុដែលបានបញ្ចូលក្នុងប្រព័ន្ធ"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                <span className="hidden md:inline">ទាញយកពីពិន្ទុជាក់ស្តែង</span>
+                <span className="md:hidden">ទាញយកពិន្ទុ</span>
+              </button>
 
-            <button
-              type="button"
-              onClick={handleResetToDefault}
-              className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer border border-slate-200"
-              title="ផ្ទុកគំរូដើមឡើងវិញ"
-            >
-              <RotateCcw className="w-4 h-4" />
-            </button>
+              <button
+                type="button"
+                onClick={handleClearPlanAndActual}
+                className="px-2 sm:px-2.5 py-1 sm:py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer shadow-2xs shrink-0"
+                title="លុបចំនួនទិន្នន័យផែនការ និងចុងខែទាំងអស់ឱ្យទៅជា ០"
+              >
+                <span>🧹</span>
+                <span className="hidden lg:inline">សម្អាតទិន្នន័យ (០)</span>
+                <span className="lg:hidden">សម្អាត (០)</span>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => handleSave()}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-            >
-              <Save className="w-3.5 h-3.5" />
-              <span>រក្សាទុក</span>
-            </button>
-          </div>
-        </div>
+              <button
+                type="button"
+                onClick={handleExportExcel}
+                className="px-2.5 py-1 sm:py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer shadow-xs shrink-0"
+                title="ទាញយកជាឯកសារ Excel (.xlsx)"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Excel</span>
+              </button>
 
+              {/* Paper Orientation Selector: Portrait (បញ្ឈរ) / Landscape (ផ្ដេក) */}
+              <div
+                className="inline-flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs font-bold shadow-2xs shrink-0"
+                title="ជ្រើសរើសទម្រង់ក្រដាសបោះពុម្ព (Default: បញ្ឈរ)"
+              >
+                <button
+                  type="button"
+                  onClick={() => setPrintOrientation('portrait')}
+                  className={`px-2 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
+                    printOrientation === 'portrait'
+                      ? 'bg-white text-blue-700 shadow-2xs font-black'
+                      : 'text-slate-500 hover:text-slate-900'
+                  }`}
+                  title="បោះពុម្ពជាទម្រង់បញ្ឈរ (A4 Portrait)"
+                >
+                  <span>📄</span>
+                  <span className="hidden sm:inline">បញ្ឈរ</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPrintOrientation('landscape')}
+                  className={`px-2 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
+                    printOrientation === 'landscape'
+                      ? 'bg-white text-blue-700 shadow-2xs font-black'
+                      : 'text-slate-500 hover:text-slate-900'
+                  }`}
+                  title="បោះពុម្ពជាទម្រង់ផ្ដេក (A4 Landscape)"
+                >
+                  <span>📃</span>
+                  <span className="hidden sm:inline">ផ្ដេក</span>
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handlePrint(printOrientation)}
+                className="px-2.5 py-1 sm:py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs shrink-0"
+                title={`បោះពុម្ពជាទម្រង់${printOrientation === 'portrait' ? 'បញ្ឈរ (A4 Portrait)' : 'ផ្ដេក (A4 Landscape)'}`}
+              >
+                <Printer className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="hidden sm:inline">បោះពុម្ព</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleResetToDefault}
+                className="p-1 sm:p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer border border-slate-200 shrink-0"
+                title="ផ្ទុកគំរូដើមឡើងវិញ"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSave()}
+                className="px-3 py-1 sm:py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer shadow-xs shrink-0"
+                title="រក្សាទុកទិន្នន័យផែនការបង្រៀន"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>រក្សាទុក</span>
+              </button>
+            </div>
+          </div>,
+          navbarPortalEl
+        )}
+
+      {/* Filter Controls Row (Hide in Print) */}
+      <div className="bg-white rounded-2xl p-3 sm:p-4 border border-slate-200 shadow-2xs space-y-3 no-print">
         {/* Filter Controls Row (4 Columns - ឆ្នាំសិក្សា removed as requested) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-3 border-t border-slate-100">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {/* Class Select */}
           <div>
             <label className="block text-xs font-bold text-slate-600 mb-1">ជ្រើសរើសថ្នាក់រៀន</label>
