@@ -19,6 +19,7 @@ import {
   BookOpen,
   Volume2,
   VolumeX,
+  Trash2,
 } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import type { Student, ClassRoom, AttendanceRecord, AttendanceStatus, TeacherSettings, TimetableSlot } from '../types';
@@ -302,6 +303,34 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
     onRefresh();
   };
 
+  // Delete today's absences (ឥតច្បាប់ & មានច្បាប់)
+  const handleDeleteTodayAbsences = async () => {
+    const absenceRecords: AttendanceRecord[] = [];
+    classStudents.forEach((s) => {
+      const rec = dailyRecordMap.get(s.id);
+      if (rec && (rec.status === 'absent' || rec.status === 'permission')) {
+        absenceRecords.push(rec);
+      }
+    });
+
+    if (absenceRecords.length === 0) {
+      alert('មិនមានកំណត់ត្រាអវត្តមាន (ឥតច្បាប់ ឬមានច្បាប់) ក្នុងថ្ងៃនេះសម្រាប់លុបឡើយ!');
+      return;
+    }
+
+    if (!window.confirm(`តើលោកគ្រូ-អ្នកគ្រូពិតជាចង់លុបកំណត់ត្រាអវត្តមាន (${toKhmerNum(absenceRecords.length)} នាក់) សម្រាប់ថ្ងៃនេះមែនទេ?`)) {
+      return;
+    }
+
+    await pushSnapshot(`លុបអវត្តមានថ្ងៃ ${selectedDate} (${absenceRecords.length} នាក់)`);
+    await db.attendance.bulkDelete(absenceRecords.map((r) => r.id));
+    if (soundOn) soundEffects.playSuccess();
+    setSaveSuccessMessage(`🗑️ បានលុបកំណត់ត្រាអវត្តមាន (${toKhmerNum(absenceRecords.length)} នាក់) រួចរាល់!`);
+    setIsSavedFeedback(true);
+    setTimeout(() => setIsSavedFeedback(false), 3000);
+    onRefresh();
+  };
+
   // Daily statistics
   const dailyStats = useMemo(() => {
     let present = 0;
@@ -445,6 +474,16 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({
               <Sparkles className="w-4 h-4 mr-1 sm:mr-1.5" />
               <span className="hidden sm:inline">កត់វត្តមានទាំងអស់ (មក)</span>
               <span className="sm:hidden">វត្តមានទាំងអស់</span>
+            </button>
+            {/* Delete Today's Absences Button */}
+            <button
+              type="button"
+              onClick={handleDeleteTodayAbsences}
+              className="inline-flex items-center px-3 sm:px-3.5 py-2 bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-700 hover:text-rose-800 font-bold text-xs sm:text-sm rounded-xl border border-rose-200 shadow-2xs transition-all cursor-pointer shrink-0"
+              title="លុបអវត្តមាន (ឥតច្បាប់ & មានច្បាប់) ថ្ងៃនេះ"
+            >
+              <Trash2 className="w-4 h-4 mr-1 sm:mr-1.5 text-rose-600" />
+              <span>លុបអវត្តមាន</span>
             </button>
             <button
               type="button"

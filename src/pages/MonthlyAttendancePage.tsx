@@ -5,6 +5,7 @@ import {
   Calendar,
   Users,
   AlertCircle,
+  AlertTriangle,
   CheckCircle2,
   Clock,
   Sparkles,
@@ -12,9 +13,14 @@ import {
   ChevronLeft,
   ChevronRight,
   Send,
+  Trash2,
+  X,
 } from 'lucide-react';
 import type { Student, ClassRoom, AttendanceRecord, TeacherSettings, AttendanceStatus } from '../types';
 import { PrintButton } from '../components/common/PrintButton';
+import { db } from '../db/db';
+import { useUndoRedo } from '../context/UndoRedoContext';
+import { soundEffects } from '../utils/soundEffects';
 import {
   toKhmerNum,
   formatKhmerDate,
@@ -48,8 +54,11 @@ export const MonthlyAttendancePage: React.FC<MonthlyAttendancePageProps> = ({
   onGenerateLetterForStudent,
 }) => {
   const now = new Date();
+  const { pushSnapshot, showToast } = useUndoRedo();
   const [selectedMonth, setSelectedMonth] = useState<number>(now.getMonth()); // 0-11
   const [selectedYear, setSelectedYear] = useState<number>(now.getFullYear());
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Active class or ALL classes
   const isAllClasses = selectedClassId === 'ALL';
@@ -132,6 +141,88 @@ export const MonthlyAttendancePage: React.FC<MonthlyAttendancePageProps> = ({
     });
   }, [classStudents, attendanceRecords, datePrefix]);
 
+  // Set of active student IDs in this class
+  const classStudentIds = useMemo(() => new Set(classStudents.map((s) => s.id)), [classStudents]);
+
+  // All attendance records in this selected month for the active class/students
+  const matchingMonthRecords = useMemo(() => {
+    return attendanceRecords.filter((r) => {
+      const matchStudent = isAllClasses || classStudentIds.has(r.studentId);
+      const matchClass = isAllClasses || r.classId === activeClassId;
+      return (matchStudent || matchClass) && r.date.startsWith(datePrefix);
+    });
+  }, [attendanceRecords, classStudentIds, isAllClasses, activeClassId, datePrefix]);
+
+  // Absence records (absent + permission)
+  const monthAbsenceRecords = useMemo(() => {
+    return matchingMonthRecords.filter((r) => r.status === 'absent' || r.status === 'permission');
+  }, [matchingMonthRecords]);
+
+  // Breakdown counts
+  const monthAbsentOnlyCount = useMemo(() => {
+    return matchingMonthRecords.filter((r) => r.status === 'absent').length;
+  }, [matchingMonthRecords]);
+
+  const monthPermissionOnlyCount = useMemo(() => {
+    return matchingMonthRecords.filter((r) => r.status === 'permission').length;
+  }, [matchingMonthRecords]);
+
+  const monthLateCount = useMemo(() => {
+    return matchingMonthRecords.filter((r) => r.status === 'late').length;
+  }, [matchingMonthRecords]);
+
+  const monthPresentCount = useMemo(() => {
+    return matchingMonthRecords.filter((r) => r.status === 'present').length;
+  }, [matchingMonthRecords]);
+
+  // Handler 1: Delete only absences (ឥតច្បាប់ & មានច្បាប់)
+  const handleDeleteAbsencesOnly = async () => {
+    if (monthAbsenceRecords.length === 0) return;
+    setIsDeleting(true);
+    try {
+      const classNameStr = isAllClasses ? 'គ្រប់ថ្នាក់' : (currentClass?.name || 'ថ្នាក់រៀន');
+      const count = monthAbsenceRecords.length;
+      await pushSnapshot(`លុបអវត្តមាន ${classNameStr} ខែ ${KHMER_MONTHS[selectedMonth]} (${count} លើក)`);
+
+      const idsToDelete = monthAbsenceRecords.map((r) => r.id);
+      await db.attendance.bulkDelete(idsToDelete);
+
+      soundEffects.playSuccess();
+      showToast(`🗑️ បានលុបកំណត់ត្រាអវត្តមានសរុប ${toKhmerNum(count)} លើក រួចរាល់!`);
+      setIsDeleteModalOpen(false);
+      onRefresh();
+    } catch (err) {
+      console.error('Failed to delete absences:', err);
+      showToast('❌ មានបញ្ហាក្នុងការលុបអវត្តមាន!');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Handler 2: Clear all attendance records for this month
+  const handleClearAllMonthAttendance = async () => {
+    if (matchingMonthRecords.length === 0) return;
+    setIsDeleting(true);
+    try {
+      const classNameStr = isAllClasses ? 'គ្រប់ថ្នាក់' : (currentClass?.name || 'ថ្នាក់រៀន');
+      const count = matchingMonthRecords.length;
+      await pushSnapshot(`ជម្រះវត្តមានទាំងអស់ ${classNameStr} ខែ ${KHMER_MONTHS[selectedMonth]} (${count} លើក)`);
+
+      const idsToDelete = matchingMonthRecords.map((r) => r.id);
+      await db.attendance.bulkDelete(idsToDelete);
+
+      soundEffects.playSuccess();
+      showToast(`✨ បានជម្រះកំណត់ត្រាវត្តមានទាំងអស់ក្នុងខែ (${toKhmerNum(count)} លើក) រួចរាល់!`);
+      setIsDeleteModalOpen(false);
+      onRefresh();
+    } catch (err) {
+      console.error('Failed to clear month attendance:', err);
+      showToast('❌ មានបញ្ហាក្នុងការជម្រះវត្តមាន!');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div className="space-y-5">
       {/* Top Controller Header (Hidden on Print) */}
@@ -177,13 +268,24 @@ export const MonthlyAttendancePage: React.FC<MonthlyAttendancePageProps> = ({
               onChange={(e) => setSelectedYear(Number(e.target.value))}
               className="bg-slate-50 border border-slate-300 font-bold text-xs sm:text-sm rounded-xl px-2.5 py-1.5 text-slate-800 cursor-pointer shadow-2xs"
             >
-              {[2024, 2025, 2026].map((y) => (
+              {[2022, 2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030].map((y) => (
                 <option key={y} value={y}>
                   ឆ្នាំ {toKhmerNum(y)}
                 </option>
               ))}
             </select>
           </div>
+
+          {/* Button: Delete All Absences (លុបអវត្តមានទាំងអស់) */}
+          <button
+            type="button"
+            onClick={() => setIsDeleteModalOpen(true)}
+            className="inline-flex items-center px-3 py-1.5 bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-700 hover:text-rose-800 font-bold text-xs sm:text-sm rounded-xl border border-rose-200 shadow-2xs transition-all cursor-pointer shrink-0"
+            title="លុបអវត្តមានទាំងអស់ក្នុងខែនេះ"
+          >
+            <Trash2 className="w-4 h-4 mr-1 sm:mr-1.5 text-rose-600" />
+            <span>លុបអវត្តមានទាំងអស់</span>
+          </button>
 
           {/* Print Button with Orientation Selector */}
           <PrintButton defaultOrientation="landscape" label="បោះពុម្ពតារាងខែ" />
@@ -480,6 +582,118 @@ export const MonthlyAttendancePage: React.FC<MonthlyAttendancePageProps> = ({
           </table>
         </div>
       </div>
+      {/* Delete Absences Confirmation Modal */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in no-print">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-100 space-y-4">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                  <Trash2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-base sm:text-lg text-slate-800">
+                    លុបកំណត់ត្រាអវត្តមាន
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    {isAllClasses ? '🌟 គ្រប់ថ្នាក់' : `ថ្នាក់ទី ${currentClass?.name || ''}`} • ខែ {KHMER_MONTHS[selectedMonth]} ឆ្នាំ {toKhmerNum(selectedYear)}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsDeleteModalOpen(false)}
+                className="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Current Month Statistics */}
+            <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 space-y-2">
+              <p className="text-xs font-bold text-slate-700">
+                ស្ថិតិកំណត់ត្រាដែលបានកត់ក្នុងខែ {KHMER_MONTHS[selectedMonth]} ៖
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
+                <div className="bg-rose-50 border border-rose-200 p-2 rounded-xl">
+                  <span className="text-rose-700 font-bold block text-[11px]">ឥតច្បាប់</span>
+                  <strong className="text-rose-800 font-black text-sm">{toKhmerNum(monthAbsentOnlyCount)}</strong> លើក
+                </div>
+                <div className="bg-amber-50 border border-amber-200 p-2 rounded-xl">
+                  <span className="text-amber-700 font-bold block text-[11px]">មានច្បាប់</span>
+                  <strong className="text-amber-800 font-black text-sm">{toKhmerNum(monthPermissionOnlyCount)}</strong> លើក
+                </div>
+                <div className="bg-blue-50 border border-blue-200 p-2 rounded-xl">
+                  <span className="text-blue-700 font-bold block text-[11px]">មកយឺត</span>
+                  <strong className="text-blue-800 font-black text-sm">{toKhmerNum(monthLateCount)}</strong> លើក
+                </div>
+                <div className="bg-emerald-50 border border-emerald-200 p-2 rounded-xl">
+                  <span className="text-emerald-700 font-bold block text-[11px]">មកទាន់ពេល</span>
+                  <strong className="text-emerald-800 font-black text-sm">{toKhmerNum(monthPresentCount)}</strong> លើក
+                </div>
+              </div>
+            </div>
+
+            {/* Warning or Empty notice */}
+            {matchingMonthRecords.length === 0 ? (
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center space-x-2 text-xs text-blue-800">
+                <Info className="w-4 h-4 text-blue-600 shrink-0" />
+                <span>មិនមានទិន្នន័យកំណត់ត្រាវត្តមាន ឬអវត្តមានក្នុងខែនេះសម្រាប់លុបឡើយ។</span>
+              </div>
+            ) : (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start space-x-2 text-xs text-amber-900 leading-relaxed">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <span>
+                  <strong>សម្គាល់៖</strong> ការលុបនេះនឹងដកទិន្នន័យចេញពីតារាងវត្តមានប្រចាំខែ។ ប្រសិនបើលោកគ្រូ-អ្នកគ្រូចុចច្រឡំ អាចចុចប៊ូតុង <strong>"Undo"</strong> នៅលើរបារខាងលើបង្អស់ ដើម្បីទាញទិន្នន័យមកវិញបានភ្លាមៗ។
+                </span>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="space-y-2 pt-1">
+              <button
+                type="button"
+                disabled={isDeleting || monthAbsenceRecords.length === 0}
+                onClick={handleDeleteAbsencesOnly}
+                className={`w-full py-2.5 px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center space-x-2 transition-all cursor-pointer ${
+                  monthAbsenceRecords.length > 0 && !isDeleting
+                    ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-md active:scale-98'
+                    : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                }`}
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>លុបតែអវត្តមាន (ឥតច្បាប់ & មានច្បាប់) ៖ {toKhmerNum(monthAbsenceRecords.length)} លើក</span>
+              </button>
+
+              <button
+                type="button"
+                disabled={isDeleting || matchingMonthRecords.length === 0}
+                onClick={handleClearAllMonthAttendance}
+                className={`w-full py-2 px-4 rounded-xl font-bold text-xs flex items-center justify-center space-x-2 transition-all cursor-pointer ${
+                  matchingMonthRecords.length > 0 && !isDeleting
+                    ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 border border-slate-200'
+                    : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                }`}
+              >
+                <AlertCircle className="w-3.5 h-3.5 text-slate-500" />
+                <span>ជម្រះកំណត់ត្រាវត្តមានទាំងអស់ក្នុងខែនេះ ៖ {toKhmerNum(matchingMonthRecords.length)} លើក</span>
+              </button>
+            </div>
+
+            {/* Footer: Cancel */}
+            <div className="pt-2 border-t border-slate-100 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setIsDeleteModalOpen(false)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors cursor-pointer"
+              >
+                បោះបង់
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
