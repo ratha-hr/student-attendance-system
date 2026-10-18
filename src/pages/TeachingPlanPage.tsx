@@ -1616,8 +1616,9 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
           </div>
         </div>
 
-        {/* Model Standard School (សាលារៀនគំរូ) Benchmark Control - Modernized, Clean & Non-redundant */}
-        <div className="bg-gradient-to-r from-blue-50/80 via-indigo-50/70 to-blue-50/80 border border-blue-200/90 rounded-2xl p-4 space-y-3 shadow-xs">
+        {/* Model Standard School (សាលារៀនគំរូ) Benchmark Control - Only shown on ផែនការទូទៅ (all) */}
+        {activeScope === 'all' && (
+          <div className="bg-gradient-to-r from-blue-50/80 via-indigo-50/70 to-blue-50/80 border border-blue-200/90 rounded-2xl p-4 space-y-3 shadow-xs">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
@@ -1752,6 +1753,7 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
             </div>
           )}
         </div>
+        )}
       </div>
 
 
@@ -1985,41 +1987,6 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
           </div>
         ) : (
           <>
-            {/* Score Rubric Box (Exact 2-Row Bordered Table from Screenshot) */}
-            <div className="overflow-x-auto my-2.5 print:my-2 print:overflow-visible break-inside-avoid">
-              <table className="w-full table-fixed text-center border-collapse border border-black text-[11px] print:text-[8px]">
-                <colgroup>
-                  <col style={{ width: '16%' }} />
-                  <col style={{ width: '14%' }} />
-                  <col style={{ width: '14%' }} />
-                  <col style={{ width: '14%' }} />
-                  <col style={{ width: '14%' }} />
-                  <col style={{ width: '14%' }} />
-                  <col style={{ width: '14%' }} />
-                </colgroup>
-                <tbody>
-                  <tr className="bg-white">
-                    <td className="border border-black px-1.5 py-0.5 print:px-1 print:py-0.5 font-bold text-black">កម្រិតពិន្ទុ</td>
-                    <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black">F ក្រោម ៥០ ពិន្ទុ</td>
-                    <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black">E ពី ៥១ - ៦០ ពិន្ទុ</td>
-                    <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black">D ពី ៦១ - ៧០ ពិន្ទុ</td>
-                    <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black">C ពី ៧១ - ៧៩ ពិន្ទុ</td>
-                    <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black">B ពី ៨០ - ៨៩ ពិន្ទុ</td>
-                    <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black font-bold">A ពី ៩០ - ១០០ ពិន្ទុ</td>
-                  </tr>
-                  <tr className="bg-white">
-                    <td className="border border-black px-1.5 py-0.5 print:px-1 print:py-0.5 font-bold text-black">កម្រិតពិន្ទុ</td>
-                    <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black">F ក្រោម ២៥ ពិន្ទុ</td>
-                    <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black">E ពី ២៥ - ២៩ ពិន្ទុ</td>
-                    <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black">D ពី ៣០ - ៣៤ ពិន្ទុ</td>
-                    <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black">C ពី ៣៥ - ៣៩ ពិន្ទុ</td>
-                    <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black">B ពី ៤០ - ៤៤ ពិន្ទុ</td>
-                    <td className="border border-black px-1 py-0.5 print:px-1 print:py-0.5 text-black font-bold">A ពី ៤៥ - ៥០ ពិន្ទុ</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
             {/* Table 1: ត្រីមាសទី ១ */}
             {(activeScope === 'all' || activeScope === 'q1' || activeScope === '1y') &&
               renderTableBlock('តារាងទី ១ (ត្រីមាសទី១)', plan.monthCols?.table1 || TABLE_1_MONTHS, 'table1')}
