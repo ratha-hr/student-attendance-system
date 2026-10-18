@@ -1287,30 +1287,6 @@ export const StudentDailyAttendanceView: React.FC<StudentDailyAttendanceViewProp
         maxWidth="md"
       >
         <form onSubmit={handleVerifyPin} className="space-y-4">
-          <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-2xl p-3.5 text-xs text-indigo-900 flex items-start space-x-2.5 shadow-sm">
-            <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-sm mt-0.5">
-              <ShieldCheck className="w-5 h-5 text-white" />
-            </div>
-            <div className="leading-relaxed flex-1">
-              <div className="flex items-center justify-between mb-1">
-                <p className="font-bold text-indigo-950">ប្រព័ន្ធការពារសុវត្ថិភាពវត្តមាន</p>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-mono font-semibold">
-                  {initialPinToken ? '⚡ Dynamic OTP' : '🔒 PIN Protected'}
-                </span>
-              </div>
-              <p className="text-indigo-800 text-[11px] leading-relaxed">
-                {initialPinToken ? (
-                  <>
-                    ដើម្បីការពារកុំឱ្យសិស្សលួចកែវត្តមានខ្លួនឯង សូមបញ្ចូល <strong className="text-indigo-950 font-bold">លេខកូដសម្ងាត់ ៤ ខ្ទង់ (OTP)</strong> ដែលបានផ្ញើជូនតាមតំណភ្ជាប់នេះ ឬលេខកូដ Master Key។ <span className="text-amber-800 font-bold">កូដនេះប្រើបានតែម្តងគត់ (Single-Use) ហើយប្រព័ន្ធនឹងចាក់សោរវិញដោយស្វ័យប្រវត្តិក្រោយ ៥ នាទី។</span>
-                  </>
-                ) : (
-                  <>
-                    ដើម្បីការពារកុំឱ្យសិស្សលួចកែវត្តមានខ្លួនឯង សូមបញ្ចូលលេខកូដសម្ងាត់ ៤ ខ្ទង់ដែលលោកគ្រូ-អ្នកគ្រូបានកំណត់ ឬបានផ្តល់ជូនសម្រាប់ថ្ងៃនេះ។ <span className="text-amber-800 font-bold">ប្រព័ន្ធនឹងចាក់សោរវិញដោយស្វ័យប្រវត្តិក្រោយ ៥ នាទី។</span>
-                  </>
-                )}
-              </p>
-            </div>
-          </div>
 
           {cooldownRemaining > 0 && (
             <div className="bg-rose-50 border border-rose-300 rounded-2xl p-3 text-xs text-rose-800 flex items-center space-x-2.5 animate-pulse">
