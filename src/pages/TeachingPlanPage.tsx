@@ -1717,19 +1717,14 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
           </div>
 
           {/* Quick Stats Banner */}
-          <div className="flex items-center justify-between gap-2 bg-[#FFF2CC]/80 border border-amber-200 rounded-xl px-3 py-2">
-            <div className="flex items-center gap-2">
-              <Info className="w-4 h-4 text-amber-700 shrink-0" />
-              <div className="text-xs text-amber-900 leading-tight">
-                <span>សិស្សសរុប: </span>
-                <strong className="text-amber-950 font-black">{plan.totalStudents}</strong>
-                <span className="mx-1">|</span>
-                <span>ស្រី: </span>
-                <strong className="text-pink-700 font-black">{plan.femaleStudents}</strong> នាក់
-              </div>
-            </div>
-            <div className="text-[11px] font-bold text-blue-950 bg-white/90 px-2.5 py-0.5 rounded-lg border border-amber-300 shadow-2xs">
-              📅 ឆ្នាំអនុវត្ត៖ <span className="font-mono text-blue-800">{toKhmerNum(modelSchoolStartYear)} - {toKhmerNum(modelSchoolStartYear + 5)}</span>
+          <div className="flex items-center gap-2 bg-[#FFF2CC]/80 border border-amber-200 rounded-xl px-3 py-2">
+            <Info className="w-4 h-4 text-amber-700 shrink-0" />
+            <div className="text-xs text-amber-900 leading-tight">
+              <span>សិស្សសរុប: </span>
+              <strong className="text-amber-950 font-black">{plan.totalStudents}</strong>
+              <span className="mx-1">|</span>
+              <span>ស្រី: </span>
+              <strong className="text-pink-700 font-black">{plan.femaleStudents}</strong> នាក់
             </div>
           </div>
         </div>
@@ -1795,14 +1790,11 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
                 <span className="font-bold text-black text-xs print:text-[8.5pt]">ថ្នាក់ទី ៖</span>
                 <span className="font-bold text-black text-xs print:text-[8.5pt]">{plan.className}</span>
               </div>
-              {/* បន្ថែមឆ្នាំអនុវត្ត តាមការស្នើសុំ */}
+              {/* ឆ្នាំអនុវត្ត (តែមួយទីតាំងគត់លើក្បាលឯកសារផ្លូវការ) */}
               <div className="flex items-center gap-1.5 shrink-0">
                 <span className="font-bold text-black text-xs print:text-[8.5pt]">ឆ្នាំអនុវត្ត ៖</span>
-                <span className="font-bold text-blue-900 print:text-black text-xs print:text-[8.5pt] bg-amber-50 print:bg-transparent px-1.5 py-0.5 rounded border border-amber-200 print:border-none">
+                <span className="font-bold text-black text-xs print:text-[8.5pt]">
                   {toKhmerNum(modelSchoolStartYear)} - {toKhmerNum(modelSchoolStartYear + 5)}
-                  <span className="font-mono text-[11px] text-slate-500 print:hidden ml-1 font-semibold">
-                    ({modelSchoolStartYear} - {modelSchoolStartYear + 5})
-                  </span>
                 </span>
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
@@ -1851,7 +1843,7 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
               </div>
               <div>
                 <span className="font-black text-xs text-blue-950">
-                  ផែនការបែងចែកភាគរយតាមកម្រិតនិទ្ទេស A, B, C, D, E, F សម្រាប់ ៦ ឆ្នាំ ({modelSchoolStartYear} - {modelSchoolStartYear + 5})
+                  ផែនការបែងចែកភាគរយតាមកម្រិតនិទ្ទេស A, B, C, D, E, F សម្រាប់ ៦ ឆ្នាំ
                 </span>
                 <span className="text-[10px] bg-blue-200/90 text-blue-900 px-2 py-0.2 rounded-full font-bold ml-2">
                   ស្តង់ដារក្រសួងអប់រំ យុវជន និងកីឡា
@@ -1870,22 +1862,10 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
               >
                 {[2020, 2021, 2022, 2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030].map((yr) => (
                   <option key={yr} value={yr}>
-                    {yr} ({toKhmerNum(yr)} - {toKhmerNum(yr + 5)})
+                    {yr}
                   </option>
                 ))}
               </select>
-              <input
-                type="number"
-                min="2000"
-                max="2100"
-                value={modelSchoolStartYear}
-                onChange={(e) => {
-                  const val = parseInt(e.target.value, 10);
-                  if (!isNaN(val)) handleStartYearChange(val);
-                }}
-                className="w-16 px-1.5 py-1 font-bold font-mono text-center text-blue-900 bg-slate-50 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-xs"
-                title="ឬវាយបញ្ចូលឆ្នាំដោយផ្ទាល់"
-              />
             </div>
           </div>
 
