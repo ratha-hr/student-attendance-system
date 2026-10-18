@@ -250,6 +250,8 @@ export function App() {
           onOpenManageClasses={() => setIsManageClassesOpen(true)}
           onOpenSync={() => setIsSyncModalOpen(true)}
           hideClassSelector={currentTab === 'teaching-plan'}
+          currentTab={currentTab}
+          onSelectTab={setCurrentTab}
         />
 
         {/* Content Body - Full Width Screen Layout */}

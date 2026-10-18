@@ -35,6 +35,7 @@ export interface ContinuousScoreData {
 
 interface ContinuousAssessmentTableProps {
   students: Student[];
+  classes?: ClassRoom[];
   currentClass: ClassRoom | undefined;
   activeClassId: string;
   selectedMonth: string;
@@ -53,6 +54,7 @@ interface ContinuousAssessmentTableProps {
 
 export const ContinuousAssessmentTable: React.FC<ContinuousAssessmentTableProps> = ({
   students,
+  classes,
   currentClass,
   activeClassId,
   selectedMonth,
@@ -71,12 +73,22 @@ export const ContinuousAssessmentTable: React.FC<ContinuousAssessmentTableProps>
   const [showFormulaGuide, setShowFormulaGuide] = useState(true);
   const { undo, redo, canUndo, canRedo } = useUndoRedo();
 
-  // Filter class students
+  const isAllClasses = activeClassId === 'ALL' || !activeClassId;
+
+  // Filter class students (Support All Classes properly)
   const classStudents = useMemo(() => {
+    if (isAllClasses) {
+      return [...students].sort((a, b) => {
+        const classA = classes?.find((c) => c.id === a.classId)?.name || '';
+        const classB = classes?.find((c) => c.id === b.classId)?.name || '';
+        if (classA !== classB) return classA.localeCompare(classB);
+        return (a.rollNo || 0) - (b.rollNo || 0);
+      });
+    }
     return students
       .filter((s) => s.classId === activeClassId)
-      .sort((a, b) => a.rollNo - b.rollNo);
-  }, [students, activeClassId]);
+      .sort((a, b) => (a.rollNo || 0) - (b.rollNo || 0));
+  }, [students, isAllClasses, activeClassId, classes]);
 
   // Compute calculated continuous & combined 30% + 70% results
   const calculatedRows = useMemo(() => {
@@ -396,7 +408,7 @@ export const ContinuousAssessmentTable: React.FC<ContinuousAssessmentTableProps>
           </div>
         </div>
         <h2 className="font-moul text-base mt-4">
-          បញ្ជីពិន្ទុវត្តមាន និងការវាយតម្លៃបន្ត (៣០%) - {currentClass?.name}
+          បញ្ជីពិន្ទុវត្តមាន និងការវាយតម្លៃបន្ត (៣០%) - {isAllClasses ? `ថ្នាក់ទាំងអស់ (${classes?.length || 0} ថ្នាក់)` : (currentClass?.name || 'ថ្នាក់')}
         </h2>
         <p className="text-xs mt-1">
           វត្តមាន (អវត្តមានម្តងដក ២ពិន្ទុ) + តេស្ត ១៥នាទី + ពិន្ទុ App | ពិន្ទុសរុបយក ៣០% នៃពិន្ទុគ្រប់មុខវិជ្ជា
@@ -495,6 +507,11 @@ export const ContinuousAssessmentTable: React.FC<ContinuousAssessmentTableProps>
                       {/* Name */}
                       <td className="py-2 px-3 border border-slate-200 font-bold text-slate-900 whitespace-nowrap">
                         {stu.nameKh}
+                        {isAllClasses && (
+                          <span className="ml-1.5 px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-800 rounded font-bold">
+                            {classes?.find((c) => c.id === stu.classId)?.name}
+                          </span>
+                        )}
                       </td>
 
                       {/* Gender */}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Menu, Plus, Clock, Sparkles, Undo2, Redo2, RotateCw } from 'lucide-react';
+import { Menu, Plus, Clock, Sparkles, Undo2, Redo2, RotateCw, CalendarDays, BookOpenCheck } from 'lucide-react';
 import type { ClassRoom, TeacherSettings } from '../types';
+import type { NavTab } from './Sidebar';
 import { useUndoRedo } from '../context/UndoRedoContext';
 import {
   toKhmerNum,
@@ -23,6 +24,8 @@ interface NavbarProps {
   onOpenManageClasses?: () => void;
   onOpenSync?: () => void;
   hideClassSelector?: boolean;
+  currentTab?: NavTab;
+  onSelectTab?: (tab: NavTab) => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -35,6 +38,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenManageClasses,
   onOpenSync,
   hideClassSelector,
+  currentTab,
+  onSelectTab,
 }) => {
   const { canUndo, canRedo, undo, redo, showToast } = useUndoRedo();
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
@@ -196,6 +201,38 @@ export const Navbar: React.FC<NavbarProps> = ({
             </>
           )}
         </div>
+
+        {/* Middle: Grades Mode Switcher Pills (Moved to top as requested) */}
+        {(currentTab === 'grades' || currentTab === 'continuous-assessment') && onSelectTab && (
+          <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs font-bold gap-1 shadow-2xs select-none">
+            <button
+              type="button"
+              onClick={() => onSelectTab('grades')}
+              className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg transition-all cursor-pointer flex items-center space-x-1.5 ${
+                currentTab === 'grades'
+                  ? 'bg-blue-600 text-white shadow-xs font-black ring-1 ring-blue-700'
+                  : 'text-slate-700 hover:text-slate-900 hover:bg-white/60'
+              }`}
+            >
+              <CalendarDays className="w-3.5 h-3.5 shrink-0" />
+              <span className="hidden md:inline">តារាងពិន្ទុតាមខែ (ចាប់ផ្ដើមពីតេស្តដើមឆ្នាំ)</span>
+              <span className="md:hidden">ពិន្ទុតាមខែ</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onSelectTab('continuous-assessment')}
+              className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg transition-all cursor-pointer flex items-center space-x-1.5 ${
+                currentTab === 'continuous-assessment'
+                  ? 'bg-indigo-600 text-white shadow-xs font-black ring-1 ring-indigo-700'
+                  : 'text-indigo-700 hover:text-indigo-900 hover:bg-indigo-50'
+              }`}
+            >
+              <BookOpenCheck className="w-3.5 h-3.5 shrink-0" />
+              <span className="hidden md:inline">បញ្ជីពិន្ទុវត្តមាន & វាយតម្លៃបន្ត (៣០%)</span>
+              <span className="md:hidden">វាយតម្លៃ (៣០%)</span>
+            </button>
+          </div>
+        )}
 
         {/* Right side: Global Undo / Redo & Settings Profile */}
         <div className="flex items-center space-x-2 sm:space-x-3">

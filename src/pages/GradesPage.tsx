@@ -91,14 +91,18 @@ export const GradesPage: React.FC<GradesPageProps> = ({
     }
   }, [initialViewMode]);
 
-  // Active class
-  const activeClassId = selectedClassId === 'ALL' ? (classes[0]?.id || '') : selectedClassId;
-  const currentClass = classes.find((c) => c.id === activeClassId);
+  // Active class & All classes support
+  const isAllClasses = selectedClassId === 'ALL' || !selectedClassId;
+  const activeClassId = isAllClasses ? 'ALL' : selectedClassId;
+  const currentClass = isAllClasses ? undefined : classes.find((c) => c.id === selectedClassId);
 
   // Resolve Track Key (៧-៨, ៩, ១០, ១១ វិ.ពិត, ១១ វិ.សង្គម, ១២ វិ.ពិត, ១២ វិ.សង្គម)
   const trackKey = useMemo(() => {
+    if (isAllClasses) {
+      return resolveGradeTrack(classes[0]?.name || '', classes[0]?.grade || '៧');
+    }
     return resolveGradeTrack(currentClass?.name || '', currentClass?.grade || '៧');
-  }, [currentClass?.name, currentClass?.grade]);
+  }, [isAllClasses, classes, currentClass?.name, currentClass?.grade]);
 
   const currentTrackDef = GRADE_TRACKS.find((t) => t.key === trackKey);
 
@@ -115,12 +119,20 @@ export const GradesPage: React.FC<GradesPageProps> = ({
     return subjects.reduce((sum, s) => sum + s.maxScore * s.coefficient, 0);
   }, [subjects]);
 
-  // Filter students strictly by active class
+  // Filter students (When isAllClasses, show ALL students across all classes, sorted by class then rollNo)
   const classStudents = useMemo(() => {
+    if (isAllClasses) {
+      return [...students].sort((a, b) => {
+        const classA = classes.find((c) => c.id === a.classId)?.name || '';
+        const classB = classes.find((c) => c.id === b.classId)?.name || '';
+        if (classA !== classB) return classA.localeCompare(classB);
+        return (a.rollNo || 0) - (b.rollNo || 0);
+      });
+    }
     return students
-      .filter((s) => s.classId === activeClassId)
-      .sort((a, b) => a.rollNo - b.rollNo);
-  }, [students, activeClassId]);
+      .filter((s) => s.classId === selectedClassId)
+      .sort((a, b) => (a.rollNo || 0) - (b.rollNo || 0));
+  }, [students, isAllClasses, selectedClassId, classes]);
 
   // Scores map: studentId -> { [subjectId]: number }
   const [scoresState, setScoresState] = useState<Record<string, Record<string, number>>>({});
@@ -141,44 +153,46 @@ export const GradesPage: React.FC<GradesPageProps> = ({
 
   // Load existing scores and continuous assessment from IndexedDB
   useEffect(() => {
-    db.grades
-      .where({ classId: activeClassId, month: selectedMonth })
-      .toArray()
-      .then((records) => {
-        const sMap: Record<string, Record<string, number>> = {};
-        const cMap: Record<string, ContinuousScoreData> = {};
-        const recordStudentIds = new Set(records.map((r) => r.studentId));
+    const fetchContinuous = async () => {
+      const records = isAllClasses
+        ? await db.grades.filter((r) => r.month === selectedMonth).toArray()
+        : await db.grades.where({ classId: selectedClassId, month: selectedMonth }).toArray();
 
-        records.forEach((r) => {
-          sMap[r.studentId] = r.scores || {};
-          const autoAbs = r.absentCount ?? computeStudentAbsences(r.studentId, selectedMonth);
-          const autoAtt = r.attendanceScore ?? Math.max(0, 10 - autoAbs * 2);
-          cMap[r.studentId] = {
+      const sMap: Record<string, Record<string, number>> = {};
+      const cMap: Record<string, ContinuousScoreData> = {};
+      const recordStudentIds = new Set(records.map((r) => r.studentId));
+
+      records.forEach((r) => {
+        sMap[r.studentId] = r.scores || {};
+        const autoAbs = r.absentCount ?? computeStudentAbsences(r.studentId, selectedMonth);
+        const autoAtt = r.attendanceScore ?? Math.max(0, 10 - autoAbs * 2);
+        cMap[r.studentId] = {
+          absentCount: autoAbs,
+          attendanceScore: autoAtt,
+          quiz15mScore: r.quiz15mScore ?? 0,
+          appScore: r.appScore ?? 0,
+        };
+      });
+
+      // Initialize for class students not yet in grades table
+      classStudents.forEach((stu) => {
+        if (!recordStudentIds.has(stu.id)) {
+          const autoAbs = computeStudentAbsences(stu.id, selectedMonth);
+          cMap[stu.id] = {
             absentCount: autoAbs,
-            attendanceScore: autoAtt,
-            quiz15mScore: r.quiz15mScore ?? 0,
-            appScore: r.appScore ?? 0,
+            attendanceScore: Math.max(0, 10 - autoAbs * 2),
+            quiz15mScore: 0,
+            appScore: 0,
           };
-        });
+        }
+      });
 
-        // Initialize for class students not yet in grades table
-        classStudents.forEach((stu) => {
-          if (!recordStudentIds.has(stu.id)) {
-            const autoAbs = computeStudentAbsences(stu.id, selectedMonth);
-            cMap[stu.id] = {
-              absentCount: autoAbs,
-              attendanceScore: Math.max(0, 10 - autoAbs * 2),
-              quiz15mScore: 0,
-              appScore: 0,
-            };
-          }
-        });
+      setScoresState(sMap);
+      setContinuousState(cMap);
+    };
 
-        setScoresState(sMap);
-        setContinuousState(cMap);
-      })
-      .catch(console.error);
-  }, [activeClassId, selectedMonth, classStudents.length, attendanceRecords.length]);
+    fetchContinuous().catch(console.error);
+  }, [isAllClasses, selectedClassId, selectedMonth, classStudents.length, attendanceRecords.length]);
 
   // Update a single subject score
   const handleScoreChange = (studentId: string, subjectId: string, value: string) => {
@@ -249,7 +263,7 @@ export const GradesPage: React.FC<GradesPageProps> = ({
 
   // Save scores & continuous assessments to IndexedDB
   const handleSaveScores = async () => {
-    await pushSnapshot(`រក្សាទុកពិន្ទុថ្នាក់ ${currentClass?.name || ''} ខែ ${selectedMonth}`);
+    await pushSnapshot(`រក្សាទុកពិន្ទុ ${isAllClasses ? 'ថ្នាក់ទាំងអស់' : (currentClass?.name || '')} ខែ ${selectedMonth}`);
     const recordsToPut: StudentGrade[] = classStudents.map((stu) => {
       const stuScores = scoresState[stu.id] || {};
       const cData = continuousState[stu.id] || {
@@ -274,9 +288,11 @@ export const GradesPage: React.FC<GradesPageProps> = ({
       const examScore70 = Number(((subjectPct * 70) / 100).toFixed(2));
       const finalTotal100 = Number((assessmentTotal + examScore70).toFixed(2));
 
+      const stuClassId = stu.classId || (isAllClasses ? (classes[0]?.id || '') : selectedClassId);
+
       return {
-        id: `grade-${activeClassId}-${selectedMonth}-${stu.id}`,
-        classId: activeClassId,
+        id: `grade-${stuClassId}-${selectedMonth}-${stu.id}`,
+        classId: stuClassId,
         studentId: stu.id,
         month: selectedMonth,
         academicYear: settings?.academicYear || '២០២៤-២០២៥',
@@ -311,13 +327,14 @@ export const GradesPage: React.FC<GradesPageProps> = ({
       'មករា', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា',
       'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ',
     ];
-    const saved = localStorage.getItem(`monthly_subj_cols_${activeClassId}`);
+    const storageKey = isAllClasses ? 'monthly_subj_cols_ALL' : `monthly_subj_cols_${selectedClassId}`;
+    const saved = localStorage.getItem(storageKey);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
           if (parsed[0] === 'តុលា') {
-            localStorage.setItem(`monthly_subj_cols_${activeClassId}`, JSON.stringify(defaultJanToDec));
+            localStorage.setItem(storageKey, JSON.stringify(defaultJanToDec));
             return defaultJanToDec;
           }
           return parsed;
@@ -333,7 +350,8 @@ export const GradesPage: React.FC<GradesPageProps> = ({
     setMonthColumns((prev) => {
       const copy = [...prev];
       copy[idx] = newMonth;
-      localStorage.setItem(`monthly_subj_cols_${activeClassId}`, JSON.stringify(copy));
+      const storageKey = isAllClasses ? 'monthly_subj_cols_ALL' : `monthly_subj_cols_${selectedClassId}`;
+      localStorage.setItem(storageKey, JSON.stringify(copy));
       return copy;
     });
   };
@@ -342,7 +360,8 @@ export const GradesPage: React.FC<GradesPageProps> = ({
     setMonthColumns((prev) => {
       const nextMonth = MONTH_OPTIONS[prev.length % MONTH_OPTIONS.length] || 'ខែថ្មី';
       const updated = [...prev, nextMonth];
-      localStorage.setItem(`monthly_subj_cols_${activeClassId}`, JSON.stringify(updated));
+      const storageKey = isAllClasses ? 'monthly_subj_cols_ALL' : `monthly_subj_cols_${selectedClassId}`;
+      localStorage.setItem(storageKey, JSON.stringify(updated));
       return updated;
     });
   };
@@ -351,7 +370,8 @@ export const GradesPage: React.FC<GradesPageProps> = ({
     if (monthColumns.length <= 1) return;
     setMonthColumns((prev) => {
       const updated = prev.filter((_, i) => i !== idx);
-      localStorage.setItem(`monthly_subj_cols_${activeClassId}`, JSON.stringify(updated));
+      const storageKey = isAllClasses ? 'monthly_subj_cols_ALL' : `monthly_subj_cols_${selectedClassId}`;
+      localStorage.setItem(storageKey, JSON.stringify(updated));
       return updated;
     });
   };
@@ -376,26 +396,27 @@ export const GradesPage: React.FC<GradesPageProps> = ({
 
   // Load scores for monthly-subject view from IndexedDB
   useEffect(() => {
-    if (!activeClassId) return;
-    db.grades
-      .where({ classId: activeClassId })
-      .toArray()
-      .then((records) => {
-        const map: Record<string, Record<string, number>> = {};
-        records.forEach((r) => {
-          if (!map[r.studentId]) map[r.studentId] = {};
-          const sc =
-            r.scores?.[selectedSubject] ??
-            r.scores?.[selectedSubjectId] ??
-            r.scores?.[selectedSubject.toLowerCase()];
-          if (sc !== undefined) {
-            map[r.studentId][r.month] = sc;
-          }
-        });
-        setSubjectMonthlyScores(map);
-      })
-      .catch(console.error);
-  }, [activeClassId, selectedSubject, selectedSubjectId]);
+    const fetchMonthlyScores = async () => {
+      const records = isAllClasses
+        ? await db.grades.toArray()
+        : await db.grades.where({ classId: selectedClassId }).toArray();
+
+      const map: Record<string, Record<string, number>> = {};
+      records.forEach((r) => {
+        if (!map[r.studentId]) map[r.studentId] = {};
+        const sc =
+          r.scores?.[selectedSubject] ??
+          r.scores?.[selectedSubjectId] ??
+          r.scores?.[selectedSubject.toLowerCase()];
+        if (sc !== undefined) {
+          map[r.studentId][r.month] = sc;
+        }
+      });
+      setSubjectMonthlyScores(map);
+    };
+
+    fetchMonthlyScores().catch(console.error);
+  }, [isAllClasses, selectedClassId, selectedSubject, selectedSubjectId]);
 
   const handleSubjectScoreChange = (studentId: string, month: string, value: string) => {
     const val = value === '' ? undefined : Math.min(currentMaxScore, Math.max(0, Number(value)));
@@ -414,9 +435,11 @@ export const GradesPage: React.FC<GradesPageProps> = ({
   };
 
   const handleSaveSubjectScores = async () => {
-    await pushSnapshot(`រក្សាទុកពិន្ទុមុខវិជ្ជា ${selectedSubject} ថ្នាក់ ${currentClass?.name || ''}`);
+    await pushSnapshot(`រក្សាទុកពិន្ទុមុខវិជ្ជា ${selectedSubject} ${isAllClasses ? 'ថ្នាក់ទាំងអស់' : (currentClass?.name || '')}`);
     const allMonths = ['តេស្តដើមឆ្នាំ', ...monthColumns];
-    const existingRecords = await db.grades.where({ classId: activeClassId }).toArray();
+    const existingRecords = isAllClasses
+      ? await db.grades.toArray()
+      : await db.grades.where({ classId: selectedClassId }).toArray();
     const existingMap = new Map<string, StudentGrade>();
     existingRecords.forEach((r) => {
       existingMap.set(`${r.studentId}_${r.month}`, r);
@@ -426,6 +449,7 @@ export const GradesPage: React.FC<GradesPageProps> = ({
 
     classStudents.forEach((stu) => {
       const stuScores = subjectMonthlyScores[stu.id] || {};
+      const stuClassId = stu.classId || (isAllClasses ? (classes[0]?.id || '') : selectedClassId);
       allMonths.forEach((m) => {
         const val = stuScores[m];
         if (val !== undefined) {
@@ -437,8 +461,8 @@ export const GradesPage: React.FC<GradesPageProps> = ({
             [selectedSubjectId]: val,
           };
           recordsToPut.push({
-            id: existing?.id || `grade-${activeClassId}-${m}-${stu.id}`,
-            classId: activeClassId,
+            id: existing?.id || `grade-${stuClassId}-${m}-${stu.id}`,
+            classId: stuClassId,
             studentId: stu.id,
             month: m,
             academicYear: settings?.academicYear || '២០២៤-២០២៥',
@@ -716,45 +740,6 @@ export const GradesPage: React.FC<GradesPageProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* 2-View Mode Switcher Banner */}
-      <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3 no-print">
-        {/* Mode Selector Buttons */}
-        <div className="flex flex-wrap items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-bold gap-1 shadow-2xs">
-          <button
-            type="button"
-            onClick={() => setViewMode('monthly-subject')}
-            className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center space-x-1.5 ${
-              viewMode === 'monthly-subject'
-                ? 'bg-blue-600 text-white shadow-xs font-black ring-1 ring-blue-700'
-                : 'text-slate-700 hover:text-slate-900 hover:bg-white/60'
-            }`}
-          >
-            <CalendarDays className="w-4 h-4" />
-            <span>តារាងពិន្ទុតាមខែ (ចាប់ផ្តើមពីតេស្តដើមឆ្នាំ)</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setViewMode('continuous')}
-            className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center space-x-1.5 ${
-              viewMode === 'continuous'
-                ? 'bg-indigo-600 text-white shadow-xs font-black ring-1 ring-indigo-700'
-                : 'text-indigo-700 hover:text-indigo-900 hover:bg-indigo-50'
-            }`}
-          >
-            <BookOpenCheck className="w-4 h-4" />
-            <span>បញ្ជីពិន្ទុវត្តមាន & វាយតម្លៃបន្ត (៣០%)</span>
-          </button>
-        </div>
-
-        {/* Level badge */}
-        <div className="flex items-center space-x-2">
-          <span className="inline-flex items-center px-2.5 py-1 bg-blue-50 text-blue-700 text-xs font-bold rounded-xl border border-blue-200">
-            📚 {currentTrackDef?.label || currentClass?.name}
-          </span>
-        </div>
-      </div>
-
       {/* VIEW MODE 0: Monthly Subject Assessment (ចាប់ផ្តើមពីតេស្តដើមឆ្នាំ + ជម្រើសតាមខែ) */}
       {viewMode === 'monthly-subject' && (
         <div className="space-y-4">
@@ -767,7 +752,7 @@ export const GradesPage: React.FC<GradesPageProps> = ({
                   <span className="whitespace-nowrap">ពិន្ទុសិស្សប្រចាំខែ (តាមដានការរីកចម្រើន)</span>
                 </h2>
                 <span className="px-2.5 py-0.5 bg-blue-50 text-blue-700 text-xs font-bold rounded-lg border border-blue-200 shrink-0">
-                  📚 {currentClass?.name || 'ថ្នាក់រៀន'}
+                  📚 {isAllClasses ? `ថ្នាក់ទាំងអស់ (${classes.length} ថ្នាក់ - ${classStudents.length} នាក់)` : (currentClass?.name || 'ថ្នាក់រៀន')}
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-1">
@@ -880,7 +865,7 @@ export const GradesPage: React.FC<GradesPageProps> = ({
             <div className="flex items-center space-x-2 text-xs font-bold text-blue-900">
               <Calculator className="w-4 h-4 text-blue-600" />
               <span>
-                មុខវិជ្ជា៖ <strong className="text-blue-800 text-sm font-black">{selectedSubject}</strong> | ថ្នាក់៖ <strong>{currentClass?.name || 'ថ្នាក់'}</strong> ({currentTrackDef?.label})
+                មុខវិជ្ជា៖ <strong className="text-blue-800 text-sm font-black">{selectedSubject}</strong> | ថ្នាក់៖ <strong>{isAllClasses ? `ថ្នាក់ទាំងអស់ (${classes.length} ថ្នាក់)` : (currentClass?.name || 'ថ្នាក់')}</strong> ({currentTrackDef?.label})
               </span>
             </div>
             <div className="flex items-center space-x-2">
@@ -1067,6 +1052,11 @@ export const GradesPage: React.FC<GradesPageProps> = ({
                           {/* ឈ្មោះសិស្ស */}
                           <td className="py-1.5 px-2 border border-slate-200 font-bold text-slate-900 whitespace-nowrap text-xs">
                             {stu.nameKh}
+                            {isAllClasses && (
+                              <span className="ml-1.5 px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-800 rounded font-bold">
+                                {classes.find((c) => c.id === stu.classId)?.name}
+                              </span>
+                            )}
                           </td>
 
                           {/* ភេទ */}
@@ -1315,6 +1305,7 @@ export const GradesPage: React.FC<GradesPageProps> = ({
       {viewMode === 'continuous' && (
         <ContinuousAssessmentTable
           students={students}
+          classes={classes}
           currentClass={currentClass}
           activeClassId={activeClassId}
           selectedMonth={selectedMonth}
