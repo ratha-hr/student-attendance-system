@@ -19,6 +19,7 @@ import {
   AlertTriangle,
   Scale,
   Award,
+  Target,
 } from 'lucide-react';
 import type { ClassRoom, Student, TeacherSettings, TeachingPlan, TeachingPlanGradeRow } from '../types';
 import { db } from '../db/db';
@@ -47,6 +48,8 @@ import {
 import { triggerPrint, type PrintOrientation } from '../utils/printUtils';
 import { toKhmerNum } from '../utils/dateUtils';
 
+export type PlanScope = 'all' | 'q1' | 'q2' | 'q3' | '1y' | '3y' | '6y';
+
 interface TeachingPlanPageProps {
   classes: ClassRoom[];
   students: Student[];
@@ -54,6 +57,7 @@ interface TeachingPlanPageProps {
   selectedClassId: string;
   onSelectClass: (classId: string) => void;
   onRefresh?: () => void;
+  initialPlanScope?: PlanScope;
 }
 
 export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
@@ -62,6 +66,7 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
   settings,
   selectedClassId,
   onSelectClass,
+  initialPlanScope,
 }) => {
   // Current active class
   const activeClass = useMemo(() => {
@@ -84,6 +89,15 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
   const [selectedSubject, setSelectedSubject] = useState<string>(
     settings?.specialtySubject || 'គណិតវិទ្យា'
   );
+
+  // Plan scope (ត្រីមាសទី១, ទី២, ទី៣, មួយឆ្នាំ, បីឆ្នាំ, ៦ឆ្នាំ, ទាំងអស់)
+  const [activeScope, setActiveScope] = useState<PlanScope>(initialPlanScope || 'all');
+
+  useEffect(() => {
+    if (initialPlanScope) {
+      setActiveScope(initialPlanScope);
+    }
+  }, [initialPlanScope]);
 
   // Plan state
   const [plan, setPlan] = useState<TeachingPlan>(() => {
@@ -427,6 +441,14 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
     setBenchmarkYear(yKey);
     localStorage.setItem('app_model_school_benchmark_year', yKey);
   };
+
+  useEffect(() => {
+    if (initialPlanScope) {
+      if (initialPlanScope === '1y') handleSelectBenchmarkYear('year1');
+      else if (initialPlanScope === '3y') handleSelectBenchmarkYear('year3');
+      else if (initialPlanScope === '6y') handleSelectBenchmarkYear('year6');
+    }
+  }, [initialPlanScope]);
 
   const [showBenchmarkMatrix, setShowBenchmarkMatrix] = useState<boolean>(true);
 
@@ -1441,6 +1463,73 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
       </div>
 
 
+      {/* Scope Navigation Switcher (ត្រីមាសទី១, ទី២, ទី៣, មួយឆ្នាំ, បីឆ្នាំ, ៦ឆ្នាំ, ទាំងអស់) */}
+      <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between gap-3 flex-wrap no-print">
+        <div className="flex items-center space-x-2">
+          <span className="text-xs font-bold text-slate-800 flex items-center">
+            <Target className="w-4 h-4 text-blue-600 mr-1.5" />
+            ប្រភេទផែនការ ៖
+          </span>
+        </div>
+
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {[
+            { id: 'all' as PlanScope, label: '🎯 ទាំងអស់' },
+            { id: 'q1' as PlanScope, label: 'ត្រីមាសទី១' },
+            { id: 'q2' as PlanScope, label: 'ត្រីមាសទី២' },
+            { id: 'q3' as PlanScope, label: 'ត្រីមាសទី៣' },
+            { id: '1y' as PlanScope, label: 'ផែនការ ១ឆ្នាំ' },
+            { id: '3y' as PlanScope, label: 'ផែនការ ៣ឆ្នាំ' },
+            { id: '6y' as PlanScope, label: 'ផែនការ ៦ឆ្នាំ' },
+          ].map((sc) => {
+            const isCur = activeScope === sc.id;
+            return (
+              <button
+                key={sc.id}
+                type="button"
+                onClick={() => {
+                  setActiveScope(sc.id);
+                  if (sc.id === '1y') handleSelectBenchmarkYear('year1');
+                  else if (sc.id === '3y') handleSelectBenchmarkYear('year3');
+                  else if (sc.id === '6y') handleSelectBenchmarkYear('year6');
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  isCur
+                    ? 'bg-blue-600 text-white shadow-xs scale-105'
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                }`}
+              >
+                {sc.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Scope Notice Banner (When specific scope is selected) */}
+      {activeScope !== 'all' && (
+        <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-blue-50 border border-blue-200/90 rounded-2xl p-3 flex items-center justify-between no-print gap-2">
+          <div className="flex items-center space-x-2 text-xs font-bold text-blue-900">
+            <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+            <span>
+              {activeScope === 'q1' && '📊 កំពុងបង្ហាញ ៖ ផែនការត្រីមាសទី១ (៣ខែដំបូង) • បង្ហាញតារាងទី១'}
+              {activeScope === 'q2' && '📊 កំពុងបង្ហាញ ៖ ផែនការត្រីមាសទី២ (៣ខែបន្ទាប់) • បង្ហាញតារាងទី២'}
+              {activeScope === 'q3' && '📊 កំពុងបង្ហាញ ៖ ផែនការត្រីមាសទី៣ (២ខែចុងក្រោយ & ចុងឆ្នាំ) • បង្ហាញតារាងទី៣'}
+              {activeScope === '1y' && '🏆 កំពុងបង្ហាញ ៖ ផែនការ ១ឆ្នាំ (ឆ្នាំទី១ - គោលដៅ ABC ៣២%) • តារាងពេញ ១ឆ្នាំសិក្សា'}
+              {activeScope === '3y' && '🏆 កំពុងបង្ហាញ ៖ ផែនការ ៣ឆ្នាំ (ឆ្នាំទី៣ - គោលដៅ ABC ៤០%) • តារាងផែនការ និងគោលដៅ ៣ឆ្នាំ'}
+              {activeScope === '6y' && '🏆 កំពុងបង្ហាញ ៖ ផែនការ ៦ឆ្នាំ (ឆ្នាំទី៦ - គោលដៅ ABC ៨០% សាលារៀនគំរូ) • ម៉ាទ្រីសយុទ្ធសាស្ត្រគំរូពេញលេញ'}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setActiveScope('all')}
+            className="text-xs text-blue-700 hover:text-blue-900 font-bold underline cursor-pointer whitespace-nowrap"
+          >
+            បង្ហាញទាំងអស់
+          </button>
+        </div>
+      )}
+
       {/* Official Plan Sheet Container (Matches Excel Template Exactly for Display & Print) */}
       <div className="official-sheet bg-white rounded-2xl p-4 sm:p-6 lg:p-8 border border-slate-200 shadow-sm print:p-0 print:border-none print:shadow-none space-y-2">
         {/* Official Kingdom & Ministry Administrative Header (បាវចនាជាតិនៅខាងលើកណ្តាល • ការិ.អយក និង វិទ្យាល័យ តម្រឹមខាងឆ្វេង ទម្លាក់មកបន្ទាត់ទី ៣) */}
@@ -1620,13 +1709,16 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
         </div>
 
         {/* Table 1: ត្រីមាសទី ១ */}
-        {renderTableBlock('តារាងទី ១', plan.monthCols?.table1 || TABLE_1_MONTHS, 'table1')}
+        {(activeScope === 'all' || activeScope === 'q1' || activeScope === '1y' || activeScope === '3y' || activeScope === '6y') &&
+          renderTableBlock('តារាងទី ១ (ត្រីមាសទី១)', plan.monthCols?.table1 || TABLE_1_MONTHS, 'table1')}
 
         {/* Table 2: ត្រីមាសទី ២ */}
-        {renderTableBlock('តារាងទី ២', plan.monthCols?.table2 || TABLE_2_MONTHS, 'table2')}
+        {(activeScope === 'all' || activeScope === 'q2' || activeScope === '1y' || activeScope === '3y' || activeScope === '6y') &&
+          renderTableBlock('តារាងទី ២ (ត្រីមាសទី២)', plan.monthCols?.table2 || TABLE_2_MONTHS, 'table2')}
 
-        {/* Table 3: បញ្ចប់ឆ្នាំសិក្សា */}
-        {renderTableBlock('តារាងទី ៣', plan.monthCols?.table3 || TABLE_3_MONTHS, 'table3')}
+        {/* Table 3: បញ្ចប់ឆ្នាំសិក្សា / ត្រីមាសទី៣ */}
+        {(activeScope === 'all' || activeScope === 'q3' || activeScope === '1y' || activeScope === '3y' || activeScope === '6y') &&
+          renderTableBlock('តារាងទី ៣ (ត្រីមាសទី៣)', plan.monthCols?.table3 || TABLE_3_MONTHS, 'table3')}
 
         {/* Official Signatures (Kingdom of Cambodia Format) */}
         <div className="pt-5 pb-1 print:pt-4 print:pb-0 grid grid-cols-2 text-center text-xs text-black break-inside-avoid">

@@ -39,17 +39,19 @@ import * as XLSX from 'xlsx';
 export type GradesViewMode = 'monthly-subject' | 'continuous';
 
 export const MONTH_OPTIONS = [
-  'តុលា',
-  'វិច្ឆិកា',
-  'ធ្នូ',
   'មករា',
-  'ឆមាសទី១',
   'កុម្ភៈ',
   'មីនា',
   'មេសា',
   'ឧសភា',
   'មិថុនា',
   'កក្កដា',
+  'សីហា',
+  'កញ្ញា',
+  'តុលា',
+  'វិច្ឆិកា',
+  'ធ្នូ',
+  'ឆមាសទី១',
   'ឆមាសទី២',
   'ប្រឡងប្រចាំឆ្នាំ',
 ];
@@ -305,16 +307,26 @@ export const GradesPage: React.FC<GradesPageProps> = ({
 
   // Month columns for monthly tracking view (Column 0 is fixed as 'តេស្តដើមឆ្នាំ')
   const [monthColumns, setMonthColumns] = useState<string[]>(() => {
+    const defaultJanToDec = [
+      'មករា', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា',
+      'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ',
+    ];
     const saved = localStorage.getItem(`monthly_subj_cols_${activeClassId}`);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          if (parsed[0] === 'តុលា') {
+            localStorage.setItem(`monthly_subj_cols_${activeClassId}`, JSON.stringify(defaultJanToDec));
+            return defaultJanToDec;
+          }
+          return parsed;
+        }
       } catch (e) {
         // fallback
       }
     }
-    return ['តុលា', 'វិច្ឆិកា', 'ធ្នូ', 'មករា', 'ឆមាសទី១', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា', 'ឆមាសទី២'];
+    return defaultJanToDec;
   });
 
   const handleUpdateMonthColumn = (idx: number, newMonth: string) => {

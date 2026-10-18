@@ -345,7 +345,7 @@ export function App() {
             />
           )}
 
-          {currentTab === 'teaching-plan' && (
+          {((currentTab as string) === 'teaching-plan' || (currentTab as string).startsWith('teaching-plan-')) && (
             <TeachingPlanPage
               classes={classes}
               students={students}
@@ -353,6 +353,21 @@ export function App() {
               selectedClassId={selectedClassId}
               onSelectClass={setSelectedClassId}
               onRefresh={handleRefresh}
+              initialPlanScope={
+                currentTab === 'teaching-plan-q1'
+                  ? 'q1'
+                  : currentTab === 'teaching-plan-q2'
+                  ? 'q2'
+                  : currentTab === 'teaching-plan-q3'
+                  ? 'q3'
+                  : currentTab === 'teaching-plan-1y'
+                  ? '1y'
+                  : currentTab === 'teaching-plan-3y'
+                  ? '3y'
+                  : currentTab === 'teaching-plan-6y'
+                  ? '6y'
+                  : 'all'
+              }
             />
           )}
 

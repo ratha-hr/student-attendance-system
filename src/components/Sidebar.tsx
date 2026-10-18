@@ -12,6 +12,7 @@ import {
   MailWarning,
   Settings,
   Target,
+  Award,
   User,
   School,
 } from 'lucide-react';
@@ -27,6 +28,12 @@ export type NavTab =
   | 'grades'
   | 'continuous-assessment'
   | 'teaching-plan'
+  | 'teaching-plan-q1'
+  | 'teaching-plan-q2'
+  | 'teaching-plan-q3'
+  | 'teaching-plan-1y'
+  | 'teaching-plan-3y'
+  | 'teaching-plan-6y'
   | 'grade-config'
   | 'timetable-teacher'
   | 'letters';
@@ -127,14 +134,49 @@ export const Sidebar: React.FC<SidebarProps> = ({
           icon: BookOpenCheck,
         },
         {
-          id: 'teaching-plan',
-          label: 'តារាងផែនការគ្រូ',
-          icon: Target,
-        },
-        {
           id: 'grade-config',
           label: 'កំណត់មេគុណ & ពិន្ទុ',
           icon: Sliders,
+        },
+      ],
+    },
+    {
+      title: 'ផែនការបង្រៀន & យុទ្ធសាស្ត្រ',
+      items: [
+        {
+          id: 'teaching-plan',
+          label: 'តារាងផែនការបង្រៀន (ទូទៅ)',
+          icon: Target,
+        },
+        {
+          id: 'teaching-plan-q1',
+          label: '• ផែនការត្រីមាសទី១',
+          icon: CalendarCheck2,
+        },
+        {
+          id: 'teaching-plan-q2',
+          label: '• ផែនការត្រីមាសទី២',
+          icon: CalendarCheck2,
+        },
+        {
+          id: 'teaching-plan-q3',
+          label: '• ផែនការត្រីមាសទី៣',
+          icon: CalendarCheck2,
+        },
+        {
+          id: 'teaching-plan-1y',
+          label: '• ផែនការ ១ឆ្នាំ (ឆ្នាំទី១)',
+          icon: Award,
+        },
+        {
+          id: 'teaching-plan-3y',
+          label: '• ផែនការ ៣ឆ្នាំ (ឆ្នាំទី៣)',
+          icon: Award,
+        },
+        {
+          id: 'teaching-plan-6y',
+          label: '• ផែនការ ៦ឆ្នាំ (ឆ្នាំទី៦)',
+          icon: Award,
         },
       ],
     },

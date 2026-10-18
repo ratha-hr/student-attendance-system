@@ -11,7 +11,6 @@ import {
   type KhmerSolarInfo,
 } from '../utils/dateUtils';
 import { groupClassesByGrade } from '../utils/classUtils';
-import { ModernFontZoom } from './common/ModernFontZoom';
 import { performAutoSync } from '../services/autoSyncService';
 
 interface NavbarProps {
@@ -49,6 +48,32 @@ export const Navbar: React.FC<NavbarProps> = ({
   }>(() => formatUniversalTime(new Date()));
 
   const [use24hFormat, setUse24hFormat] = useState<boolean>(true);
+
+  // Simple, clean Font Scaler state (A-, 100%, A+)
+  const [fontScalePct, setFontScalePct] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('app_font_scale_pct');
+      if (saved) {
+        const p = parseInt(saved, 10);
+        if (!isNaN(p) && p >= 60 && p <= 200) return p;
+      }
+    }
+    return 100;
+  });
+
+  const applyScale = (newPct: number) => {
+    const clamped = Math.max(65, Math.min(160, newPct));
+    setFontScalePct(clamped);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('app_font_scale_pct', String(clamped));
+      document.documentElement.style.fontSize = `${(16 * clamped) / 100}px`;
+      window.dispatchEvent(new CustomEvent('app_font_scale_changed', { detail: { scale: clamped } }));
+    }
+  };
+
+  const handleIncreaseFont = () => applyScale(fontScalePct + 5);
+  const handleDecreaseFont = () => applyScale(fontScalePct - 5);
+  const handleResetFont = () => applyScale(100);
 
   // Both Khmer Lunar (ចន្ទគតិ) and Solar (សុរិយគតិ) calendars
   const [currentDate, setCurrentDate] = useState<Date>(() => new Date());
@@ -228,8 +253,36 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span className="sm:hidden">អូតូ 100%</span>
           </button>
 
-          {/* Modern Typography / Font Scaler (ពង្រីក-បង្រួមអក្សរទំនើប) */}
-          <ModernFontZoom />
+          {/* Simple & Clean Font Scaler (A-, 100%, A+) */}
+          <div
+            className="inline-flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs font-bold shadow-2xs select-none"
+            title="ពង្រីក-បង្រួមទំហំអក្សរ (A- = បង្រួម, A+ = ពង្រីក, កណ្តាល = ១០០%)"
+          >
+            <button
+              type="button"
+              onClick={handleDecreaseFont}
+              className="px-2 py-1 rounded-lg text-slate-700 hover:bg-white hover:text-blue-700 transition-colors cursor-pointer active:scale-90 font-black text-xs"
+              title="បង្រួមទំហំអក្សរ (A-)"
+            >
+              A-
+            </button>
+            <button
+              type="button"
+              onClick={handleResetFont}
+              className="px-1.5 py-1 text-[11px] font-mono text-slate-600 hover:text-blue-700 transition-colors cursor-pointer"
+              title="ចុចដើម្បីកំណត់ទំហំដើម (១០០%)"
+            >
+              {fontScalePct}%
+            </button>
+            <button
+              type="button"
+              onClick={handleIncreaseFont}
+              className="px-2 py-1 rounded-lg text-slate-700 hover:bg-white hover:text-blue-700 transition-colors cursor-pointer active:scale-90 font-black text-xs"
+              title="ពង្រីកទំហំអក្សរ (A+)"
+            >
+              A+
+            </button>
+          </div>
 
           {/* Cache-Clear & Force Reload Button (Keep only arrow icon as requested) */}
           <button
