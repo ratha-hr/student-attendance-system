@@ -120,12 +120,21 @@ export const OfficialLettersPage: React.FC<OfficialLettersPageProps> = ({
   const [letterType, setLetterType] = useState<LetterType>('absence_warning');
   const [warningLevel, setWarningLevel] = useState<'auto' | 'level1' | 'level2' | 'final'>('auto');
   const [adminLevel, setAdminLevel] = useState<'school' | 'dept_school' | 'full'>('school');
-  const [letterNumber, setLetterNumber] = useState('០៤៥/២៦');
-  const [schoolAcronym, setSchoolAcronym] = useState('វ.ហ.ស.ក.ត្រ');
+  const [letterNumber, setLetterNumber] = useState('');
+  const [schoolAcronym, setSchoolAcronym] = useState(() => {
+    return localStorage.getItem('official_letter_school_acronym') || 'វ.ហ.ស.ក.ឡ';
+  });
   const [issuanceDate, setIssuanceDate] = useState(getTodayDateString());
   const [meetingDate, setMeetingDate] = useState(getTodayDateString());
   const [meetingTime, setMeetingTime] = useState('០៨:៣០ ព្រឹក');
   const [customNote, setCustomNote] = useState('');
+
+  // Persist school acronym if changed
+  useEffect(() => {
+    if (schoolAcronym) {
+      localStorage.setItem('official_letter_school_acronym', schoolAcronym);
+    }
+  }, [schoolAcronym]);
 
   // Signatory Overrides (prefilled with teacher settings)
   const [principalNameOverride, setPrincipalNameOverride] = useState(settings?.principalName || 'នាយកសាលា');
@@ -236,8 +245,21 @@ export const OfficialLettersPage: React.FC<OfficialLettersPageProps> = ({
             <p className="font-moul text-xs sm:text-[13px] text-indigo-950">
               {schoolName}
             </p>
-            <p className="text-[11.5px] text-slate-700 pt-0.5 font-mono font-medium">
-              លេខ ៖ {letterNumber} {idx !== undefined ? `-${toKhmerNum(idx + 1)}` : ''} / {schoolAcronym}
+            <p className="text-[11.5px] text-slate-800 pt-0.5 font-medium leading-relaxed">
+              លេខ ៖{' '}
+              {letterNumber.trim() ? (
+                <span className="font-mono font-bold text-slate-900">
+                  {letterNumber} {idx !== undefined ? `-${toKhmerNum(idx + 1)}` : ''}
+                </span>
+              ) : (
+                <span className="inline-block tracking-widest text-slate-400 print:text-black font-mono">
+                  ....................................
+                </span>
+              )}{' '}
+              /{' '}
+              <span className="font-bold text-slate-900">
+                {schoolAcronym.trim() || 'វ.ហ.ស.ក.ឡ'}
+              </span>
             </p>
           </div>
         </div>
@@ -603,9 +625,12 @@ export const OfficialLettersPage: React.FC<OfficialLettersPageProps> = ({
                     type="text"
                     value={letterNumber}
                     onChange={(e) => setLetterNumber(e.target.value)}
-                    placeholder="ឧ. ០៤៥/២៦"
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 font-mono font-bold"
+                    placeholder="ទុកនៅទំនេរ (សម្រាប់ចុះលេខដៃ)..."
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 font-mono font-bold placeholder:font-kantumruy placeholder:font-normal placeholder:text-slate-400"
                   />
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    * ទុកនៅទំនេរ ប្រសិនបើខាងសាលាជាអ្នកចុះលេខដោយដៃ
+                  </p>
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
@@ -615,9 +640,12 @@ export const OfficialLettersPage: React.FC<OfficialLettersPageProps> = ({
                     type="text"
                     value={schoolAcronym}
                     onChange={(e) => setSchoolAcronym(e.target.value)}
-                    placeholder="វ.ហ.ស.ក.ត្រ"
+                    placeholder="វ.ហ.ស.ក.ឡ"
                     className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 font-mono font-bold"
                   />
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    * លំនាំដើម៖ វ.ហ.ស.ក.ឡ
+                  </p>
                 </div>
               </div>
 
