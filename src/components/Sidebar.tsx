@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   CalendarCheck2,
   CalendarDays,
@@ -15,6 +15,8 @@ import {
   Award,
   User,
   School,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import type { ClassRoom, TeacherSettings } from '../types';
 import { StickerPickerModal } from './common/StickerPickerModal';
@@ -51,10 +53,17 @@ interface SidebarProps {
   settings?: TeacherSettings | null;
 }
 
+interface SubMenuItem {
+  id: NavTab;
+  label: string;
+  icon?: React.ComponentType<{ className?: string }>;
+}
+
 interface MenuItem {
   id: NavTab;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
+  subItems?: SubMenuItem[];
 }
 
 interface MenuSection {
@@ -73,6 +82,36 @@ export const Sidebar: React.FC<SidebarProps> = ({
   settings,
 }) => {
   const [stickerPickerType, setStickerPickerType] = useState<'school' | 'teacher' | null>(null);
+
+  // Collapsible sub-menus state (Hidden by default unless active)
+  const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>(() => {
+    const isPlanSub = [
+      'teaching-plan-q1',
+      'teaching-plan-q2',
+      'teaching-plan-q3',
+      'teaching-plan-1y',
+      'teaching-plan-3y',
+      'teaching-plan-6y',
+    ].includes(currentTab);
+    return {
+      'teaching-plan': isPlanSub,
+    };
+  });
+
+  useEffect(() => {
+    if (
+      [
+        'teaching-plan-q1',
+        'teaching-plan-q2',
+        'teaching-plan-q3',
+        'teaching-plan-1y',
+        'teaching-plan-3y',
+        'teaching-plan-6y',
+      ].includes(currentTab)
+    ) {
+      setExpandedMenus((prev) => ({ ...prev, 'teaching-plan': true }));
+    }
+  }, [currentTab]);
 
   const handleSelectSticker = async (val: string) => {
     if (stickerPickerType === 'school') {
@@ -145,38 +184,40 @@ export const Sidebar: React.FC<SidebarProps> = ({
       items: [
         {
           id: 'teaching-plan',
-          label: 'តារាងផែនការបង្រៀន (ទូទៅ)',
+          label: 'តារាងផែនការបង្រៀន',
           icon: Target,
-        },
-        {
-          id: 'teaching-plan-q1',
-          label: '• ផែនការត្រីមាសទី១',
-          icon: CalendarCheck2,
-        },
-        {
-          id: 'teaching-plan-q2',
-          label: '• ផែនការត្រីមាសទី២',
-          icon: CalendarCheck2,
-        },
-        {
-          id: 'teaching-plan-q3',
-          label: '• ផែនការត្រីមាសទី៣',
-          icon: CalendarCheck2,
-        },
-        {
-          id: 'teaching-plan-1y',
-          label: '• ផែនការ ១ឆ្នាំ (ឆ្នាំទី១)',
-          icon: Award,
-        },
-        {
-          id: 'teaching-plan-3y',
-          label: '• ផែនការ ៣ឆ្នាំ (ឆ្នាំទី៣)',
-          icon: Award,
-        },
-        {
-          id: 'teaching-plan-6y',
-          label: '• ផែនការ ៦ឆ្នាំ (ឆ្នាំទី៦)',
-          icon: Award,
+          subItems: [
+            {
+              id: 'teaching-plan-q1',
+              label: 'ផែនការត្រីមាសទី១',
+              icon: CalendarCheck2,
+            },
+            {
+              id: 'teaching-plan-q2',
+              label: 'ផែនការត្រីមាសទី២',
+              icon: CalendarCheck2,
+            },
+            {
+              id: 'teaching-plan-q3',
+              label: 'ផែនការត្រីមាសទី៣',
+              icon: CalendarCheck2,
+            },
+            {
+              id: 'teaching-plan-1y',
+              label: 'ផែនការ ១ឆ្នាំ (ឆ្នាំទី១)',
+              icon: Award,
+            },
+            {
+              id: 'teaching-plan-3y',
+              label: 'ផែនការ ៣ឆ្នាំ (ឆ្នាំទី៣)',
+              icon: Award,
+            },
+            {
+              id: 'teaching-plan-6y',
+              label: 'ផែនការ ៦ឆ្នាំ (ឆ្នាំទី៦)',
+              icon: Award,
+            },
+          ],
         },
       ],
     },
@@ -250,27 +291,86 @@ export const Sidebar: React.FC<SidebarProps> = ({
               )}
               {section.items.map((item) => {
                 const Icon = item.icon;
-                const isActive = currentTab === item.id;
+                const hasSubItems = Boolean(item.subItems && item.subItems.length > 0);
+                const isSubActive = Boolean(hasSubItems && item.subItems!.some((sub) => sub.id === currentTab));
+                const isActive = currentTab === item.id || isSubActive;
+                const isExpanded = Boolean(expandedMenus[item.id]);
+
                 return (
-                  <button
-                    key={item.id}
-                    onClick={() => {
-                      onSelectTab(item.id);
-                      onClose();
-                    }}
-                    className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs sm:text-sm transition-all cursor-pointer text-left ${
-                      isActive
-                        ? 'bg-linear-to-r from-blue-600 to-indigo-600 text-white font-bold shadow-md shadow-blue-900/30'
-                        : 'text-slate-300 hover:bg-slate-800/70 hover:text-white font-medium'
-                    }`}
-                  >
-                    <Icon
-                      className={`w-4 h-4 shrink-0 transition-colors ${
-                        isActive ? 'text-white' : 'text-slate-400'
+                  <div key={item.id} className="space-y-1">
+                    <button
+                      onClick={() => {
+                        onSelectTab(item.id);
+                        if (hasSubItems) {
+                          setExpandedMenus((prev) => ({ ...prev, [item.id]: !prev[item.id] }));
+                        } else {
+                          onClose();
+                        }
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs sm:text-sm transition-all cursor-pointer text-left ${
+                        isActive
+                          ? 'bg-linear-to-r from-blue-600 to-indigo-600 text-white font-bold shadow-md shadow-blue-900/30'
+                          : 'text-slate-300 hover:bg-slate-800/70 hover:text-white font-medium'
                       }`}
-                    />
-                    <span className="truncate">{item.label}</span>
-                  </button>
+                    >
+                      <div className="flex items-center space-x-3 truncate">
+                        <Icon
+                          className={`w-4 h-4 shrink-0 transition-colors ${
+                            isActive ? 'text-white' : 'text-slate-400'
+                          }`}
+                        />
+                        <span className="truncate">{item.label}</span>
+                      </div>
+
+                      {hasSubItems && (
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setExpandedMenus((prev) => ({ ...prev, [item.id]: !prev[item.id] }));
+                          }}
+                          className="p-1 hover:bg-white/10 rounded-lg transition-colors ml-1 cursor-pointer"
+                          title={isExpanded ? 'បិទមីនុយរង' : 'បើកមើលមីនុយរង'}
+                        >
+                          {isExpanded ? (
+                            <ChevronDown className="w-3.5 h-3.5 text-slate-200" />
+                          ) : (
+                            <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                          )}
+                        </div>
+                      )}
+                    </button>
+
+                    {/* Collapsible Sub-menu items (Hidden by default, slides open when expanded) */}
+                    {hasSubItems && isExpanded && (
+                      <div className="pl-3.5 ml-3.5 border-l-2 border-slate-700/80 space-y-1 py-1 animate-fadeIn">
+                        {item.subItems!.map((sub) => {
+                          const SubIcon = sub.icon || Target;
+                          const isCurSubActive = currentTab === sub.id;
+                          return (
+                            <button
+                              key={sub.id}
+                              onClick={() => {
+                                onSelectTab(sub.id);
+                                onClose();
+                              }}
+                              className={`w-full flex items-center space-x-2.5 px-2.5 py-1.5 rounded-lg text-xs transition-all cursor-pointer text-left ${
+                                isCurSubActive
+                                  ? 'bg-blue-600 text-white font-bold shadow-xs'
+                                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60 font-medium'
+                              }`}
+                            >
+                              <SubIcon
+                                className={`w-3.5 h-3.5 shrink-0 ${
+                                  isCurSubActive ? 'text-white' : 'text-slate-400'
+                                }`}
+                              />
+                              <span className="truncate">{sub.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>
