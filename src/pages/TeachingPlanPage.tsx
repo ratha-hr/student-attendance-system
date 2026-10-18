@@ -428,53 +428,19 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
 
   // Cell change handler for Baseline of any table (Table 1 updates baselineCount, Tables 2-4 update preceding quarter's end actuals)
   const handleTableBaselineCountChange = (
-    tableKey: 'table1' | 'table2' | 'table3' | 'table4',
+    _tableKey: 'table1' | 'table2' | 'table3' | 'table4',
     grade: string,
     count: number
   ) => {
-    if (tableKey === 'table1') {
-      handleBaselineCountChange(grade, count);
-      return;
-    }
-
-    let prevCols: MonthColDef[] = [];
-    if (tableKey === 'table2') {
-      prevCols = plan.monthCols?.table1 || TABLE_1_MONTHS;
-    } else if (tableKey === 'table3') {
-      prevCols = plan.monthCols?.table2 || TABLE_2_MONTHS;
-    } else if (tableKey === 'table4') {
-      prevCols = plan.monthCols?.table3 || TABLE_3_MONTHS;
-    }
-
-    if (prevCols.length > 0) {
-      const lastColKey = prevCols[prevCols.length - 1].key;
-      handleMonthCellChange(grade, lastColKey, 'actualCount', count);
-    }
+    handleBaselineCountChange(grade, count);
   };
 
   const handleTableBaselinePctChange = (
-    tableKey: 'table1' | 'table2' | 'table3' | 'table4',
+    _tableKey: 'table1' | 'table2' | 'table3' | 'table4',
     grade: string,
     pct: number
   ) => {
-    if (tableKey === 'table1') {
-      handleBaselinePctChange(grade, pct);
-      return;
-    }
-
-    let prevCols: MonthColDef[] = [];
-    if (tableKey === 'table2') {
-      prevCols = plan.monthCols?.table1 || TABLE_1_MONTHS;
-    } else if (tableKey === 'table3') {
-      prevCols = plan.monthCols?.table2 || TABLE_2_MONTHS;
-    } else if (tableKey === 'table4') {
-      prevCols = plan.monthCols?.table3 || TABLE_3_MONTHS;
-    }
-
-    if (prevCols.length > 0) {
-      const lastColKey = prevCols[prevCols.length - 1].key;
-      handleMonthCellChange(grade, lastColKey, 'actualPct', pct);
-    }
+    handleBaselinePctChange(grade, pct);
   };
 
   // Cell change handler for Year-End Target Percentage
@@ -1293,19 +1259,7 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
       (r) => getTableBaseline(plan, tableKey, r).pct
     );
 
-    const prevQuarterLabel =
-      tableKey === 'table2'
-        ? 'ត្រីមាសទី១'
-        : tableKey === 'table3'
-        ? 'ត្រីមាសទី២'
-        : tableKey === 'table4'
-        ? 'ត្រីមាសទី៣'
-        : '';
-
-    const baselineTitle =
-      tableKey === 'table1'
-        ? 'ទិន្នន័យមូលដ្ឋានដើមឆ្នាំ (តេស្តដើមឆ្នាំ)'
-        : `ទិន្នន័យមូលដ្ឋានគិតបន្តពីចុង${prevQuarterLabel}`;
+    const baselineTitle = 'ទិន្នន័យមូលដ្ឋាន (ស្រង់ពីតេស្តដើមឆ្នាំ) - ចុចដើម្បីទាញយកពិន្ទុឡើងវិញ';
 
     const yearTargetTotal = plan.rows.reduce((sum, r) => sum + (r.yearEndTargetPct || 0), 0);
     const totalCols = 1 + 2 + months.length * 4 + 1;
@@ -1355,32 +1309,15 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
               <th
                 colSpan={2}
                 rowSpan={2}
-                className={`border border-black px-1 py-0.5 align-middle text-center leading-tight print:px-0.5 print:py-0.5 ${
-                  tableKey === 'table1' ? 'hover:bg-blue-50 cursor-pointer group transition-colors' : ''
-                }`}
-                title={
-                  tableKey === 'table1'
-                    ? 'ទិន្នន័យមូលដ្ឋាន (ស្រង់ពីតេស្តដើមឆ្នាំ) - ចុចដើម្បីទាញយកពិន្ទុឡើងវិញ'
-                    : baselineTitle
-                }
-                onClick={tableKey === 'table1' ? handlePullDiagnosticBaseline : undefined}
+                className="border border-black px-1 py-0.5 align-middle text-center leading-tight print:px-0.5 print:py-0.5 hover:bg-blue-50 cursor-pointer group transition-colors"
+                title={baselineTitle}
+                onClick={handlePullDiagnosticBaseline}
               >
                 <div className="flex items-center justify-center gap-1">
                   <span>ទិន្នន័យ</span>
-                  {tableKey === 'table1' && (
-                    <Sparkles className="w-3 h-3 text-blue-600 print:hidden inline group-hover:scale-110 transition-transform" />
-                  )}
+                  <Sparkles className="w-3 h-3 text-blue-600 print:hidden inline group-hover:scale-110 transition-transform" />
                 </div>
                 <div>មូលដ្ឋាន</div>
-                {tableKey === 'table1' ? (
-                  <div className="text-[9px] text-blue-700 font-bold print:text-[7.5px] print:text-black">
-                    (ស្រង់ពីតេស្តដើមឆ្នាំ)
-                  </div>
-                ) : (
-                  <div className="text-[9px] text-blue-700 font-semibold print:text-[7.5px] print:text-black">
-                    (បន្តពី {prevQuarterLabel})
-                  </div>
-                )}
               </th>
               {months.map((m) => (
                 <th key={m.key} colSpan={4} className="border border-black px-1 py-0.5 align-middle text-center print:px-0.5 print:py-0.5">
