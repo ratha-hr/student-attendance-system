@@ -48,7 +48,7 @@ import {
   clearPlanAndActualData,
   isOldDummyPlan,
 } from '../utils/teachingPlanUtils';
-import { ALL_SUBJECTS } from '../utils/gradeCoefficients';
+import { ALL_SUBJECTS, calculateLetterMention } from '../utils/gradeCoefficients';
 import { triggerPrint, type PrintOrientation } from '../utils/printUtils';
 import { toKhmerNum } from '../utils/dateUtils';
 
@@ -147,7 +147,11 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
     const planKey = `teaching_plan_${activeClass?.id || 'default'}_${selectedSubject}`;
     const loadPlan = async () => {
       try {
-        const allGrades = activeClass ? await db.grades.where('classId').equals(activeClass.id).toArray() : [];
+        const stuIds = new Set(classStudents.map((s) => s.id));
+        const rawGrades = await db.grades.toArray();
+        const allGrades = rawGrades.filter(
+          (g) => (activeClass && g.classId === activeClass.id) || (g.studentId && stuIds.has(g.studentId))
+        );
 
         const applyGradesToPlan = (targetPlan: TeachingPlan): TeachingPlan => {
           if (!allGrades || allGrades.length === 0) return targetPlan;
@@ -159,38 +163,39 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
           const subjectName = subjectObj?.name || selectedSubject;
 
           const getScore = (rec: any): number => {
-            const raw =
-              rec.scores?.[selectedSubject] ??
-              rec.scores?.[subjectName] ??
-              rec.scores?.[subjectId] ??
-              rec.scores?.[selectedSubject.toLowerCase()] ??
-              rec.finalTotal100 ??
-              rec.assessmentTotal ??
-              0;
-            return Number(raw) || 0;
+            if (!rec) return 0;
+            if (rec.scores?.[selectedSubject] !== undefined) return Number(rec.scores[selectedSubject]) || 0;
+            if (rec.scores?.[subjectName] !== undefined) return Number(rec.scores[subjectName]) || 0;
+            if (rec.scores?.[subjectId] !== undefined) return Number(rec.scores[subjectId]) || 0;
+            if (rec.scores?.[selectedSubject.toLowerCase()] !== undefined) return Number(rec.scores[selectedSubject.toLowerCase()]) || 0;
+            if (rec.scores && typeof rec.scores === 'object') {
+              for (const [k, v] of Object.entries(rec.scores)) {
+                if (
+                  k.toLowerCase() === selectedSubject.toLowerCase() ||
+                  k.toLowerCase() === subjectId.toLowerCase() ||
+                  k.includes(selectedSubject) ||
+                  selectedSubject.includes(k)
+                ) {
+                  return Number(v) || 0;
+                }
+              }
+            }
+            if (rec.finalTotal100 !== undefined && rec.finalTotal100 !== null) return Number(rec.finalTotal100) || 0;
+            if (rec.assessmentTotal !== undefined && rec.assessmentTotal !== null) return Number(rec.assessmentTotal) || 0;
+            return 0;
           };
 
           const toGrade = (score: number): 'A' | 'B' | 'C' | 'D' | 'E' | 'F' => {
-            if (score <= 50 && score > 0 && selectedSubject.includes('ពលរដ្ឋ')) {
-              if (score >= 45) return 'A';
-              if (score >= 40) return 'B';
-              if (score >= 35) return 'C';
-              if (score >= 30) return 'D';
-              if (score >= 25) return 'E';
-              return 'F';
-            }
-            if (score >= 90) return 'A';
-            if (score >= 80) return 'B';
-            if (score >= 71) return 'C';
-            if (score >= 61) return 'D';
-            if (score >= 51) return 'E';
-            return 'F';
+            const isCivic = selectedSubject.includes('ពលរដ្ឋ') || selectedSubject.includes('civic');
+            const max = isCivic ? 50 : 100;
+            const pct = max > 0 ? (score / max) * 100 : score;
+            return calculateLetterMention(pct).grade;
           };
 
-          const total = targetPlan.totalStudents || 1;
+          const total = targetPlan.totalStudents || classStudents.length || 1;
           const newRows = [...targetPlan.rows];
 
-          // 1. Pull Baseline from 'តេស្តដើមឆ្នាំ'
+          // 1. Pull Baseline from 'តេស្តដើមឆ្នាំ' (ស្រង់តេស្តដើមឆ្នាំ)
           const diagRecords = allGrades.filter(
             (g) =>
               g.month === 'តេស្តដើមឆ្នាំ' ||
@@ -269,9 +274,11 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
             setPlan(autoPopulated);
             return;
           }
-          // If baseline counts are all 0 and grades exist, auto-pull baseline
-          const isBaselineZero = fromDb.rows.every((r) => (r.baselineCount || 0) === 0);
-          if (isBaselineZero && allGrades.length > 0) {
+          // If diagnostic records exist, ALWAYS ensure baseline reflects 'ស្រង់តេស្តដើមឆ្នាំ'
+          const diagRecordsExist = allGrades.some(
+            (g) => g.month === 'តេស្តដើមឆ្នាំ' || g.month?.includes('តេស្តដើមឆ្នាំ') || g.month?.includes('ដើមឆ្នាំ')
+          );
+          if (diagRecordsExist) {
             const autoPopulated = applyGradesToPlan(fromDb);
             setPlan(autoPopulated);
             return;
@@ -290,8 +297,10 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
             setPlan(autoPopulated);
             return;
           }
-          const isBaselineZero = parsed.rows.every((r: any) => (r.baselineCount || 0) === 0);
-          if (isBaselineZero && allGrades.length > 0) {
+          const diagRecordsExist = allGrades.some(
+            (g) => g.month === 'តេស្តដើមឆ្នាំ' || g.month?.includes('តេស្តដើមឆ្នាំ') || g.month?.includes('ដើមឆ្នាំ')
+          );
+          if (diagRecordsExist) {
             const autoPopulated = applyGradesToPlan(parsed);
             setPlan(autoPopulated);
             return;
@@ -773,11 +782,157 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
   };
 
 
+  // Dedicated pull from beginning-of-year diagnostic test (ស្រង់តេស្តដើមឆ្នាំ)
+  const handlePullDiagnosticBaseline = async () => {
+    if (!activeClass) return;
+    try {
+      const stuIds = new Set(classStudents.map((s) => s.id));
+      const rawGrades = await db.grades.toArray();
+      const allGrades = rawGrades.filter(
+        (g) => (g.classId && g.classId === activeClass.id) || (g.studentId && stuIds.has(g.studentId))
+      );
+
+      const subjectObj = ALL_SUBJECTS.find(
+        (s) => s.name === selectedSubject || s.id === selectedSubject
+      );
+      const subjectId = subjectObj?.id || selectedSubject;
+      const subjectName = subjectObj?.name || selectedSubject;
+
+      const getScore = (rec: any): number => {
+        if (rec.scores?.[selectedSubject] !== undefined) return Number(rec.scores[selectedSubject]) || 0;
+        if (rec.scores?.[subjectName] !== undefined) return Number(rec.scores[subjectName]) || 0;
+        if (rec.scores?.[subjectId] !== undefined) return Number(rec.scores[subjectId]) || 0;
+        if (rec.scores?.[selectedSubject.toLowerCase()] !== undefined) return Number(rec.scores[selectedSubject.toLowerCase()]) || 0;
+        if (rec.scores && typeof rec.scores === 'object') {
+          for (const [k, v] of Object.entries(rec.scores)) {
+            if (
+              k.toLowerCase() === selectedSubject.toLowerCase() ||
+              k.toLowerCase() === subjectId.toLowerCase() ||
+              k.includes(selectedSubject) ||
+              selectedSubject.includes(k)
+            ) {
+              return Number(v) || 0;
+            }
+          }
+        }
+        if (rec.finalTotal100 !== undefined && rec.finalTotal100 !== null) return Number(rec.finalTotal100) || 0;
+        if (rec.assessmentTotal !== undefined && rec.assessmentTotal !== null) return Number(rec.assessmentTotal) || 0;
+        return 0;
+      };
+
+      const toGrade = (score: number): 'A' | 'B' | 'C' | 'D' | 'E' | 'F' => {
+        const isCivic = selectedSubject.includes('ពលរដ្ឋ') || selectedSubject.includes('civic');
+        const max = isCivic ? 50 : 100;
+        const pct = max > 0 ? (score / max) * 100 : score;
+        return calculateLetterMention(pct).grade;
+      };
+
+      const diagRecords = allGrades.filter(
+        (g) =>
+          g.month === 'តេស្តដើមឆ្នាំ' ||
+          g.month?.includes('តេស្តដើមឆ្នាំ') ||
+          g.month?.includes('ដើមឆ្នាំ')
+      );
+
+      const total = plan.totalStudents || classStudents.length || 1;
+
+      if (diagRecords.length > 0) {
+        const diagCounts: Record<string, number> = { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 };
+        diagRecords.forEach((rec) => {
+          const score = getScore(rec);
+          const g = toGrade(score);
+          diagCounts[g]++;
+        });
+
+        const newRows = [...plan.rows];
+        const diagCountArr = newRows.map((r) => diagCounts[r.grade] || 0);
+        const diagPctArr = calculateBalancedPercentages(diagCountArr, total);
+        newRows.forEach((r, idx) => {
+          r.baselineCount = diagCountArr[idx];
+          r.baselinePct = diagPctArr[idx];
+        });
+
+        const updated = { ...plan, rows: newRows };
+        setPlan(updated);
+        await handleSave(updated);
+        showToast(`បានស្រង់ទិន្នន័យមូលដ្ឋានពី «តេស្តដើមឆ្នាំ» (សិស្ស ${diagRecords.length} នាក់) បានជោគជ័យ!`);
+        return;
+      }
+
+      // If no diagnostic records exist in db.grades, prompt to generate sample diagnostic scores
+      const confirmSeed = window.confirm(
+        `មិនទាន់មានទិន្នន័យ «តេស្តដើមឆ្នាំ» សម្រាប់ថ្នាក់ «${activeClass.name}» ក្នុងប្រព័ន្ធនៅឡើយទេ។\n\nតើលោកគ្រូ-អ្នកគ្រូចង់ឱ្យប្រព័ន្ធបង្កើតទិន្នន័យពិន្ទុតេស្តដើមឆ្នាំគំរូសម្រាប់សិស្ស (${classStudents.length} នាក់) និងបញ្ចូលជាទិន្នន័យមូលដ្ឋានស្វ័យប្រវត្តិតែម្តង ឬទេ?`
+      );
+
+      if (confirmSeed && classStudents.length > 0) {
+        const now = new Date().toISOString();
+        const newGradeRecords: any[] = [];
+        const diagCounts: Record<string, number> = { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 };
+
+        classStudents.forEach((student, idx) => {
+          const mod = idx % 10;
+          let baseScore = 65;
+          if (mod === 0) baseScore = 92; // A
+          else if (mod === 1 || mod === 2) baseScore = 83; // B
+          else if (mod >= 3 && mod <= 5) baseScore = 74; // C
+          else if (mod === 6 || mod === 7) baseScore = 64; // D
+          else if (mod === 8) baseScore = 53; // E
+          else baseScore = 45; // F
+
+          const jitter = (idx % 7) - 3;
+          const finalScore = Math.min(100, Math.max(25, baseScore + jitter));
+          const g = toGrade(finalScore);
+          diagCounts[g]++;
+
+          newGradeRecords.push({
+            id: `grade_${activeClass.id}_${student.id}_diag_${Date.now()}_${idx}`,
+            classId: activeClass.id,
+            studentId: student.id,
+            studentName: student.nameKh || student.nameEn || '',
+            gender: student.gender,
+            month: 'តេស្តដើមឆ្នាំ',
+            scores: {
+              [selectedSubject]: finalScore,
+              [subjectId]: finalScore,
+            },
+            finalTotal100: finalScore,
+            updatedAt: now,
+          });
+        });
+
+        await db.grades.bulkPut(newGradeRecords);
+
+        const newRows = [...plan.rows];
+        const diagCountArr = newRows.map((r) => diagCounts[r.grade] || 0);
+        const diagPctArr = calculateBalancedPercentages(diagCountArr, total);
+        newRows.forEach((r, idx) => {
+          r.baselineCount = diagCountArr[idx];
+          r.baselinePct = diagPctArr[idx];
+        });
+
+        const updated = { ...plan, rows: newRows };
+        setPlan(updated);
+        await handleSave(updated);
+        showToast(`បានបង្កើត និងស្រង់ទិន្នន័យមូលដ្ឋានពីតេស្តដើមឆ្នាំ (សិស្ស ${classStudents.length} នាក់) រួចរាល់!`);
+      } else {
+        showToast('សូមបញ្ចូលពិន្ទុក្នុងជួរឈរ «តេស្តដើមឆ្នាំ» ក្នុងទំព័រស្រង់ពិន្ទុ');
+      }
+    } catch (err) {
+      console.error('Error pulling diagnostic baseline:', err);
+      showToast('បរាជ័យក្នុងការទាញយកទិន្នន័យតេស្តដើមឆ្នាំ');
+    }
+  };
+
   // Auto-fill from actual student grades in db.grades (including beginning-of-year diagnostic test for baseline)
   const handleAutoFillFromGrades = async () => {
     if (!activeClass) return;
     try {
-      const allGrades = await db.grades.where('classId').equals(activeClass.id).toArray();
+      const stuIds = new Set(classStudents.map((s) => s.id));
+      const rawGrades = await db.grades.toArray();
+      const allGrades = rawGrades.filter(
+        (g) => (g.classId && g.classId === activeClass.id) || (g.studentId && stuIds.has(g.studentId))
+      );
+
       if (!allGrades || allGrades.length === 0) {
         alert(`មិនទាន់មានទិន្នន័យពិន្ទុសម្រាប់ថ្នាក់ «${activeClass.name}» ក្នុងប្រព័ន្ធនៅឡើយទេ។`);
         return;
@@ -795,35 +950,33 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
 
       // Helper to extract score from record
       const getScoreFromRec = (rec: any): number => {
-        const raw =
-          rec.scores?.[selectedSubject] ??
-          rec.scores?.[subjectName] ??
-          rec.scores?.[subjectId] ??
-          rec.scores?.[selectedSubject.toLowerCase()] ??
-          rec.finalTotal100 ??
-          rec.assessmentTotal ??
-          0;
-        return Number(raw) || 0;
+        if (rec.scores?.[selectedSubject] !== undefined) return Number(rec.scores[selectedSubject]) || 0;
+        if (rec.scores?.[subjectName] !== undefined) return Number(rec.scores[subjectName]) || 0;
+        if (rec.scores?.[subjectId] !== undefined) return Number(rec.scores[subjectId]) || 0;
+        if (rec.scores?.[selectedSubject.toLowerCase()] !== undefined) return Number(rec.scores[selectedSubject.toLowerCase()]) || 0;
+        if (rec.scores && typeof rec.scores === 'object') {
+          for (const [k, v] of Object.entries(rec.scores)) {
+            if (
+              k.toLowerCase() === selectedSubject.toLowerCase() ||
+              k.toLowerCase() === subjectId.toLowerCase() ||
+              k.includes(selectedSubject) ||
+              selectedSubject.includes(k)
+            ) {
+              return Number(v) || 0;
+            }
+          }
+        }
+        if (rec.finalTotal100 !== undefined && rec.finalTotal100 !== null) return Number(rec.finalTotal100) || 0;
+        if (rec.assessmentTotal !== undefined && rec.assessmentTotal !== null) return Number(rec.assessmentTotal) || 0;
+        return 0;
       };
 
-      // Helper to convert score to A-F grade based on MoEYS rubric
+      // Standard MoEYS grade conversion
       const scoreToGrade = (score: number): 'A' | 'B' | 'C' | 'D' | 'E' | 'F' => {
-        // If score is on 50-scale (max <= 50)
-        if (score <= 50 && score > 0 && selectedSubject.includes('ពលរដ្ឋ')) {
-          if (score >= 45) return 'A';
-          if (score >= 40) return 'B';
-          if (score >= 35) return 'C';
-          if (score >= 30) return 'D';
-          if (score >= 25) return 'E';
-          return 'F';
-        }
-        // Standard 100-scale
-        if (score >= 90) return 'A';
-        if (score >= 80) return 'B';
-        if (score >= 71) return 'C';
-        if (score >= 61) return 'D';
-        if (score >= 51) return 'E';
-        return 'F';
+        const isCivic = selectedSubject.includes('ពលរដ្ឋ') || selectedSubject.includes('civic');
+        const max = isCivic ? 50 : 100;
+        const pct = max > 0 ? (score / max) * 100 : score;
+        return calculateLetterMention(pct).grade;
       };
 
       setPlan((prev) => {
@@ -1202,12 +1355,28 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
               <th
                 colSpan={2}
                 rowSpan={2}
-                className="border border-black px-1 py-0.5 align-middle text-center leading-tight print:px-0.5 print:py-0.5"
-                title={baselineTitle}
+                className={`border border-black px-1 py-0.5 align-middle text-center leading-tight print:px-0.5 print:py-0.5 ${
+                  tableKey === 'table1' ? 'hover:bg-blue-50 cursor-pointer group transition-colors' : ''
+                }`}
+                title={
+                  tableKey === 'table1'
+                    ? 'ទិន្នន័យមូលដ្ឋាន (ស្រង់ពីតេស្តដើមឆ្នាំ) - ចុចដើម្បីទាញយកពិន្ទុឡើងវិញ'
+                    : baselineTitle
+                }
+                onClick={tableKey === 'table1' ? handlePullDiagnosticBaseline : undefined}
               >
-                <div>ទិន្នន័យ</div>
+                <div className="flex items-center justify-center gap-1">
+                  <span>ទិន្នន័យ</span>
+                  {tableKey === 'table1' && (
+                    <Sparkles className="w-3 h-3 text-blue-600 print:hidden inline group-hover:scale-110 transition-transform" />
+                  )}
+                </div>
                 <div>មូលដ្ឋាន</div>
-                {tableKey !== 'table1' && (
+                {tableKey === 'table1' ? (
+                  <div className="text-[9px] text-blue-700 font-bold print:text-[7.5px] print:text-black">
+                    (ស្រង់ពីតេស្តដើមឆ្នាំ)
+                  </div>
+                ) : (
                   <div className="text-[9px] text-blue-700 font-semibold print:text-[7.5px] print:text-black">
                     (បន្តពី {prevQuarterLabel})
                   </div>
@@ -1558,6 +1727,17 @@ export const TeachingPlanPage: React.FC<TeachingPlanPageProps> = ({
 
             {/* Action Buttons Row */}
             <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+              <button
+                type="button"
+                onClick={handlePullDiagnosticBaseline}
+                className="px-2 sm:px-2.5 py-1 sm:py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl font-bold text-xs flex items-center gap-1 transition-all cursor-pointer shrink-0 shadow-2xs active:scale-95"
+                title="ទាញយកទិន្នន័យមូលដ្ឋានពីតារាងស្រង់តេស្តដើមឆ្នាំ (Beginning of Year Diagnostic Test)"
+              >
+                <Target className="w-3.5 h-3.5 text-blue-600" />
+                <span className="hidden md:inline">ទាញពីស្រង់តេស្តដើមឆ្នាំ</span>
+                <span className="md:hidden">តេស្តដើមឆ្នាំ</span>
+              </button>
+
               <button
                 type="button"
                 onClick={handleAutoFillFromGrades}
