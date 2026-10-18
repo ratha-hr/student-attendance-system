@@ -174,7 +174,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                   onChange={(e) => onSelectClass(e.target.value)}
                   className="bg-slate-50 border border-slate-300 hover:border-blue-500 text-slate-800 text-xs sm:text-sm font-bold rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block px-3 py-1.5 sm:py-2 transition-all cursor-pointer shadow-xs max-w-[210px] sm:max-w-xs truncate"
                 >
-                  <option value="ALL">🌟 ថ្នាក់ទាំងអស់ ({toKhmerNum(classes.length)})</option>
                   {gradeGroups.map((group) => (
                     <optgroup key={group.grade} label={`── ${group.label} (${group.classes.length}) ──`}>
                       {group.classes.map((c) => (

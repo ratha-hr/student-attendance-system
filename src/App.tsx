@@ -66,9 +66,11 @@ export function App() {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const cls = params.get('class');
-      if (cls) return cls;
+      if (cls && cls !== 'ALL') return cls;
+      const saved = localStorage.getItem('last_selected_class_id');
+      if (saved && saved !== 'ALL') return saved;
     }
-    return 'ALL';
+    return '';
   });
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedStudentForLetter, setSelectedStudentForLetter] = useState<string>('');
@@ -182,9 +184,28 @@ export function App() {
     db.getSettings().then(setSettings).catch(console.error);
   };
 
-  const activeClass = selectedClassId === 'ALL'
-    ? null
-    : classes.find((c) => c.id === selectedClassId) || null;
+  // Ensure an individual class is always selected (never 'ALL' and never empty)
+  useEffect(() => {
+    if (classes.length > 0) {
+      if (!selectedClassId || selectedClassId === 'ALL' || !classes.some((c) => c.id === selectedClassId)) {
+        const firstClassId = classes[0].id;
+        setSelectedClassId(firstClassId);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('last_selected_class_id', firstClassId);
+        }
+      }
+    }
+  }, [classes, selectedClassId]);
+
+  const handleSelectClass = (clsId: string) => {
+    if (!clsId || clsId === 'ALL') return;
+    setSelectedClassId(clsId);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('last_selected_class_id', clsId);
+    }
+  };
+
+  const activeClass = classes.find((c) => c.id === selectedClassId) || classes[0] || null;
 
   const handleSelectStudentForLetter = (studentId: string) => {
     setSelectedStudentForLetter(studentId);
@@ -244,7 +265,7 @@ export function App() {
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
           classes={classes}
           selectedClassId={selectedClassId}
-          onSelectClass={setSelectedClassId}
+          onSelectClass={handleSelectClass}
           settings={settings}
           onOpenSettings={() => setIsSettingsOpen(true)}
           onOpenManageClasses={() => setIsManageClassesOpen(true)}
@@ -265,7 +286,7 @@ export function App() {
               settings={settings}
               selectedClassId={selectedClassId}
               onNavigateTab={setCurrentTab}
-              onSelectClass={setSelectedClassId}
+              onSelectClass={handleSelectClass}
               onSelectStudentForLetter={handleSelectStudentForLetter}
             />
           )}
@@ -278,7 +299,7 @@ export function App() {
               timetableSlots={timetableSlots}
               settings={settings}
               selectedClassId={selectedClassId}
-              onSelectClass={setSelectedClassId}
+              onSelectClass={handleSelectClass}
               onRefresh={handleRefresh}
               onGenerateLetterForStudent={handleSelectStudentForLetter}
               onOpenManageClasses={() => setIsManageClassesOpen(true)}
@@ -292,7 +313,7 @@ export function App() {
               attendanceRecords={attendanceRecords}
               settings={settings}
               selectedClassId={selectedClassId}
-              onSelectClass={setSelectedClassId}
+              onSelectClass={handleSelectClass}
               onRefresh={handleRefresh}
               onGenerateLetterForStudent={handleSelectStudentForLetter}
             />
@@ -305,7 +326,7 @@ export function App() {
               attendanceRecords={attendanceRecords}
               settings={settings}
               selectedClassId={selectedClassId}
-              onSelectClass={setSelectedClassId}
+              onSelectClass={handleSelectClass}
               onRefresh={handleRefresh}
               onNavigateTab={setCurrentTab}
               onOpenManageClasses={() => setIsManageClassesOpen(true)}
@@ -319,7 +340,7 @@ export function App() {
               attendanceRecords={attendanceRecords}
               settings={settings}
               selectedClassId={selectedClassId}
-              onSelectClass={setSelectedClassId}
+              onSelectClass={handleSelectClass}
               onRefresh={handleRefresh}
               onOpenGradeConfig={() => setCurrentTab('grade-config')}
               initialViewMode="monthly-subject"
@@ -333,7 +354,7 @@ export function App() {
               attendanceRecords={attendanceRecords}
               settings={settings}
               selectedClassId={selectedClassId}
-              onSelectClass={setSelectedClassId}
+              onSelectClass={handleSelectClass}
               onRefresh={handleRefresh}
               onOpenGradeConfig={() => setCurrentTab('grade-config')}
               initialViewMode="continuous"
@@ -353,7 +374,7 @@ export function App() {
               students={students}
               settings={settings}
               selectedClassId={selectedClassId}
-              onSelectClass={setSelectedClassId}
+              onSelectClass={handleSelectClass}
               onRefresh={handleRefresh}
               initialPlanScope={
                 currentTab === 'teaching-plan-q1'
@@ -394,7 +415,7 @@ export function App() {
               settings={settings}
               selectedStudentId={selectedStudentForLetter}
               selectedClassId={selectedClassId}
-              onSelectClass={setSelectedClassId}
+              onSelectClass={handleSelectClass}
             />
           )}
         </main>
@@ -425,7 +446,7 @@ export function App() {
         students={students}
         onRefresh={handleRefresh}
         selectedClassId={selectedClassId}
-        onSelectClass={setSelectedClassId}
+        onSelectClass={handleSelectClass}
         academicYear={settings?.academicYear || '២០២៤-២០២៥'}
       />
 

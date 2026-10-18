@@ -215,7 +215,8 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
     }
 
     if (selectedClassId === c.id) {
-      onSelectClass('ALL');
+      const remaining = classes.find((cl) => cl.id !== c.id);
+      onSelectClass(remaining?.id || '');
     }
 
     onRefresh();
@@ -234,7 +235,7 @@ export const ManageClassesModal: React.FC<ManageClassesModalProps> = ({
         await db.students.update(stu.id, { classId: '' });
       }
     }
-    onSelectClass('ALL');
+    onSelectClass('');
     onRefresh();
     showFeedback('success', 'បានលុបថ្នាក់ទាំងអស់រួចរាល់!');
   };
